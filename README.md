@@ -1,18 +1,32 @@
-# DSH-Desktop
+<div align="center">
 
-[![GitHub Release](https://img.shields.io/github/v/release/XWJ-z/dsh-Desktop?style=flat-square&label=Release)](https://github.com/XWJ-z/dsh-Desktop/releases/latest)
-[![Downloads](https://img.shields.io/github/downloads/XWJ-z/dsh-Desktop/total?style=flat-square&label=Downloads)](https://github.com/XWJ-z/dsh-Desktop/releases)
-[![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-blue?style=flat-square)](https://github.com/XWJ-z/dsh-Desktop/releases/latest)
+<img src="app/assets/icon.png" width="120" alt="DSH-Desktop 图标"/>
+
+# 🐋 DSH-Desktop
+
+**DeepSeek Harness Web GUI（DSH）的 Windows 桌面壳** —— 双击启动，开箱即用
+
+[![GitHub Release](https://img.shields.io/github/v/release/XWJ-z/dsh-Desktop?style=for-the-badge&label=最新版本)](https://github.com/XWJ-z/dsh-Desktop/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/XWJ-z/dsh-Desktop/total?style=for-the-badge&label=累计下载)](https://github.com/XWJ-z/dsh-Desktop/releases)
+[![Platform](https://img.shields.io/badge/平台-Windows%2010%2F11-4ec5eb?style=for-the-badge)](https://github.com/XWJ-z/dsh-Desktop/releases/latest)
+
+---
+
+### ⬇️ 下载安装（Windows）
+
+<a href="https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.4.2/DSH-Desktop-Setup-0.4.2.exe">
+<img src="https://img.shields.io/badge/下载安装包-DSH--Desktop--Setup--0.4.2.exe%20%E7%BA%A6120MB-2ea44f?style=for-the-badge&logo=windows&logoColor=white" alt="下载 DSH-Desktop 安装包"/>
+</a>
+
+双击运行即可安装 · 无需预装 DSH / Node.js / npm · 首次运行联网自动拉取 DSH 依赖
+
+[查看全部版本 →](https://github.com/XWJ-z/dsh-Desktop/releases)
+
+</div>
 
 将 **DeepSeek Harness Web GUI（DSH）** 封装成 Windows 桌面应用（**DSH-Desktop**）的工程——**纯套壳**：壳只提供运行环境，DSH 本体由 npm 按配置的版本提供。
 
 DSH 本身是运行在浏览器中的 Web 界面（`http://127.0.0.1:3080`）。本工程用 **Electron** 写了一个原生外壳：自带 Node+npm 环境，启动时自动用 `npm install` 拉取指定版本的 `@deepseek-ai/dsh`（等价于官方一键使用 `npx @deepseek-ai/dsh web`），然后拉起 `dsh web` 服务，等待就绪后在独立窗口中承载完整的 GUI，关闭窗口即停止服务。应用图标使用 DeepSeek 官方鲸鱼标识。
-
-## 下载安装（Windows）
-
-- **一键安装包**：[DSH-Desktop-Setup-0.4.2.exe（约 120MB）](https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.4.2/DSH-Desktop-Setup-0.4.2.exe)
-- 全部版本见 [Releases 页面](https://github.com/XWJ-z/dsh-Desktop/releases)
-- 双击运行即可安装：目标电脑**无需预装** DSH / Node.js / npm；首次运行联网自动拉取 DSH 依赖
 
 ## 特性
 
