@@ -4,7 +4,7 @@
 
 # 🐋 DSH-Desktop
 
-**DeepSeek Harness Web GUI（DSH）的 Windows 桌面壳** —— 双击启动，开箱即用
+**DeepSeek Harness Web GUI（DSH）的 Windows 桌面版** —— 一键安装，开箱即用
 
 [![GitHub Release](https://img.shields.io/github/v/release/XWJ-z/dsh-Desktop?style=for-the-badge&label=最新版本)](https://github.com/XWJ-z/dsh-Desktop/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/XWJ-z/dsh-Desktop/total?style=for-the-badge&label=累计下载)](https://github.com/XWJ-z/dsh-Desktop/releases)
