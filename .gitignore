@@ -1,0 +1,36 @@
+# 依赖与构建产物
+node_modules/
+app/node_modules/
+dist/
+app/dist/
+
+# npm / electron 缓存
+.npm-cache/
+app/.npm-cache/
+.electron-cache/
+app/.electron-cache/
+.builder-cache/
+app/.builder-cache/
+
+# 日志
+app/logs/
+*.log
+npm-debug.log*
+
+# 内置 Node 运行时（fetch-node.js 构建产物）
+app/resources/node/
+
+# 本地打包/安装测试产物
+.review-test/
+
+# 同步临时目录
+.sync_temp_dir/
+
+# 系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 编辑器
+.vscode/
+.idea/

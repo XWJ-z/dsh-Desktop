@@ -1,0 +1,29 @@
+{
+  "name": "dsh-desktop",
+  "productName": "DSH-Desktop",
+  "version": "0.4.2",
+  "description": "DeepSeek Harness Web GUI 的桌面套壳（Electron）—— 自带 npx 环境，按配置版本运行 @deepseek-ai/dsh web 并在原生窗口中承载界面",
+  "main": "main.js",
+  "license": "MIT",
+  "author": "dsh-Desktop",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "icon": "node scripts/render-icon.js",
+    "icon:fallback": "node scripts/make-icon.js",
+    "preflight": "node scripts/rebuild-native.js",
+    "rebuild": "node scripts/rebuild-native.js",
+    "pack": "node scripts/pack.js",
+    "installer": "node scripts/installer.js"
+  },
+  "dependencies": {
+    "npm": "^12.0.2"
+  },
+  "devDependencies": {
+    "@electron/packager": "^20.3.0",
+    "@electron/rebuild": "^4.2.0",
+    "electron": "^43.4.0",
+    "electron-builder": "^26.15.3"
+  }
+}

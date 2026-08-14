@@ -1,0 +1,5 @@
+{
+  "dshVersion": "0.1.0-rc.6",
+  "dshPackage": "@deepseek-ai/dsh",
+  "registry": "https://registry.npmmirror.com"
+}
