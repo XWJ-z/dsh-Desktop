@@ -23,6 +23,13 @@ app/resources/node/
 # 本地打包/安装测试产物
 .review-test/
 
+# 不上传的内部文档与审查记录（本地保留）
+docs/
+代码审查/
+
+# 根目录安装包（超 GitHub 100MB 限制，改走 GitHub Release 分发）
+/DSH-Desktop-Setup-*.exe
+
 # 同步临时目录
 .sync_temp_dir/
 
