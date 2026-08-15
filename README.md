@@ -8,11 +8,11 @@
 
 [![GitHub Release](https://img.shields.io/github/v/release/XWJ-z/dsh-Desktop?style=for-the-badge&label=最新版本)](https://github.com/XWJ-z/dsh-Desktop/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/XWJ-z/dsh-Desktop/total?style=for-the-badge&label=累计下载)](https://github.com/XWJ-z/dsh-Desktop/releases)
-[![Platform](https://img.shields.io/badge/平台-Windows%2010%2F11-4ec5eb?style=for-the-badge)](https://github.com/XWJ-z/dsh-Desktop/releases/latest)
+[![Platform](https://img.shields.io/badge/%E5%B9%B3%E5%8F%B0-Windows%2010%2F11%20%C2%B7%20%E9%A3%9E%E7%89%9B%20OS-4ec5eb?style=for-the-badge)](https://github.com/XWJ-z/dsh-Desktop/releases/latest)
 
 ---
 
-### ⬇️ 下载安装（Windows）
+### ⬇️ Windows 桌面版
 
 <a href="https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.5.9/DSH-Desktop-Setup-0.5.9.exe">
 <img src="https://img.shields.io/badge/下载安装包-DSH--Desktop--Setup--0.5.9.exe%20%E7%BA%A6120MB-2ea44f?style=for-the-badge&logo=windows&logoColor=white" alt="下载 DSH-Desktop 安装包"/>
