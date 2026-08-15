@@ -1109,6 +1109,10 @@ function buildMenu() {
       ],
     },
     {
+      label: '网页打开',
+      click: () => { shell.openExternal(webUrl()); },
+    },
+    {
       label: '视图',
       submenu: [
         { role: 'resetZoom', label: '实际大小' },

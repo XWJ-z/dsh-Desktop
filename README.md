@@ -14,13 +14,23 @@
 
 ### ⬇️ 下载安装（Windows）
 
-<a href="https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.5.8/DSH-Desktop-Setup-0.5.8.exe">
-<img src="https://img.shields.io/badge/下载安装包-DSH--Desktop--Setup--0.5.8.exe%20%E7%BA%A6120MB-2ea44f?style=for-the-badge&logo=windows&logoColor=white" alt="下载 DSH-Desktop 安装包"/>
+<a href="https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.5.9/DSH-Desktop-Setup-0.5.9.exe">
+<img src="https://img.shields.io/badge/下载安装包-DSH--Desktop--Setup--0.5.9.exe%20%E7%BA%A6120MB-2ea44f?style=for-the-badge&logo=windows&logoColor=white" alt="下载 DSH-Desktop 安装包"/>
 </a>
 
 双击运行即可安装 · 无需预装 DSH / Node.js / npm · 首次运行联网自动拉取 DSH 依赖
 
 [查看全部版本 →](https://github.com/XWJ-z/dsh-Desktop/releases)
+
+---
+
+### 🐮 飞牛 OS（fnOS）应用包 v0.2.5
+
+<a href="https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.5.9/dsh-0.2.5.fpk">
+<img src="https://img.shields.io/badge/下载飞牛应用包-dsh--0.2.5.fpk%20%E7%BA%A60.3MB-2ea44f?style=for-the-badge&logo=linux&logoColor=white" alt="下载 fnOS 应用包"/>
+</a>
+
+飞牛 OS 手动安装该 `.fpk` 应用包（依赖 `nodejs_v22`）· 打包/上架说明见 `fnos/dsh-fnos/README.md`
 
 </div>
 
@@ -38,6 +48,7 @@ DSH 本身是运行在浏览器中的 Web 界面（`http://127.0.0.1:3080`）。
 - ⬆️ **更新菜单（v0.5.3+）**：「更新 → 检查更新」现代窗口同屏展示 **DSH**（npm 源最新版，一键升级改 config 重启安装）与 **DSH-Desktop 壳**（GitHub version.json 经 jsDelivr 国内可达，多镜像下载 + SHA256 校验）两侧更新状态，带徽章/更新日志/下载进度条
 - 💬 **关于我们菜单（v0.5.3+）**：联系我们（QQ 群二维码大图 + 一键复制群号）、关于（现代窗口：版本/DSH/服务地址）、DeepSeek 官网、DSH 项目主页
 - 📂 **常用目录直达**：文件菜单可一键打开日志目录 / 数据目录
+- 🌐 **网页打开（v0.5.9+）**：菜单栏「网页打开」按钮，一键在系统默认浏览器中打开 DSH 网页界面
 - 📜 **内置日志**：DSH 服务日志落盘到用户数据目录（本地时间戳，按当天日期分文件），可实时在加载页查看
 - 🚀 **启动界面友好**：loading 页显示启动阶段与下载进度（MB 增长）、壳/DSH 版本号；日志区可折叠、出错自动展开；logo 入场动画
 - 🔒 **安全默认**：仅允许访问本地 DSH 服务，外部链接走系统浏览器；默认关闭遥测
@@ -86,7 +97,7 @@ npm run installer
 # 产物位于 windows/app/dist/installer/DSH-Desktop-Setup-<version>.exe
 ```
 
-把 **DSH-Desktop-Setup-0.5.8.exe** 拷贝到目标电脑，双击运行即可：
+把 **DSH-Desktop-Setup-0.5.9.exe** 拷贝到目标电脑，双击运行即可：
 
 - 目标电脑**无需预装 DSH / Node.js / npm**（壳自带完整 Electron + npm 环境）
 - 默认安装到 `%LOCALAPPDATA%\Programs\DSH-Desktop`（**无需管理员权限**），
