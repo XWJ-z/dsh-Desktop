@@ -1,0 +1,98 @@
+#!/bin/bash
+# DeepSeek Harness（dsh）飞牛应用生命周期脚本
+# 管理：start / stop / status
+
+LOG_FILE="${TRIM_PKGVAR}/app.log"
+PID_FILE="${TRIM_PKGVAR}/app.pid"
+export PATH=/var/apps/nodejs_v22/target/bin:$PATH
+
+APP_DIR="${TRIM_APPDEST}/server"
+DSH_ENV_DIR="${TRIM_PKGVAR}/dshenv"
+SOCKET_PATH="${TRIM_APPDEST}/app.sock"
+DSH_PORT=3080
+
+log_msg() {
+  echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE"
+}
+
+check_process() {
+  local pid="$1"
+  [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null
+}
+
+status_app() {
+  if [ -f "$PID_FILE" ]; then
+    local pid
+    pid="$(head -n 1 "$PID_FILE" | tr -d '[:space:]')"
+    if check_process "$pid"; then
+      return 0
+    fi
+    rm -f "$PID_FILE"
+  fi
+  return 1
+}
+
+# 首次启动：确保 DSH 运行时已安装（npm install，约几分钟）
+ensure_dsh() {
+  if [ -f "${DSH_ENV_DIR}/node_modules/@deepseek-ai/dsh/lib/bin.js" ]; then
+    return 0
+  fi
+  log_msg "首次启动：正在下载安装 DeepSeek Harness 运行时，请稍候…"
+  cd "$APP_DIR" || return 1
+  DSH_BIN="$(node dsh-manager.js ensure 2>>"$LOG_FILE")"
+  if [ -z "$DSH_BIN" ] || [ ! -f "$DSH_BIN" ]; then
+    log_msg "DSH 运行时安装失败，请检查网络后重试"
+    return 1
+  fi
+  log_msg "DSH 运行时就绪"
+  return 0
+}
+
+start_app() {
+  if status_app; then
+    return 0
+  fi
+  if ! ensure_dsh; then
+    return 1
+  fi
+  log_msg "启动 DeepSeek Harness…"
+  cd "$APP_DIR" || exit 1
+  SOCKET_PATH="$SOCKET_PATH" DSH_PORT="$DSH_PORT" node server.js >> "$LOG_FILE" 2>&1 &
+  echo "$!" > "$PID_FILE"
+  # 等待网关 Socket 就绪（最多 15 秒）
+  for i in $(seq 1 30); do
+    [ -S "$SOCKET_PATH" ] && break
+    sleep 0.5
+  done
+  log_msg "DeepSeek Harness 已启动（socket: $SOCKET_PATH）"
+  return 0
+}
+
+stop_app() {
+  log_msg "停止 DeepSeek Harness…"
+  if [ -f "$PID_FILE" ]; then
+    local pid
+    pid="$(head -n 1 "$PID_FILE" | tr -d '[:space:]')"
+    kill "$pid" 2>/dev/null
+    sleep 2
+    kill -0 "$pid" 2>/dev/null && kill -9 "$pid" 2>/dev/null
+    rm -f "$PID_FILE"
+  fi
+  rm -f "$SOCKET_PATH"
+  return 0
+}
+
+case "$1" in
+  start)
+    start_app
+    ;;
+  stop)
+    stop_app
+    ;;
+  status)
+    status_app
+    ;;
+  *)
+    exit 1
+    ;;
+esac

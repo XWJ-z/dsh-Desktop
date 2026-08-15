@@ -1,0 +1,11 @@
+{
+  "version": "0.5.2",
+  "release_notes": "1. 新增「联系我们」：帮助菜单可查看 QQ 群二维码并复制群号\n2. 新增自动更新：启动/手动检查 DSH-Desktop 新版本，国内镜像加速下载\n3. 修复与优化：日志本地时间、启动界面版本/进度显示、菜单整理",
+  "force": false,
+  "hash": "94a549e723b028957357482a11f60413d6584f93d8ba1d076310d7328e51fced",
+  "download_urls": [
+    "https://mirror.ghproxy.com/https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.5.2/DSH-Desktop-Setup-0.5.2.exe",
+    "https://ghfast.top/https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.5.2/DSH-Desktop-Setup-0.5.2.exe",
+    "https://gh-proxy.com/https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.5.2/DSH-Desktop-Setup-0.5.2.exe"
+  ]
+}

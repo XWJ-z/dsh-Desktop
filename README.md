@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="app/assets/icon.png" width="120" alt="DSH-Desktop 图标"/>
+<img src="windows/app/assets/icon.png" width="120" alt="DSH-Desktop 图标"/>
 
 # 🐋 DSH-Desktop
 
@@ -14,8 +14,8 @@
 
 ### ⬇️ 下载安装（Windows）
 
-<a href="https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.4.2/DSH-Desktop-Setup-0.4.2.exe">
-<img src="https://img.shields.io/badge/下载安装包-DSH--Desktop--Setup--0.4.2.exe%20%E7%BA%A6120MB-2ea44f?style=for-the-badge&logo=windows&logoColor=white" alt="下载 DSH-Desktop 安装包"/>
+<a href="https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.5.2/DSH-Desktop-Setup-0.5.2.exe">
+<img src="https://img.shields.io/badge/下载安装包-DSH--Desktop--Setup--0.5.2.exe%20%E7%BA%A6120MB-2ea44f?style=for-the-badge&logo=windows&logoColor=white" alt="下载 DSH-Desktop 安装包"/>
 </a>
 
 双击运行即可安装 · 无需预装 DSH / Node.js / npm · 首次运行联网自动拉取 DSH 依赖
@@ -34,8 +34,10 @@ DSH 本身是运行在浏览器中的 Web 界面（`http://127.0.0.1:3080`）。
 - 🖥️ **一键启动**：双击运行，自动拉取并启动 DSH 服务、打开桌面窗口，无需手动开终端
 - 🔌 **自动探测端口**：默认 `127.0.0.1:3080`，被占用时自动顺延
 - 📦 **纯套壳，DSH 不内置**：壳自带 Node+npm 环境，DSH 由 `npm install @deepseek-ai/dsh@<版本>` 安装到用户数据目录（与官方 `npx` 同机制）；目标电脑无需预装 Node/npm
-- 🔄 **更新 DSH 不重打包壳**：改 `app/config.json` 里的 `dshVersion` 即可切换 DSH 版本，壳代码不受 DSH 版本影响（官方破坏性更新也能从容应对）
+- 🔄 **更新 DSH 不重打包壳**：改 `windows/app/config.json` 里的 `dshVersion` 即可切换 DSH 版本，壳代码不受 DSH 版本影响（官方破坏性更新也能从容应对）
 - ⬆️ **检查 DSH 更新**：帮助菜单「检查 DSH 更新」查询 npm 源最新版并一键升级（备份 config.json 后改写版本号、重启自动安装），启动后静默检查、有新版时菜单提示
+- 🔄 **检查 DSH-Desktop 更新**：壳自身版本自动检查（GitHub version.json 经 jsDelivr 国内可达），发现新版提示更新日志、多镜像加速下载、SHA256 校验后打开安装包
+- 💬 **联系我们**：帮助菜单查看 QQ 用户群二维码并一键复制群号
 - 📂 **常用目录直达**：文件菜单可一键打开日志目录 / 数据目录；帮助菜单直达 DeepSeek 官网与 DSH 项目主页
 - 📜 **内置日志**：DSH 服务日志落盘到用户数据目录（本地时间戳，按当天日期分文件），可实时在加载页查看
 - 🚀 **启动界面友好**：loading 页显示启动阶段与下载进度（MB 增长）、壳/DSH 版本号；日志区可折叠、出错自动展开；logo 入场动画
@@ -45,7 +47,7 @@ DSH 本身是运行在浏览器中的 Web 界面（`http://127.0.0.1:3080`）。
 
 ```bash
 # 进入应用工程目录
-cd app
+cd windows/app
 
 # 安装依赖（electron + npm 包 + 打包工具）
 npm install
@@ -63,12 +65,12 @@ npm start -- --port 4000
 ## 打包为可执行程序
 
 ```bash
-cd app
+cd windows/app
 
 # 一条命令打包 win32-x64（自动走 npmmirror 镜像 + 工作区缓存，无需手动配置）
 npm run pack
 
-# 产物位于 app/dist/DSH-Desktop-win32-x64/DSH-Desktop.exe，双击即可运行
+# 产物位于 windows/app/dist/DSH-Desktop-win32-x64/DSH-Desktop.exe，双击即可运行
 ```
 
 > 说明：打包使用 `@electron/packager`，**关闭 ASAR**；壳内含 Electron + npm 包，
@@ -77,15 +79,15 @@ npm run pack
 ## 制作安装程序（新电脑一键安装）
 
 ```bash
-cd app
+cd windows/app
 
 # 生成 NSIS 安装程序（electron-builder，工具集自动下载到工作区缓存）
 npm run installer
 
-# 产物位于 app/dist/installer/DSH-Desktop-Setup-<version>.exe
+# 产物位于 windows/app/dist/installer/DSH-Desktop-Setup-<version>.exe
 ```
 
-把 **DSH-Desktop-Setup-0.4.2.exe** 拷贝到目标电脑，双击运行即可：
+把 **DSH-Desktop-Setup-0.5.2.exe** 拷贝到目标电脑，双击运行即可：
 
 - 目标电脑**无需预装 DSH / Node.js / npm**（壳自带完整 Electron + npm 环境）
 - 默认安装到 `%LOCALAPPDATA%\Programs\DSH-Desktop`（**无需管理员权限**），
@@ -122,33 +124,57 @@ npm run installer
 - 应用启动后会**静默检查一次**，发现新版时菜单项显示「检查 DSH 更新（有新版本）」；
 - 关于对话框（帮助 → 关于 DSH-Desktop）同步显示 DSH 最新版本，并提供「检查更新」按钮。
 
+### 壳自动更新（v0.5+）
+
+帮助菜单 **「检查 DSH-Desktop 更新」** 检查**壳自身**的新版本（与上面的 DSH 官方包更新无关）：
+
+- 版本来源：仓库根 `version.json`，经 jsDelivr CDN 国内可达；
+- 有新版 → 显示当前/最新版本与更新日志，点【下载更新】从镜像列表逐个尝试下载，
+  完成后校验 SHA256 并打开安装包（用户按向导完成升级）；
+- 启动后静默检查一次，有新版时菜单项显示「检查 DSH-Desktop 更新（有新版本）」；
+- 更新提示可跳过（`force: false`），断网静默不影响使用。
+
+**发布新版本操作（维护者）：**
+1. `windows/app/package.json` 版本号递增 → `npm run installer` 产出新安装包；
+2. 上传安装包到 GitHub Releases（附件无大小限制）；
+3. 更新仓库根 `version.json`：
+   - `version` = 新版本号；`release_notes` = 更新日志；
+   - `download_urls` = 镜像加速直链数组（`镜像前缀 + GitHub Releases 原链接`）；
+   - `hash` = 安装包 SHA256（`certutil -hashfile 安装包.exe SHA256`）；
+   - `force` = 是否强制更新（仅重大安全修复设 true，默认 false）；
+4. push 到 GitHub，等 jsDelivr 缓存生效（几分钟）后老用户启动即收到更新提示。
+
 ## 目录结构
 
 ```
 dsh-Desktop/
-├── app/                        # 应用开发文件（独立 Electron 工程）
-│   ├── package.json            # 工程清单（productName: DSH-Desktop；dependencies 含 npm）
-│   ├── config.json             # 壳配置：DSH 包名 + 版本号 + registry（升级 DSH 只改这里）
-│   ├── main.js                 # Electron 主进程：内置 Node 拉取 DSH、拉起服务、开窗口
-│   ├── preload.js              # 预加载脚本（contextBridge 最小暴露）
-│   ├── electron-builder.yml    # 安装程序配置（NSIS，asar 关闭，extraResources 内置 Node）
-│   ├── renderer/loading.html   # 启动加载页（内联 logo + 阶段指示器 + 实时日志）
-│   ├── resources/node/         # 内置 Node 运行时（fetch-node.js 下载，node.exe）
-│   ├── scripts/
-│   │   ├── render-icon.js      # DeepSeek 品牌图标栅格化（SVG → png/ico）
-│   │   ├── make-icon.js        # 占位图标生成（无品牌素材时的回退）
-│   │   ├── fetch-node.js       # 下载/精简内置 Node 运行时（幂等）
-│   │   ├── pack.js             # 绿色目录打包脚本（@electron/packager，asar 关闭）
-│   │   ├── installer.js        # 安装程序构建脚本（electron-builder NSIS）
-│   │   └── rebuild-native.js   # 原生模块 ABI 预检（通常全部通过，无需重建）
-│   └── assets/                 # 品牌图标（icon-source.svg / icon.png / icon.ico）
-├── docs/                       # 文档
-│   ├── PROJECT.md              # 项目说明（背景 / 架构 / 技术决策）
-│   ├── TASKS.md                # 任务管理看板
-│   ├── MILESTONES.md           # 里程碑
-│   ├── dev-log/                # 开发日志
-│   │   └── DEVELOPMENT_LOG.md  # 开发日志（持续追加）
-│   └── decisions/              # 架构决策记录（ADR）
+├── windows/                    # Windows 桌面版（Electron 工程 + 文档 + 审查）
+│   ├── app/                    # 应用开发文件（独立 Electron 工程）
+│   │   ├── package.json        # 工程清单（productName: DSH-Desktop；dependencies 含 npm）
+│   │   ├── config.json         # 壳配置：DSH 包名 + 版本号 + registry + qqGroup（升级 DSH 只改这里）
+│   │   ├── main.js             # Electron 主进程：内置 Node 拉取 DSH、拉起服务、开窗口
+│   │   ├── preload.js          # 预加载脚本（contextBridge 最小暴露）
+│   │   ├── electron-builder.yml# 安装程序配置（NSIS，asar 关闭，extraResources 内置 Node）
+│   │   ├── renderer/loading.html # 启动加载页（内联 logo + 阶段指示器 + 实时日志）
+│   │   ├── resources/node/     # 内置 Node 运行时（fetch-node.js 下载，node.exe）
+│   │   ├── scripts/
+│   │   │   ├── render-icon.js  # DeepSeek 品牌图标栅格化（SVG → png/ico）
+│   │   │   ├── make-icon.js    # 占位图标生成（无品牌素材时的回退）
+│   │   │   ├── fetch-node.js   # 下载/精简内置 Node 运行时（幂等）
+│   │   │   ├── pack.js         # 绿色目录打包脚本（@electron/packager，asar 关闭）
+│   │   │   ├── installer.js    # 安装程序构建脚本（electron-builder NSIS）
+│   │   │   └── rebuild-native.js # 原生模块 ABI 预检（通常全部通过，无需重建）
+│   │   └── assets/             # 品牌图标 + QQ 群二维码（icon.png / icon.ico / qq-group.png）
+│   ├── docs/                   # 文档
+│   │   ├── PROJECT.md          # 项目说明（背景 / 架构 / 技术决策）
+│   │   ├── TASKS.md            # 任务管理看板
+│   │   ├── MILESTONES.md       # 里程碑
+│   │   ├── dev-log/            # 开发日志
+│   │   │   └── DEVELOPMENT_LOG.md # 开发日志（持续追加）
+│   │   └── decisions/          # 架构决策记录（ADR）
+│   └── 代码审查/               # 审查报告与修复任务清单
+├── version.json                # 壳自动更新清单（GitHub 根目录，jsDelivr 可达）
+├── fnos/                       # 飞牛 OS（fnOS）版本（待开发）
 ├── README.md
 └── .gitignore
 ```

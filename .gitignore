@@ -1,31 +1,32 @@
 # 依赖与构建产物
 node_modules/
-app/node_modules/
+windows/app/node_modules/
 dist/
-app/dist/
+windows/app/dist/
 
 # npm / electron 缓存
 .npm-cache/
-app/.npm-cache/
+windows/app/.npm-cache/
 .electron-cache/
-app/.electron-cache/
+windows/app/.electron-cache/
 .builder-cache/
-app/.builder-cache/
+windows/app/.builder-cache/
 
 # 日志
-app/logs/
+windows/app/logs/
 *.log
 npm-debug.log*
 
 # 内置 Node 运行时（fetch-node.js 构建产物）
-app/resources/node/
+windows/app/resources/node/
 
 # 本地打包/安装测试产物
 .review-test/
 
 # 不上传的内部文档与审查记录（本地保留）
-docs/
-代码审查/
+windows/docs/
+windows/代码审查/
+fnos/代码审查/
 
 # 根目录安装包（超 GitHub 100MB 限制，改走 GitHub Release 分发）
 /DSH-Desktop-Setup-*.exe
