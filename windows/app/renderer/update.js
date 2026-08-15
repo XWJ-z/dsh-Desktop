@@ -56,7 +56,17 @@ async function load() {
     el('shell-latest').textContent = s.latest;
     const newer = !!s.updatable;
     setBadge('shell-badge', newer ? 'update' : 'latest', newer ? '可更新' : '最新');
-    if (s.notes) { el('shell-notes').textContent = s.notes; el('shell-notes').style.display = ''; }
+    // v0.6.0（T-026）：release_notes 是多行文本（\n 分隔），textContent + pre-wrap 分行展示；
+    // 小标题标注版本（产品决策：即使当前已最新也显示 latest 版本更新说明）
+    if (s.notes) {
+      el('shell-notes').textContent = s.notes;
+      el('shell-notes').style.display = '';
+      el('shell-notes-title').textContent = `v${s.latest} 更新内容`;
+      el('shell-notes-title').style.display = '';
+    } else {
+      el('shell-notes').style.display = 'none';
+      el('shell-notes-title').style.display = 'none';
+    }
     el('shell-download').style.display = newer ? '' : 'none';
   } else {
     el('shell-latest').textContent = '未知';

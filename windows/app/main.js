@@ -18,7 +18,7 @@
  *     壳代码不受 DSH 版本影响。
  */
 
-const { app, BrowserWindow, clipboard, dialog, Menu, shell, ipcMain } = require('electron');
+const { app, BrowserWindow, clipboard, dialog, Menu, screen, shell, ipcMain, Tray } = require('electron');
 const { spawn, execFileSync } = require('node:child_process');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
@@ -68,6 +68,10 @@ let dshHasUpdate = false;       // 启动后静默检查发现 DSH 新版（菜�
 let shellHasUpdate = false;     // 启动后静默检查发现壳（DSH-Desktop）新版（菜单提示后缀）
 let lastCheckAt = 0;            // 手动检查更新冷却（10 秒防抖）
 const CHECK_UPDATE_COOLDOWN_MS = 10_000;
+// v0.6.0（T-025）：系统托盘
+let tray = null;                // 托盘图标
+let isQuitting = false;         // 真正退出标志（区分"关窗隐藏"与"退出"）
+let trayExitConfirmed = false;  // 本会话首次托盘「退出」弹确认；取消后重置
 
 // 登记所有由本进程派生的子进程（npm install + dsh 服务），退出时统一清理，
 // 避免 Windows 下残留 node/npm 进程（审查 M1）。
@@ -662,11 +666,28 @@ function createLoadingWindow() {
   return win;
 }
 
-/** 主窗口（1440×900，承载 DSH Web GUI）；GUI 加载期间显示过渡覆盖层（H2） */
+/**
+ * T5（v0.6.6）：窗口 bounds 有效性校验 —— 记忆的位置/大小须在任一屏幕可见区域内，
+ * 防止分辨率变化/拔显示器导致窗口跑到屏幕外。
+ */
+function isValidBounds(b) {
+  if (!b || typeof b.x !== 'number' || typeof b.y !== 'number' ||
+      typeof b.width !== 'number' || typeof b.height !== 'number') return false;
+  if (b.width < 400 || b.height < 300) return false; // 过小丢弃
+  return screen.getAllDisplays().some((d) => {
+    const a = d.workArea;
+    return b.x < a.x + a.width && b.x + b.width > a.x &&
+           b.y < a.y + a.height && b.y + b.height > a.y;
+  });
+}
+
+/** 主窗口（1440×900，承载 DSH Web GUI）；GUI 加载期间显示过渡覆盖层（H2）；还原窗口状态记忆（T5） */
 function createMainWindow() {
+  // T5（v0.6.6）：窗口状态记忆 —— 还原上次位置/大小/最大化
+  const b = settings.winBounds;
+  const bounds = b && isValidBounds(b) ? b : { width: 1440, height: 900 };
   const win = new BrowserWindow({
-    width: 1440,
-    height: 900,
+    ...bounds,
     minWidth: 900,
     minHeight: 600,
     title: APP_NAME,
@@ -680,7 +701,10 @@ function createMainWindow() {
       sandbox: true,
     },
   });
-  win.once('ready-to-show', () => win.show());
+  win.once('ready-to-show', () => {
+    if (settings.winMaximized && win.isMaximizable()) win.maximize();
+    win.show();
+  });
   mainWindow = win;
 
   // GUI 加载过渡覆盖层：loadURL 前先显示"正在加载界面…"，did-finish-load 后隐藏
@@ -711,6 +735,24 @@ function createMainWindow() {
   });
   win.webContents.on('will-navigate', (event, url) => {
     if (!url.startsWith(webUrl())) event.preventDefault();
+  });
+  // v0.6.1（T-027）：点 X 关闭行为 —— 退出 / 关闭到托盘（询问或按记忆执行）
+  win.on('close', (event) => {
+    // T5（v0.6.6）：保存窗口状态（真正退出/关闭时记忆；隐藏到托盘不覆盖 bounds）
+    if (!win.isDestroyed() && !win.isMaximized()) {
+      settings.winBounds = win.getBounds();
+    }
+    settings.winMaximized = !!(win.isMaximized());
+    saveSettings();
+    if (isQuitting) return;                       // 真正退出（托盘退出/菜单退出/系统关机）不拦截
+    if (!settings.minimizeToTray) return;         // 未启用托盘常驻：关闭即退出（window-all-closed 处理）
+    if (settings.rememberCloseChoice) {
+      if (settings.closeChoice === 'quit') { isQuitting = true; return; }        // 记忆=退出：放行
+      if (settings.closeChoice === 'tray') { event.preventDefault(); win.hide(); return; } // 记忆=托盘
+    }
+    // 未记住选择：弹窗询问
+    event.preventDefault();
+    openCloseChoiceWindow(win);
   });
   win.on('closed', () => { if (mainWindow === win) mainWindow = null; });
 
@@ -813,6 +855,16 @@ function updateDshVersion(newVersion) {
   } catch { return false; }
 }
 
+/**
+ * v0.6.2（T-028）：最新版本展示值 —— 获取到的 latest ≤ 当前版本时显示当前版本。
+ * 场景：CDN/镜像缓存旧版（latest < current）或本地版本比源新时，避免「最新版本」
+ * 一栏显示比当前更小的版本号（显得"降级"）；latest 为 null 原样返回（显示未知）。
+ */
+function effectiveLatest(current, latest) {
+  if (latest == null) return null;
+  return compareSemver(String(current), String(latest)) >= 0 ? String(current) : String(latest);
+}
+
 // ---------------------------------------------------------------------------
 // 更新窗口逻辑层（v0.5.3）：查询/升级/下载，返回数据不弹 dialog，UI 由 update.html 负责
 // ---------------------------------------------------------------------------
@@ -835,14 +887,15 @@ async function queryUpdateInfo() {
   return {
     dsh: {
       current: dshCurrent,
-      latest: dshLatest,
+      // T-028：latest ≤ current 时显示 current（防 CDN 缓存旧版导致"降级"显示）
+      latest: effectiveLatest(dshCurrent, dshLatest),
       notes: dshNotes,
       updatable: dshUpdatable,
       updating: false,
     },
     shell: {
       current: app.getVersion(),
-      latest: shellLatest ? shellLatest.version : null,
+      latest: shellLatest ? effectiveLatest(app.getVersion(), shellLatest.version) : null,
       notes: shellLatest ? shellLatest.releaseNotes : '',
       updatable: shellUpdatable,
       force: shellLatest ? shellLatest.force : false,
@@ -1101,6 +1154,194 @@ function openAboutWindow() {
   aboutWin.on('closed', () => { aboutWin = null; });
 }
 
+/** 关闭行为询问弹窗（v0.6.1 T-027）：退出 / 关闭到托盘 + 记住我的选择 */
+let closeChoiceWin = null;
+function openCloseChoiceWindow(parentWin) {
+  if (closeChoiceWin && !closeChoiceWin.isDestroyed()) { closeChoiceWin.focus(); return; }
+  closeChoiceWin = new BrowserWindow({
+    width: 400, height: 190, resizable: false, minimizable: false, maximizable: false,
+    parent: parentWin, modal: true, title: '关闭 DSH-Desktop',
+    backgroundColor: '#0f1115',
+    webPreferences: secureWebPreferences(),
+  });
+  closeChoiceWin.loadFile(path.join(__dirname, 'renderer', 'close-choice.html'));
+  closeChoiceWin.on('closed', () => { closeChoiceWin = null; });
+}
+
+// ---------------------------------------------------------------------------
+// 用户设置（v0.6.1 T-027）：持久化到 userData/settings.json
+//  - autostart        开机自启（设置菜单 / 托盘菜单勾选）
+//  - minimizeToTray   最小化到托盘总开关（关闭窗口行为：关闭即退出 / 托盘常驻）
+//  - closeChoice      记住的关闭选择：'quit' | 'tray' | null（null = 每次询问）
+//  - rememberCloseChoice 是否记住关闭选择
+// ---------------------------------------------------------------------------
+let settings = {
+  autostart: false,
+  minimizeToTray: true,
+  closeChoice: null,
+  rememberCloseChoice: false,
+  checkUpdateOnStart: true,   // v0.6.5（T-030）：启动时检查更新并弹窗询问（默认开启）
+  winBounds: null,            // T5（v0.6.6）：主窗口位置/大小 {x,y,width,height}
+  winMaximized: false,        // T5：最大化状态
+};
+
+function settingsFile() {
+  return path.join(app.getPath('userData'), 'settings.json');
+}
+
+function loadSettings() {
+  try {
+    const disk = JSON.parse(fs.readFileSync(settingsFile(), 'utf8'));
+    settings = { ...settings, ...disk };
+  } catch { /* 首次运行/损坏：用默认值 */ }
+}
+
+function saveSettings() {
+  try {
+    fs.mkdirSync(path.dirname(settingsFile()), { recursive: true });
+    fs.writeFileSync(settingsFile(), JSON.stringify(settings, null, 2), 'utf8');
+  } catch (err) {
+    appendLog('error', `保存设置失败：${err.message}`);
+  }
+}
+
+/** 开机自启（设置菜单与托盘菜单统一入口；开发模式 setLoginItemSettings 无效属正常） */
+function setAutostart(enabled) {
+  try {
+    app.setLoginItemSettings({ openAtLogin: !!enabled });
+    settings.autostart = !!enabled;
+    saveSettings();
+    appendLog('info', `开机自启已${enabled ? '开启' : '关闭'}`);
+  } catch (err) {
+    appendLog('error', `设置开机自启失败：${err.message}`);
+  }
+  refreshMenus();
+}
+
+/** 最小化到托盘总开关 */
+function setMinimizeToTray(enabled) {
+  settings.minimizeToTray = !!enabled;
+  saveSettings();
+  appendLog('info', `最小化到托盘已${enabled ? '开启' : '关闭'}（关闭窗口${enabled ? '将询问/驻留托盘' : '将直接退出'}）`);
+  refreshMenus();
+}
+
+/** 记住关闭选择（action: 'quit' | 'tray'） */
+function setCloseChoice(action, remember) {
+  settings.closeChoice = action;
+  settings.rememberCloseChoice = !!remember;
+  saveSettings();
+  refreshMenus();
+}
+
+/** 清除记忆：关闭窗口时恢复询问 */
+function clearCloseChoice() {
+  settings.closeChoice = null;
+  settings.rememberCloseChoice = false;
+  saveSettings();
+  appendLog('info', '已清除关闭行为记忆，关闭窗口时将再次询问');
+  refreshMenus();
+}
+
+/** 启动时检查更新开关 */
+function setCheckUpdateOnStart(enabled) {
+  settings.checkUpdateOnStart = !!enabled;
+  saveSettings();
+  appendLog('info', `启动时检查更新已${enabled ? '开启' : '关闭'}`);
+  refreshMenus();
+}
+
+/** 重建托盘菜单 + 应用菜单（设置变化后同步显示状态） */
+function refreshMenus() {
+  if (tray) updateTrayMenu();
+  Menu.setApplicationMenu(buildMenu());
+}
+
+// ---------------------------------------------------------------------------
+// 系统托盘（v0.6.0 T-025）：关闭窗口 ≠ 退出，托盘常驻；仅托盘「退出」真正退出
+// ---------------------------------------------------------------------------
+function createTray() {
+  if (tray) return;
+  // T1（v0.6.6）：托盘用多尺寸 ICO（16-256 内置，v0.5.5 产物），高 DPI 清晰；PNG 兜底
+  const candidates = [
+    path.join(app.getAppPath(), 'assets', 'icon.ico'),
+    path.join(app.getAppPath(), 'assets', 'icon.png'),
+  ];
+  const iconPath = candidates.find((p) => fs.existsSync(p));
+  if (!iconPath) {
+    appendLog('warn', '托盘图标缺失（icon.ico/icon.png 均不存在），托盘不创建');
+    return;
+  }
+  tray = new Tray(iconPath);
+  tray.setToolTip('DSH-Desktop');
+  updateTrayMenu();
+  // 单击/双击恢复主窗口（Windows 下已设右键菜单，左键单击仍触发 click）
+  tray.on('click', () => showMainWindow());
+  tray.on('double-click', () => showMainWindow());
+  appendLog('info', '系统托盘已就绪（关闭窗口 = 最小化到托盘，托盘菜单可退出）');
+}
+
+function updateTrayMenu() {
+  if (!tray) return;
+  const ctx = Menu.buildFromTemplate([
+    { label: '打开主界面', click: () => showMainWindow() },
+    { label: '远程连接（即将推出）', enabled: false }, // 占位（v0.6.0 暂未实现）
+    { type: 'separator' },
+    {
+      label: '开机自启',
+      type: 'checkbox',
+      checked: settings.autostart,
+      click: (item) => setAutostart(item.checked),
+    },
+    { type: 'separator' },
+    { label: '检查更新…', click: () => openUpdateWindow() },
+    { type: 'separator' },
+    {
+      label: '退出',
+      click: () => {
+        // 首次托盘退出弹确认；确认过（或取消过）后按状态处理
+        if (!trayExitConfirmed) {
+          trayExitConfirmed = true;
+          // T3（v0.6.6）：带 owner 弹窗 —— 托盘场景主窗口常隐藏，无 owner 可能不置顶
+          dialog.showMessageBox(mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined, {
+            type: 'question',
+            title: APP_NAME,
+            message: '确定退出？',
+            detail: 'DSH 服务将停止。如需后台运行，请直接关闭窗口（最小化到托盘）。',
+            buttons: ['退出', '取消'],
+            defaultId: 1,
+            cancelId: 1,
+          }).then(({ response }) => {
+            if (response === 0) {
+              isQuitting = true;
+              app.quit();
+            } else {
+              trayExitConfirmed = false; // 取消：下次再退出时重新确认
+            }
+          }).catch(() => { isQuitting = true; app.quit(); });
+        } else {
+          isQuitting = true;
+          app.quit();
+        }
+      },
+    },
+  ]);
+  tray.setContextMenu(ctx);
+}
+
+/** 恢复主窗口：存在则显示/还原/聚焦；已被关闭（托盘模式）则按需重建 */
+function showMainWindow() {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.show();
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+  } else if (serverChild) {
+    createMainWindow();
+  } else {
+    appendLog('warn', '主窗口恢复请求被忽略：DSH 服务未就绪');
+  }
+}
+
 // ---------------------------------------------------------------------------
 // 菜单
 // ---------------------------------------------------------------------------
@@ -1118,6 +1359,9 @@ function buildMenu() {
           label: '打开数据目录',
           click: () => { shell.openPath(app.getPath('userData')); },
         },
+        { type: 'separator' },
+        // v0.6.0（T-025）：最小化到托盘（窗口隐藏，DSH 服务继续运行）
+        { label: '最小化到托盘', click: () => { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.hide(); } },
         { type: 'separator' },
         { role: 'quit', label: '退出' },
       ],
@@ -1138,18 +1382,47 @@ function buildMenu() {
         { label: '开发者工具', accelerator: 'F12', click: () => { if (mainWindow) mainWindow.webContents.toggleDevTools(); } },
       ],
     },
+    // v0.6.1（T-027）：设置菜单
     {
-      label: '更新',
+      label: '设置',
+      submenu: [
+        {
+          label: '开机自启',
+          type: 'checkbox',
+          checked: settings.autostart,
+          click: (item) => setAutostart(item.checked),
+        },
+        {
+          label: '最小化到托盘',
+          type: 'checkbox',
+          checked: settings.minimizeToTray,
+          click: (item) => setMinimizeToTray(item.checked),
+        },
+        {
+          // v0.6.5（T-030）：启动时检查更新（默认开启）
+          label: '启动时检查更新',
+          type: 'checkbox',
+          checked: settings.checkUpdateOnStart,
+          click: (item) => setCheckUpdateOnStart(item.checked),
+        },
+        { type: 'separator' },
+        {
+          // 清除「记住我的选择」，关闭窗口时恢复询问
+          label: '关闭时总是询问',
+          enabled: settings.rememberCloseChoice,
+          click: () => clearCloseChoice(),
+        },
+      ],
+    },
+    // v0.6.4（T-029）：「帮助」菜单（原「关于我们」）—— 更新检查移入，符合 Windows 帮助区惯例
+    {
+      label: '帮助',
       submenu: [
         {
           label: `检查更新${shellHasUpdate || dshHasUpdate ? '（有新版本）' : ''}`,
           click: () => { openUpdateWindow(); },
         },
-      ],
-    },
-    {
-      label: '关于我们',
-      submenu: [
+        { type: 'separator' },
         {
           label: '联系我们',
           click: () => { openContactWindow(); },
@@ -1173,18 +1446,81 @@ function buildMenu() {
   return Menu.buildFromTemplate(template);
 }
 
-/** 启动后静默检查更新：有新版 → 置标志 + 日志 + 重建菜单（不打扰） */
-function silentCheckUpdate(name, fetchFn, getCurrent, setFlag) {
-  fetchFn().then((info) => {
-    if (!info) return;
-    const current = getCurrent();
-    const latest = typeof info === 'object' ? info.version : info;
-    if (latest && compareSemver(current, latest) < 0) {
-      setFlag(true);
-      appendLog('info', `${name} 有新版本：${current} → ${latest}（菜单"帮助 → 检查更新"）`);
-      Menu.setApplicationMenu(buildMenu());
+/**
+ * 启动时检查更新（v0.6.5 T-030）：并发检查 DSH + 壳。
+ *  - 有新版 → 置标志 + 日志 + 重建菜单（「检查更新（有新版本）」提示）
+ *  - 壳有新版且设置「启动时检查更新」开启 → 弹窗询问「立即更新 / 稍后」
+ *    （立即更新 = 自动下载 + SHA256 校验 + 打开安装包）
+ */
+async function checkUpdatesOnStart() {
+  const cfg = readShellConfig();
+  const [dshLatest, shellInfo] = await Promise.all([
+    fetchLatestDshVersion(),
+    fetchLatestShellVersion(),
+  ]);
+
+  // DSH 侧：保持静默提示（升级入口在更新窗口，一键升级改 config 重启）
+  if (dshLatest) {
+    const dshCurrent = installedDshVersion() ?? cfg.dshVersion;
+    if (compareSemver(dshCurrent, dshLatest) < 0) {
+      dshHasUpdate = true;
+      appendLog('info', `DSH 有新版本：${dshCurrent} → ${dshLatest}（更新窗口可一键升级）`);
     }
-  });
+  }
+
+  // 壳侧：有新版本 → 按设置弹窗询问（force=true 重大漏洞时无视开关强制弹窗）
+  if (shellInfo && compareSemver(app.getVersion(), shellInfo.version) < 0) {
+    shellHasUpdate = true;
+    appendLog('info', `DSH-Desktop 有新版本：${app.getVersion()} → ${shellInfo.version}`);
+    if (settings.checkUpdateOnStart || shellInfo.force) promptShellUpdate(shellInfo);
+  }
+
+  if (dshHasUpdate || shellHasUpdate) Menu.setApplicationMenu(buildMenu());
+}
+
+/** 壳更新弹窗询问：立即更新（下载+校验+打开安装包）或稍后 */
+function promptShellUpdate(info) {
+  const owner = mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined;
+  dialog.showMessageBox(owner, {
+    type: 'info',
+    title: APP_NAME,
+    message: `发现新版本 v${info.version}（当前 v${app.getVersion()}）`,
+    detail: '是否立即下载更新？下载完成后自动打开安装包。',
+    buttons: ['立即更新', '稍后'],
+    defaultId: 0,
+    cancelId: 1,
+    noLink: true,
+  }).then(({ response }) => {
+    if (response !== 0) return;
+    appendLog('info', '用户确认更新，开始下载…');
+    downloadShellUpdate(mainWindow, (percent) => {
+      if (updateWin && !updateWin.isDestroyed()) {
+        updateWin.webContents.send('update:progress', { percent });
+      }
+    }).then((r) => {
+      if (r && !r.ok) {
+        appendLog('error', `自动更新失败：${r.reason}${r.message ? ' ' + r.message : ''}`);
+        const reasonText = {
+          'fetch-failed': '无法连接更新源，请检查网络',
+          'no-update': '当前已是最新版本',
+          'download-failed': '所有下载源均失败，请稍后重试',
+          'hash-mismatch': '下载的安装包校验不通过（已删除），请重新下载',
+        }[r.reason] || '未知错误';
+        dialog.showMessageBox(mainWindow, {
+          type: 'error',
+          title: APP_NAME,
+          message: '更新下载失败',
+          detail: reasonText,
+          buttons: ['打开更新窗口', '关闭'],
+          defaultId: 0,
+          cancelId: 1,
+          noLink: true,
+        }).then(({ response: resp }) => {
+          if (resp === 0) openUpdateWindow();
+        }).catch(() => { /* ignore */ });
+      }
+    });
+  }).catch(() => { /* ignore */ });
 }
 
 // ---------------------------------------------------------------------------
@@ -1205,7 +1541,13 @@ if (!gotLock) {
   });
 
   app.whenReady().then(async () => {
+    // v0.6.1（T-027）：加载设置；开机自启以注册表实际状态为准（用户可能在系统设置里改过）
+    loadSettings();
+    try { settings.autostart = app.getLoginItemSettings().openAtLogin; } catch { /* ignore */ }
+    saveSettings();
+
     Menu.setApplicationMenu(buildMenu());
+    createTray(); // v0.6.0（T-025）：启动即创建托盘图标
     ipcMain.handle('dsh:version', () => app.getVersion());
     ipcMain.handle('dsh:installed-dsh-version', () => installedDshVersion());
     ipcMain.handle('dsh:port', () => resolvedPort);
@@ -1251,8 +1593,9 @@ if (!gotLock) {
       return {
         appVersion: app.getVersion(),
         dsh: `${cfg.dshPackage}@${installedDshVersion() ?? cfg.dshVersion}`,
-        dshLatest: dshLatest ?? '未知',
-        shellLatest: shellLatest ? shellLatest.version : '未知',
+        // T-028：latest ≤ current 时显示 current（防缓存旧版导致"降级"显示）
+        dshLatest: dshLatest ? effectiveLatest(installedDshVersion() ?? cfg.dshVersion, dshLatest) : '未知',
+        shellLatest: shellLatest ? effectiveLatest(app.getVersion(), shellLatest.version) : '未知',
         shellNewer: !!(shellLatest && compareSemver(app.getVersion(), shellLatest.version) < 0),
         url: webUrl(),
         iconPath: fs.existsSync(iconPath) ? iconPath : null,
@@ -1268,14 +1611,38 @@ if (!gotLock) {
       if (typeof url === 'string' && /^https?:/i.test(url)) shell.openExternal(url);
       return true;
     });
+    // v0.6.1（T-027）：关闭行为询问弹窗的选择（{ action: 'quit'|'tray', remember: bool }）
+    ipcMain.handle('close:choose', (_e, choice) => {
+      const action = choice && choice.action;
+      const remember = !!(choice && choice.remember);
+      if (closeChoiceWin && !closeChoiceWin.isDestroyed()) closeChoiceWin.close();
+      closeChoiceWin = null;
+      if (action === 'quit') {
+        if (remember) setCloseChoice('quit', true);
+        appendLog('info', '用户选择退出（关闭窗口）');
+        isQuitting = true;
+        app.quit();
+      } else if (action === 'tray') {
+        if (remember) setCloseChoice('tray', true);
+        appendLog('info', '用户选择关闭到托盘');
+        if (mainWindow && !mainWindow.isDestroyed()) mainWindow.hide();
+      }
+      return true;
+    });
 
     resolvedPort = parsePortArg() ?? await pickPort(DEFAULT_PORT);
     appendLog('info', `${APP_NAME} v${app.getVersion()} 启动，目标端口 ${resolvedPort}`);
     appendLog('info', `用户数据目录：${app.getPath('userData')}`);
     appendLog('info', `DSH 运行器策略：${resolveRunner().label}`);
 
-    createLoadingWindow();
-    attachWebDiagnostics(loadingWindow, 'loading');
+    // T4（v0.6.6）：自启静默启动 —— 开机自启时不弹窗口，后台运行 + 托盘常驻
+    const silentStart = settings.autostart && settings.minimizeToTray;
+    appendLog('info', `启动模式：${silentStart ? '静默（自启，托盘常驻）' : '正常（显示窗口）'}`);
+
+    if (!silentStart) {
+      createLoadingWindow();
+      attachWebDiagnostics(loadingWindow, 'loading');
+    }
     pushStage('check');
 
     try {
@@ -1284,20 +1651,18 @@ if (!gotLock) {
       appendLog('info', `DSH 服务就绪：${webUrl()}`);
       pushStage('ready');
 
-      // 任务B-B4：启动后静默检查一次 DSH 更新（不打扰；有新版仅日志 + 菜单提示后缀）
-      silentCheckUpdate('DSH', fetchLatestDshVersion,
-        () => installedDshVersion() ?? readShellConfig().dshVersion,
-        (v) => { dshHasUpdate = v; });
-
-      // 任务G1：启动后静默检查一次壳更新（DSH-Desktop 自身版本）
-      silentCheckUpdate('DSH-Desktop', fetchLatestShellVersion,
-        () => app.getVersion(),
-        (v) => { shellHasUpdate = v; });
-
       // 审查 H2：服务就绪后关闭 loading 窗口，新建 1440×900 主窗口承载 GUI
-      if (loadingWindow && !loadingWindow.isDestroyed()) loadingWindow.close();
-      loadingWindow = null;
-      createMainWindow();
+      if (!silentStart) {
+        if (loadingWindow && !loadingWindow.isDestroyed()) loadingWindow.close();
+        loadingWindow = null;
+        createMainWindow();
+      } else {
+        appendLog('info', '静默启动：主窗口不创建（托盘常驻），可从托盘打开主界面');
+      }
+
+      // 任务B-B4 / G1 / v0.6.5（T-030）：启动时检查更新（DSH + 壳）——
+      // 壳有新版且设置「启动时检查更新」开启（或 force 强制）时弹窗询问「立即更新 / 稍后」
+      checkUpdatesOnStart();
     } catch (err) {
       appendLog('error', `启动失败：${err.message}`);
       if (loadingWindow && !loadingWindow.isDestroyed()) {
@@ -1318,7 +1683,8 @@ if (!gotLock) {
     }
   });
 
-  app.on('before-quit', () => { stopServer(); });
+  // v0.6.0（T-025）：before-quit 统一标记"真正退出"（托盘退出/菜单退出/系统关机均走这里）
+  app.on('before-quit', () => { isQuitting = true; stopServer(); });
   app.on('will-quit', (event) => {
     appendLog('info', '应用退出中…');
     // 审查 v12 P1-2：SIGTERM 宽限期定时器可能随主进程退出被终止，导致残留子进程
@@ -1330,7 +1696,12 @@ if (!gotLock) {
     }
   });
   app.on('quit', (_event, exitCode) => { appendLog('info', `应用已退出，code=${exitCode}`); });
-  app.on('window-all-closed', () => { app.quit(); });
+  // v0.6.0（T-025）/ v0.6.1（T-027）：关闭窗口 ≠ 退出 —— 启用托盘常驻时所有窗口关闭后
+  // 托盘驻留、DSH 服务继续运行；未启用托盘常驻或"真正退出"（isQuitting）时随关窗退出。
+  app.on('window-all-closed', () => {
+    if (isQuitting || !settings.minimizeToTray) { app.quit(); return; }
+    appendLog('info', '主窗口已关闭（最小化到托盘），DSH 服务继续运行，可从托盘恢复');
+  });
   app.on('activate', () => {
     // Windows-only 应用；若服务已就绪且无窗口，重建主窗口（审查 L4）
     if (BrowserWindow.getAllWindows().length === 0 && serverChild) createMainWindow();

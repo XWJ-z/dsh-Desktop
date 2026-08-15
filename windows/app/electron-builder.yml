@@ -41,6 +41,16 @@ asar: false
 npmRebuild: false
 nodeGypRebuild: false
 
+# T-024 v0.6.0 安装包瘦身：Electron 运行时只保留 zh-CN/en-US 两个 locale，
+# 去掉其余 53 个语言文件（原 55 个共 46.6MB，打包后约减 40MB）。
+electronLanguages:
+  - zh-CN
+  - en-US
+
+# T-024 v0.6.0 安装包瘦身：LZMA 最高压缩（约多 1-2 分钟构建，换 ~5MB 体积）。
+# 如想加快构建可改回默认 normal（仅 electronLanguages 已能减 ~40MB）。
+compression: maximum
+
 win:
   icon: assets/icon.ico
   target:

@@ -74,6 +74,11 @@
       white-space: pre-wrap; word-break: break-all;
       max-height: 96px; overflow-y: auto;
     }
+    /* v0.6.0（T-026）：更新日志小标题，视觉分组（如「v0.6.0 更新内容」） */
+    .notes-title {
+      font-size: 12.5px; color: var(--text-quaternary); font-weight: 600;
+      margin: 10px 0 6px;
+    }
     .progress-wrap { margin: 10px 0 12px; }
     .progress-bar {
       height: 6px; border-radius: 999px;
@@ -139,6 +144,7 @@
       <span class="label">最新版本</span><span class="value" id="shell-latest">-</span>
       <span class="badge unknown" id="shell-badge">未知</span>
     </div>
+    <div class="notes-title" id="shell-notes-title" style="display:none"></div>
     <div class="notes" id="shell-notes" style="display:none"></div>
     <div class="progress-wrap" id="shell-progress" style="display:none">
       <div class="progress-bar"><div class="progress-fill" id="shell-progress-fill"></div></div>

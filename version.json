@@ -1,10 +1,10 @@
 {
-  "version": "0.5.9",
-  "release_notes": "1. 新增：壳版本检查三源并发（jsDelivr / GitHub API / raw.githubusercontent）取最高版本，规避 CDN 缓存旧版漏报\n2. 新增：菜单栏「网页打开」按钮，点击后使用系统默认浏览器打开 DSH 网页界面\n3. 修复：版本检查逻辑（最新<当前不再误提示可更新）\n4. 修复：关于窗口与菜单的「项目主页」链接指向本项目\n5. 优化：更新窗口「壳」改为「桌面端」；首次启动文案\n6. 修复：应用图标多尺寸、安装版图片资源内置；移除失效镜像",
+  "version": "0.6.6",
+  "release_notes": "1. 新增：系统托盘常驻 —— 关闭窗口最小化到托盘，DSH 服务后台继续运行；托盘菜单支持打开主界面 / 检查更新 / 开机自启 / 退出（退出前弹确认）\n2. 新增：设置菜单 —— 开机自启 / 最小化到托盘 / 启动时检查更新开关；「关闭时总是询问」可清除关闭行为记忆\n3. 新增：关闭窗口询问 —— 点 X 弹窗选择「退出」或「关闭到托盘」，可勾选「记住我的选择」，下次关闭直接执行\n4. 新增：开机自启 —— 设置菜单 / 托盘菜单勾选后开机自动启动（注册表 Run 键，安装版生效）\n5. 新增：更新窗口展示最新版本更新日志（多行分行 + 「vX.Y.Z 更新内容」小标题）\n6. 优化：安装包瘦身 —— 仅保留中英文语言文件 + LZMA 最高压缩，安装包 126.8MB → 118.5MB\n7. 修复：最新版本显示 —— 获取到的版本不高于当前版本时（如 CDN 缓存旧版），更新/关于窗口「最新版本」显示当前版本\n8. 优化：菜单调整 —— 「关于我们」更名「帮助」，检查更新移入帮助菜单，菜单栏精简为：文件 / 网页打开 / 视图 / 设置 / 帮助\n9. 新增：启动时检查更新 —— 启动自动检查新版本，发现新版本弹窗询问「立即更新 / 稍后」；可在设置菜单关闭（默认开启）\n10. 优化：托盘图标改用多尺寸 ICO —— 高 DPI（150%/200% 缩放）下清晰不糊\n11. 新增：强制更新支持 —— version.json 标记 force:true（重大漏洞）时无视「启动时检查更新」开关，强制弹窗询问更新\n12. 新增：自启静默启动 —— 开机自启时不弹窗口，后台启动 DSH 服务 + 托盘常驻，可从托盘打开主界面\n13. 新增：窗口状态记忆 —— 记住主窗口位置/大小/最大化状态，下次启动还原；记忆位置在屏幕外时自动兜底默认尺寸",
   "force": false,
-  "hash": "65d4e52cadba960d2873773fffcb9f0047a3109212aba4f2dc7b53edace39e0f",
+  "hash": "2359412b5e07293f54d2207f6b09dfce910843501b27b97e79bfad88a8f24c08",
   "download_urls": [
-    "https://ghfast.top/https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.5.9/DSH-Desktop-Setup-0.5.9.exe",
-    "https://gh-proxy.com/https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.5.9/DSH-Desktop-Setup-0.5.9.exe"
+    "https://ghfast.top/https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.6.6/DSH-Desktop-Setup-0.6.6.exe",
+    "https://gh-proxy.com/https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.6.6/DSH-Desktop-Setup-0.6.6.exe"
   ]
 }

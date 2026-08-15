@@ -12,10 +12,10 @@
 
 ---
 
-### ⬇️ Windows 桌面版
+### 🪟 Windows 桌面版
 
-<a href="https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.5.9/DSH-Desktop-Setup-0.5.9.exe">
-<img src="https://img.shields.io/badge/下载安装包-DSH--Desktop--Setup--0.5.9.exe%20%E7%BA%A6120MB-2ea44f?style=for-the-badge&logo=windows&logoColor=white" alt="下载 DSH-Desktop 安装包"/>
+<a href="https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.6.6/DSH-Desktop-Setup-0.6.6.exe">
+<img src="https://img.shields.io/badge/下载安装包-DSH--Desktop--Setup--0.6.6.exe%20%E7%BA%A6113MB-2ea44f?style=for-the-badge&logo=windows&logoColor=white" alt="下载 DSH-Desktop 安装包"/>
 </a>
 
 双击运行即可安装 · 无需预装 DSH / Node.js / npm · 首次运行联网自动拉取 DSH 依赖
@@ -30,7 +30,7 @@
 <img src="https://img.shields.io/badge/下载飞牛应用包-dsh--0.2.5.fpk%20%E7%BA%A60.3MB-2ea44f?style=for-the-badge&logo=linux&logoColor=white" alt="下载 fnOS 应用包"/>
 </a>
 
-飞牛 OS 手动安装该 `.fpk` 应用包（依赖 `nodejs_v22`）· 打包/上架说明见 `fnos/dsh-fnos/README.md`
+飞牛 OS 手动安装该 `.fpk` 应用包（依赖 `nodejs_v22`）
 
 </div>
 
@@ -47,10 +47,17 @@ DSH 本身是运行在浏览器中的 Web 界面（`http://127.0.0.1:3080`）。
 - 🔌 **自动探测端口**：默认 `127.0.0.1:3080`，被占用时自动顺延
 - 📦 **纯套壳，DSH 不内置**：壳自带 Node+npm 环境，DSH 由 `npm install @deepseek-ai/dsh@<版本>` 安装到用户数据目录（与官方 `npx` 同机制）；目标电脑无需预装 Node/npm
 - 🔄 **更新 DSH 不重打包壳**：改 `windows/app/config.json` 里的 `dshVersion` 即可切换 DSH 版本，壳代码不受 DSH 版本影响（官方破坏性更新也能从容应对）
-- ⬆️ **更新菜单（v0.5.3+）**：「更新 → 检查更新」现代窗口同屏展示 **DSH**（npm 源最新版，一键升级改 config 重启安装）与 **DSH-Desktop 壳**（GitHub version.json 三源并发检查——jsDelivr/GitHub API/raw.githubusercontent 取最高版本，规避 CDN 缓存旧版漏报；多镜像下载 + SHA256 校验）两侧更新状态，带徽章/更新日志/下载进度条
-- 💬 **关于我们菜单（v0.5.3+）**：联系我们（QQ 群二维码大图 + 一键复制群号）、关于（现代窗口：版本/DSH/服务地址）、DeepSeek 官网、DSH 项目主页
+- ⬆️ **检查更新（v0.5.3+）**：「帮助 → 检查更新」现代窗口同屏展示 **DSH**（npm 源最新版，一键升级改 config 重启安装）与 **DSH-Desktop 壳**（GitHub version.json 三源并发检查——jsDelivr/GitHub API/raw.githubusercontent 取最高版本，规避 CDN 缓存旧版漏报；多镜像下载 + SHA256 校验）两侧更新状态，带徽章/更新日志/下载进度条
+- 💬 **帮助菜单（v0.5.3+，v0.6.4 起更名）**：检查更新、联系我们（QQ 群二维码大图 + 一键复制群号）、关于（现代窗口：版本/DSH/服务地址）、DeepSeek 官网、DSH 项目主页
 - 📂 **常用目录直达**：文件菜单可一键打开日志目录 / 数据目录
 - 🌐 **网页打开（v0.5.9+）**：菜单栏「网页打开」按钮，一键在系统默认浏览器中打开 DSH 网页界面
+- 🗔️ **系统托盘（v0.6.0+）**：关闭窗口最小化到托盘，DSH 服务后台继续运行；托盘菜单可打开主界面 / 检查更新 / 开机自启 / 退出（退出前弹确认，避免误退导致服务停止）
+- ⚡ **开机自启（v0.6.0+）**：设置菜单 / 托盘菜单勾选后开机自动启动（写入注册表 Run 键，安装版生效）；v0.6.6 起自启为**静默启动**——不弹窗口，后台运行 + 托盘常驻
+- 🪟 **窗口状态记忆（v0.6.6+）**：记住主窗口位置/大小/最大化状态，下次启动还原；记忆位置在屏幕外时自动兜底默认尺寸
+- ⚙️ **设置菜单（v0.6.1+）**：开机自启 / 最小化到托盘 / 启动时检查更新开关；「关闭时总是询问」可清除关闭行为记忆
+- 🔔 **启动检查更新（v0.6.5+）**：启动自动检查新版本，发现新版弹窗询问「立即更新 / 稍后」，可设置菜单关闭（默认开启）
+- 🪟 **关闭窗口询问（v0.6.1+）**：点 X 弹窗选择「退出」或「关闭到托盘」，可勾选「记住我的选择」下次直接执行
+- 📝 **更新日志展示（v0.6.0+）**：更新窗口桌面端卡片展示最新版本更新日志（多行分行 + 「vX.Y.Z 更新内容」小标题）
 - 📜 **内置日志**：DSH 服务日志落盘到用户数据目录（本地时间戳，按当天日期分文件），可实时在加载页查看
 - 🚀 **启动界面友好**：loading 页显示启动阶段与下载进度（MB 增长）、壳/DSH 版本号；日志区可折叠、出错自动展开；logo 入场动画
 - 🔒 **安全默认**：仅允许访问本地 DSH 服务，外部链接走系统浏览器；默认关闭遥测
@@ -113,7 +120,7 @@ npm run installer
 # 产物位于 windows/app/dist/installer/DSH-Desktop-Setup-<version>.exe
 ```
 
-把 **DSH-Desktop-Setup-0.5.9.exe** 拷贝到目标电脑，双击运行即可：
+把 **DSH-Desktop-Setup-0.6.6.exe** 拷贝到目标电脑，双击运行即可：
 
 - 目标电脑**无需预装 DSH / Node.js / npm**（壳自带完整 Electron + npm 环境）
 - 默认安装到 `%LOCALAPPDATA%\Programs\DSH-Desktop`（**无需管理员权限**），
@@ -142,7 +149,7 @@ npm run installer
 
 ### 菜单内检查更新（v0.5.3+）
 
-「更新」菜单 → **「检查更新」**：现代窗口同屏展示两侧更新状态（卡片 + 徽章 + 进度条）：
+「帮助」菜单 → **「检查更新」**：现代窗口同屏展示两侧更新状态（卡片 + 徽章 + 进度条）：
 
 - **DSH 卡片**：当前/最新版本 + 更新日志，有新版点【立即升级】自动备份并改写
   `config.json` 的 `dshVersion`，随后重启应用自动安装新版；
