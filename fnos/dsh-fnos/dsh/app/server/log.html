@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DSH 日志</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "SFMono-Regular", Consolas, "Microsoft YaHei", monospace;
+    background: #0f1115;
+    color: #aab4c8;
+    min-height: 100vh;
+    padding: 16px 20px 40px;
+    font-size: 12.5px;
+    line-height: 1.6;
+  }
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px; padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  h1 { font-size: 15px; color: #dbe2f0; font-family: "Segoe UI", "Microsoft YaHei", sans-serif; }
+  .controls { display: flex; align-items: center; gap: 10px; }
+  .hint { font-size: 11.5px; color: #5a6478; }
+  .btn {
+    padding: 4px 14px; border-radius: 6px; border: none; cursor: pointer;
+    background: #6d8dff; color: #fff; font-size: 12px;
+  }
+  .btn:hover { background: #5a7cf0; }
+  .auto { display: flex; align-items: center; gap: 5px; font-size: 12px; color: #8b96ad; }
+  .auto input { accent-color: #6d8dff; }
+  #log {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 10px;
+    padding: 14px 16px;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  .l-error { color: #ff8d8d; }
+  .l-warn { color: #e8c56a; }
+  .l-info { color: #aab4c8; }
+  .l-dsh { color: #8fd0a8; }
+  .l-dsh-err { color: #ff8d8d; }
+  #empty { color: #5a6478; text-align: center; padding: 40px 0; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>DeepSeek Harness · 运行日志</h1>
+    <div class="controls">
+      <span class="hint">最近 500 行（环形缓冲，完整日志：/var/apps/dsh/var/app.log）</span>
+      <button class="btn" onclick="loadNow()">刷新</button>
+      <label class="auto"><input type="checkbox" id="auto" checked />自动刷新</label>
+      <a href="#" id="lk-back" class="btn" style="text-decoration:none;">返回 DSH</a>
+    </div>
+  </header>
+  <div id="log"><div id="empty">加载中…</div></div>
+
+  <script>
+    // API 根路径自愈（v0.2.1 复审 P0-1 修复）：页面在 /app/dsh/log 打开时，
+    // API 在 /app/dsh/api/* —— 提取网关前缀（pathname 前两段）
+    function apiUrl(p) {
+      var m = location.pathname.match(/^(\/[^/]+\/[^/]+)/);
+      var base = m ? m[1] + '/' : '/';
+      return base + p;
+    }
+    // M2（v0.2.1）：返回 DSH 指向网关根（/app/dsh/ 或本地 /）
+    document.getElementById('lk-back').href = location.pathname.replace(/\/[^/]*\/?$/, '/');
+    var logEl = document.getElementById('log');
+    var autoEl = document.getElementById('auto');
+    var ticking = false;
+
+    function classify(line) {
+      if (/\[error\]|\[dsh:err\]/.test(line)) return 'l-error';
+      if (/\[warn\]/.test(line)) return 'l-warn';
+      if (/\[dsh\]/.test(line)) return 'l-dsh';
+      return 'l-info';
+    }
+
+    function loadNow() {
+      fetch(apiUrl('api/log'), { cache: 'no-store' })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (!d || !Array.isArray(d.lines)) return;
+          var stick = logEl.scrollHeight - logEl.scrollTop - logEl.clientHeight < 40;
+          logEl.innerHTML = '';
+          if (d.lines.length === 0) {
+            logEl.innerHTML = '<div id="empty">暂无日志</div>';
+            return;
+          }
+          d.lines.forEach(function (line) {
+            var div = document.createElement('div');
+            div.className = classify(line);
+            div.textContent = line;
+            logEl.appendChild(div);
+          });
+          if (stick) logEl.scrollTop = logEl.scrollHeight;
+        })
+        .catch(function () { /* ignore */ });
+    }
+
+    setInterval(function () {
+      if (autoEl.checked && !ticking) { ticking = true; loadNow(); ticking = false; }
+    }, 2000);
+    loadNow();
+  </script>
+</body>
+</html>

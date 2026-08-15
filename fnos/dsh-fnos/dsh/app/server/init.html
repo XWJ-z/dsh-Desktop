@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>正在初始化 DeepSeek Harness</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    background: radial-gradient(1200px 600px at 50% -10%, #1a2233 0%, #0f1115 60%);
+    color: #dbe2f0;
+    min-height: 100vh;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 32px 20px;
+  }
+  .logo { width: 84px; height: 84px; border-radius: 20px; margin-bottom: 20px; }
+  h1 { font-size: 22px; font-weight: 600; margin-bottom: 8px; }
+  .sub { font-size: 13px; color: #8b96ad; margin-bottom: 28px; text-align: center; }
+  .card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px;
+    padding: 24px 28px;
+    text-align: center;
+    max-width: 420px;
+    width: 100%;
+  }
+  .spinner {
+    width: 34px; height: 34px; margin: 0 auto 16px;
+    border: 3px solid rgba(255,255,255,0.12);
+    border-top-color: #6d8dff;
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .status { font-size: 15px; font-weight: 600; color: #9db4ff; margin-bottom: 10px; }
+  .tip { font-size: 13px; color: #8b96ad; line-height: 1.8; margin-bottom: 6px; }
+  .elapsed { font-size: 12px; color: #5a6478; }
+  .btn {
+    display: inline-block; margin-top: 16px; padding: 8px 26px;
+    border-radius: 8px; background: #6d8dff; color: #fff;
+    font-size: 13px; cursor: pointer; border: none; text-decoration: none;
+  }
+  .btn:hover { background: #5a7cf0; }
+  .stages { display: flex; justify-content: center; gap: 6px; margin-bottom: 16px; }
+  .stage {
+    font-size: 11px; color: #5a6478;
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 20px; padding: 4px 12px;
+    transition: all 0.3s;
+  }
+  .stage.active { color: #9db4ff; border-color: #6d8dff; background: rgba(109,141,255,0.12); }
+  .stage.done { color: #5ad08a; border-color: rgba(90,208,138,0.4); }
+  .progress { font-size: 12.5px; color: #8b96ad; margin-bottom: 8px; min-height: 18px; }
+  .links { margin-top: 10px; font-size: 12px; }
+  .links a { color: #6d8dff; text-decoration: none; margin: 0 6px; }
+  .links a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+  <img class="logo" src="data:image/png;base64,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" alt="DeepSeek Harness" />
+  <h1>DeepSeek Harness</h1>
+  <div class="sub">正在飞牛 NAS 上启动 DeepSeek AI 助手工作台</div>
+
+  <div class="card">
+    <div class="spinner"></div>
+    <div class="status" id="status">正在初始化…</div>
+    <div class="stages">
+      <span class="stage active" data-stage="check">① 检查运行时</span>
+      <span class="stage" data-stage="install">② 下载安装</span>
+      <span class="stage" data-stage="start">③ 启动服务</span>
+      <span class="stage" data-stage="ready">④ 就绪</span>
+    </div>
+    <div class="progress" id="progress"></div>
+    <div class="tip" id="tip">首次启动需要下载 DSH 运行时（约几分钟）<br />请保持应用运行，就绪后本页将自动进入</div>
+    <div class="elapsed" id="elapsed"></div>
+    <button class="btn" id="btn" onclick="retry()">手动刷新</button>
+    <div class="links"><a href="log" target="_blank">查看运行日志</a></div>
+  </div>
+
+  <script>
+    var startedAt = Date.now();
+    // API 根路径自愈（v0.2.1 复审 P0-1 修复）：init 在 /app/dsh 或 /app/dsh/ 打开，
+    // 提取网关前缀（pathname 前两段）后拼接 /app/dsh/api/*；本地开发前缀为空
+    function apiUrl(p) {
+      var m = location.pathname.match(/^(\/[^/]+\/[^/]+)/);
+      var base = m ? m[1] + '/' : '/';
+      return base + p;
+    }
+    var STAGE_TEXT = {
+      check: '正在检查 DSH 运行时…',
+      install: '正在下载安装 DSH 运行时…',
+      start: '正在启动 DSH 服务…',
+      ready: '正在进入…'
+    };
+    function setStage(stage) {
+      document.querySelectorAll('.stage').forEach(function (el) {
+        var on = el.dataset.stage === stage;
+        el.classList.toggle('active', on);
+        var order = ['check', 'install', 'start', 'ready'];
+        var idx = order.indexOf(stage);
+        el.classList.toggle('done', idx > 0 && order.indexOf(el.dataset.stage) < idx);
+      });
+      var st = document.getElementById('status');
+      if (STAGE_TEXT[stage]) st.textContent = STAGE_TEXT[stage];
+      var prog = document.getElementById('progress');
+      if (stage === 'install' && document._mb) {
+        prog.textContent = '已下载 ' + document._mb + ' MB…';
+      } else if (stage !== 'install') {
+        prog.textContent = '';
+      }
+    }
+    var failCount = 0;
+    var timer = setInterval(function () {
+      var sec = Math.round((Date.now() - startedAt) / 1000);
+      document.getElementById('elapsed').textContent = '已等待 ' + sec + ' 秒';
+      // 超 5 分钟提示可能异常（正常下载 3-8 分钟，异常时引导看日志）
+      var slow = document.getElementById('slow');
+      if (sec > 300 && !slow) {
+        var tip = document.getElementById('tip');
+        var d = document.createElement('div');
+        d.id = 'slow';
+        d.style.cssText = 'margin-top:8px;color:#e8c56a;font-size:12.5px;';
+        d.textContent = '等待较久？下载可能较慢或网络异常，请查看运行日志确认进度。';
+        tip.parentNode.insertBefore(d, tip.nextSibling);
+      }
+      fetch(apiUrl('api/status'), { cache: 'no-store' })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (!d) { failCount++; if (failCount > 5) showStatusFail(); return; }
+          failCount = 0;
+          if (d.error) {
+            // 初始化失败：明确提示，不再无限等待
+            clearInterval(timer);
+            document.getElementById('status').textContent = '初始化失败';
+            document.getElementById('tip').textContent = d.error;
+            document.getElementById('progress').textContent = '';
+            var btn = document.getElementById('btn');
+            btn.textContent = '重试';
+            document.getElementById('elapsed').textContent = '失败原因见运行日志';
+            return;
+          }
+          if (d.progressMb) document._mb = d.progressMb;
+          setStage(d.stage || 'check');
+          if (d.dshReady) { clearInterval(timer); location.reload(); }
+        })
+        .catch(function () { failCount++; if (failCount > 5) showStatusFail(); });
+    }, 2000);
+    function showStatusFail() {
+      clearInterval(timer);
+      document.getElementById('status').textContent = '状态服务异常';
+      document.getElementById('tip').textContent = '无法获取初始化状态（可能网关/服务异常），请查看运行日志或刷新页面重试。';
+      document.getElementById('elapsed').textContent = '';
+    }
+    function retry() {
+      // 失败重试：通知壳重新初始化（已就绪则等价于刷新）
+      fetch(apiUrl('api/restart'), { method: 'POST', cache: 'no-store' })
+        .catch(function () {})
+        .then(function () { setTimeout(function () { location.reload(); }, 500); });
+    }
+  </script>
+</body>
+</html>

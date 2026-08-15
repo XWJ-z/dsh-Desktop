@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>检查更新 · DeepSeek Harness</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    background: radial-gradient(1200px 600px at 50% -10%, #1a2233 0%, #0f1115 60%);
+    color: #dbe2f0;
+    min-height: 100vh;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 32px 20px;
+  }
+  .card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px;
+    padding: 26px 30px;
+    max-width: 420px;
+    width: 100%;
+  }
+  h1 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+  .sub { font-size: 13px; color: #8b96ad; margin-bottom: 18px; }
+  .row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 11px 0; border-bottom: 1px solid rgba(255,255,255,0.06);
+    font-size: 13.5px; color: #8b96ad;
+  }
+  .row b { color: #dbe2f0; font-weight: 600; }
+  .badge { padding: 2px 12px; border-radius: 20px; font-size: 12px; }
+  .badge.query { color: #8b96ad; border: 1px solid rgba(255,255,255,0.14); }
+  .badge.latest { color: #5ad08a; border: 1px solid rgba(90,208,138,0.4); background: rgba(90,208,138,0.1); }
+  .badge.update { color: #e8c56a; border: 1px solid rgba(232,197,106,0.4); background: rgba(232,197,106,0.1); }
+  .notes { font-size: 12.5px; color: #8b96ad; line-height: 1.8; margin-top: 14px; min-height: 40px; }
+  .status { font-size: 13px; color: #5ad08a; margin-top: 8px; min-height: 20px; }
+  .status.err { color: #ff8d8d; }
+  .btn {
+    display: block; width: 100%; margin-top: 16px; padding: 11px 0;
+    border-radius: 8px; background: #6d8dff; color: #fff;
+    font-size: 14px; cursor: pointer; border: none; text-align: center;
+  }
+  .btn:hover { background: #5a7cf0; }
+  .btn:disabled { background: #3a4258; cursor: not-allowed; }
+  .links { margin-top: 16px; font-size: 12.5px; text-align: center; }
+  .links a { color: #6d8dff; text-decoration: none; margin: 0 8px; }
+  .links a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>DSH 运行时更新</h1>
+    <div class="sub">检查并升级 DeepSeek Harness 的 DSH 运行时（升级后自动重装，无需重启应用）</div>
+    <div class="row"><span>当前版本</span><b id="cur">-</b></div>
+    <div class="row"><span>最新版本</span><b id="lat">-</b></div>
+    <div class="row"><span>状态</span><span class="badge query" id="badge">查询中…</span></div>
+    <div class="notes" id="notes">正在查询 npm 官方源…</div>
+    <div class="status" id="status"></div>
+    <button class="btn" id="btn" onclick="checkUpdate()">检查更新</button>
+    <div class="links">
+      <a id="lk-about" href="#">关于我们</a>
+      <a id="lk-log" href="#">运行日志</a>
+      <a id="lk-back" href="#">返回 DSH</a>
+    </div>
+  </div>
+
+  <script>
+    // API 根路径自愈（v0.2.1 复审 P0-1 修复）：页面在 /app/dsh/update 打开时，
+    // API 在 /app/dsh/api/* —— 提取网关前缀（pathname 前两段）
+    function apiUrl(p) {
+      var m = location.pathname.match(/^(\/[^/]+\/[^/]+)/);
+      var base = m ? m[1] + '/' : '/';
+      return base + p;
+    }
+    // 同级页面导航：/app/dsh/update → /app/dsh/about；/update（本地开发）→ /about
+    function pageUrl(name) { return location.pathname.replace(/\/[^/]*\/?$/, '/') + name; }
+    document.getElementById('lk-about').href = pageUrl('about');
+    document.getElementById('lk-log').href = pageUrl('log');
+    document.getElementById('lk-back').href = location.pathname.replace(/\/[^/]*\/?$/, '/');
+
+    var upgrading = false;
+    function setStatus(text, err) {
+      var el = document.getElementById('status');
+      el.textContent = text || '';
+      el.className = 'status' + (err ? ' err' : '');
+    }
+    function setBadge(kind, text) {
+      var el = document.getElementById('badge');
+      el.className = 'badge ' + kind;
+      el.textContent = text;
+    }
+    function checkUpdate() {
+      var btn = document.getElementById('btn');
+      btn.disabled = true;
+      btn.textContent = '查询中…';
+      setBadge('query', '查询中…');
+      fetch(apiUrl('api/update'), { cache: 'no-store' })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          btn.disabled = false;
+          if (!d || !d.dsh) { setStatus('查询失败（请检查网络）', true); setBadge('query', '未知'); btn.textContent = '重新检查'; return; }
+          var cur = d.dsh.current || '未知';
+          var lat = d.dsh.latest || '未知';
+          document.getElementById('cur').textContent = cur;
+          document.getElementById('lat').textContent = lat;
+          var notes = document.getElementById('notes');
+          if (d.dsh.latest && d.dsh.notes) {
+            // 可更新：显示提示 + 一键升级
+            setBadge('update', '可更新');
+            notes.textContent = d.dsh.notes;
+            btn.textContent = '立即升级';
+            btn.onclick = upgradeDsh;
+            setStatus('');
+          } else if (d.dsh.latest) {
+            setBadge('latest', '最新版本');
+            notes.textContent = '当前已是最新版本。';
+            btn.textContent = '检查更新';
+            btn.onclick = checkUpdate;
+            setStatus('');
+          } else {
+            setBadge('query', '未知');
+            notes.textContent = '无法获取最新版本信息（更新源不可达）。';
+            btn.textContent = '重新检查';
+            btn.onclick = checkUpdate;
+          }
+        })
+        .catch(function () {
+          btn.disabled = false;
+          btn.textContent = '重新检查';
+          btn.onclick = checkUpdate;
+          setBadge('query', '未知');
+          setStatus('查询失败（请检查网络）', true);
+        });
+    }
+    function upgradeDsh() {
+      if (upgrading) return;
+      upgrading = true;
+      var btn = document.getElementById('btn');
+      btn.disabled = true;
+      btn.textContent = '升级中…（需几分钟）';
+      setStatus('正在升级 DSH 运行时，期间应用短暂不可用…');
+      fetch(apiUrl('api/update/upgrade'), { method: 'POST', cache: 'no-store' })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (d && d.ok) {
+            setStatus('升级完成：' + d.from + ' → ' + d.to);
+            setBadge('latest', '最新版本');
+            document.getElementById('cur').textContent = d.to;
+            document.getElementById('lat').textContent = d.to;
+            document.getElementById('notes').textContent = '升级成功，DSH 已是最新版本。';
+            btn.textContent = '已是最新';
+          } else {
+            var msg = { 'fetch-failed': '无法连接更新源', 'no-update': '当前已是最新版本', 'write-failed': '改写配置失败', 'forbidden': '无权限：仅管理员可升级', 'busy': '升级正在进行中' }[d && d.reason] || '升级失败';
+            setStatus(msg, true);
+            btn.textContent = '重试';
+            btn.disabled = false;
+            btn.onclick = upgradeDsh;
+          }
+        })
+        .catch(function () { setStatus('升级请求失败', true); btn.textContent = '重试'; btn.disabled = false; btn.onclick = upgradeDsh; })
+        .finally(function () { upgrading = false; });
+    }
+    checkUpdate(); // 打开页面自动查一次
+  </script>
+</body>
+</html>

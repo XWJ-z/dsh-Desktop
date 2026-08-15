@@ -1,0 +1,15 @@
+#!/bin/bash
+
+### Called after install. 初始化配置 + 提示首次启动将下载 DSH 运行时。
+# fnpack 包不含 etc/，安装后把包内默认配置复制到 $TRIM_PKGETC（用户可改）
+if [ -n "${TRIM_PKGETC}" ] && [ ! -f "${TRIM_PKGETC}/config.json" ]; then
+  mkdir -p "${TRIM_PKGETC}"
+  if [ -f "${TRIM_APPDEST}/server/config.json" ]; then
+    cp "${TRIM_APPDEST}/server/config.json" "${TRIM_PKGETC}/config.json" 2>/dev/null
+  fi
+fi
+LOG_FILE="${TRIM_PKGVAR}/app.log"
+if [ -n "${TRIM_PKGVAR}" ] && [ -d "${TRIM_PKGVAR}" ]; then
+  echo "$(date '+%Y-%m-%d %H:%M:%S') - 安装完成。首次启动将自动下载 DSH 运行时（约几分钟），进度见本日志。" >> "$LOG_FILE"
+fi
+exit 0

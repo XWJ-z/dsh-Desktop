@@ -1,0 +1,4 @@
+#!/bin/bash
+
+### Called before uninstall.
+exit 0

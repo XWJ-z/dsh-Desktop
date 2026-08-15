@@ -1,0 +1,15 @@
+appname=dsh
+version=0.2.5
+display_name=DeepSeek Harness
+desc=DeepSeek Harness Web GUI（DSH）的飞牛原生应用，一键安装，开箱即用
+maintainer=DeepSeek
+maintainer_url=https://github.com/XWJ-z/dsh-Desktop
+distributor=清零
+source=thirdparty
+platform=all
+os_min_version=1.1.3100
+install_dep_apps=nodejs_v22
+desktop_uidir=ui
+desktop_applaunchname=dsh.main
+ctl_stop=true
+change_log=更新应用信息（开发者 DeepSeek、发布者清零、应用介绍）

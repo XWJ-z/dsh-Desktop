@@ -1,0 +1,4 @@
+#!/bin/bash
+
+### Called after upgrade.
+exit 0

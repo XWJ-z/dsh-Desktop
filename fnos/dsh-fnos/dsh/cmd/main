@@ -1,0 +1,140 @@
+#!/bin/bash
+# DeepSeek Harness（dsh）飞牛应用生命周期脚本
+# 管理：start / stop / status
+#
+# 架构说明：server.js 内聚管理 DSH web 运行时（ensure → spawn → 就绪 → 退出清理），
+# 本脚本只管理 server.js 一个进程；首次启动的 DSH 下载在 server.js 内异步进行，
+# 期间 /app/dsh 显示初始化提示页。
+
+LOG_FILE="${TRIM_PKGVAR}/app.log"
+PID_FILE="${TRIM_PKGVAR}/app.pid"
+export PATH=/var/apps/nodejs_v22/target/bin:$PATH
+
+APP_DIR="${TRIM_APPDEST}/server"
+SOCKET_PATH="${TRIM_APPDEST}/app.sock"
+GATEWAY_PREFIX="/app/dsh"
+DSH_PORT=3080
+# 数据目录：resource 声明的 data-share 第一个路径（DSH_HOME 指向它，卸载/升级数据保留）
+DATA_DIR="${TRIM_DATA_SHARE_PATHS%%:*}"
+
+log_msg() {
+  echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE"
+}
+
+check_process() {
+  local pid="$1"
+  [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null
+}
+
+status_app() {
+  if [ -f "$PID_FILE" ]; then
+    local pid
+    pid="$(head -n 1 "$PID_FILE" | tr -d '[:space:]')"
+    if check_process "$pid"; then
+      return 0
+    fi
+    rm -f "$PID_FILE"
+  fi
+  return 1
+}
+
+# v0.2 问题1：授权目录软链接 —— 应用中心授权的目录（TRIM_DATA_ACCESSIBLE_PATHS，
+# 冒号分隔，如 /vol1/影视:/vol1/下载）在 DSH 主目录下建 auth-<目录名> 软链接，
+# DSH 文件浏览打开主目录即可直接看到/进入（DSH 官方包不读该变量，软链接零改动方案）。
+# 注（v0.2.4 真机诊断）：飞牛授权是文件系统 ACL，TRIM_DATA_ACCESSIBLE_PATHS 通常为空
+# （系统不注入路径列表）→ 软链接无源可用；图形化选择由 browse 树形浏览承担（导航到 /vol1）。
+link_auth_dirs() {
+  local HOME_DIR="${TRIM_PKGHOME:-${TRIM_APPHOME:-${TRIM_PKGVAR}/home}}"
+  [ -n "$HOME_DIR" ] || return 0
+  mkdir -p "$HOME_DIR" 2>/dev/null
+  # 清理旧链接（授权可能变化，避免失效残留）
+  find "$HOME_DIR" -maxdepth 1 -type l -name "auth-*" -delete 2>/dev/null
+  if [ -n "${TRIM_DATA_ACCESSIBLE_PATHS}" ]; then
+    IFS=':' read -ra dirs <<< "${TRIM_DATA_ACCESSIBLE_PATHS}"
+    for d in "${dirs[@]}"; do
+      [ -n "$d" ] || continue
+      if [ -d "$d" ]; then
+        if ln -sfn "$d" "$HOME_DIR/auth-$(basename "$d")" 2>/dev/null; then
+          log_msg "授权目录已链接: auth-$(basename "$d") -> $d"
+        else
+          log_msg "授权目录链接失败(ln): $d"
+        fi
+      else
+        log_msg "授权目录不存在或不可访问: $d"
+      fi
+    done
+  fi
+}
+
+start_app() {
+  if status_app; then
+    log_msg "应用已在运行"
+    return 0
+  fi
+  # 确保配置存在：fnpack 包不含 etc/，首次启动把包内默认配置复制到 $TRIM_PKGETC（用户可改）
+  if [ -n "${TRIM_PKGETC}" ] && [ ! -f "${TRIM_PKGETC}/config.json" ]; then
+    mkdir -p "${TRIM_PKGETC}"
+    if [ -f "${APP_DIR}/config.json" ]; then
+      cp "${APP_DIR}/config.json" "${TRIM_PKGETC}/config.json" 2>/dev/null && log_msg "已初始化配置: ${TRIM_PKGETC}/config.json"
+    fi
+  fi
+  log_msg "环境: APPDEST=${TRIM_APPDEST:-unset} PKGVAR=${TRIM_PKGVAR:-unset} PKGETC=${TRIM_PKGETC:-unset} DATA_SHARE=${TRIM_DATA_SHARE_PATHS:-unset} ACCESSIBLE=${TRIM_DATA_ACCESSIBLE_PATHS:-unset} APPHOME=${TRIM_APPHOME:-unset}"
+  log_msg "启动 DeepSeek Harness…（首次启动将在后台下载 DSH 运行时，请稍候）"
+  # v0.2 修复 /home/dsh ENOENT：确保应用 home 目录存在（飞牛 package 用户无真实 /home/dsh，
+  # DSH 文件浏览/工作区默认目录依赖 HOME）并传给 server.js → spawnDshWeb 设置 HOME
+  # v0.2.4：真变量是 TRIM_PKGHOME（/vol1/@apphome/dsh），TRIM_APPHOME 未设置
+  HOME_DIR="${TRIM_PKGHOME:-${TRIM_APPHOME:-${TRIM_PKGVAR}/home}}"
+  mkdir -p "$HOME_DIR" 2>/dev/null
+  chown dsh:dsh "$HOME_DIR" 2>/dev/null || true  # 应用用户存在时授权；不存在忽略
+  # v0.2 问题1：授权目录软链接（在主目录建 auth-* 链接，授权变化时自动刷新）
+  link_auth_dirs
+  cd "$APP_DIR" || exit 1
+  SOCKET_PATH="$SOCKET_PATH" DSH_PORT="$DSH_PORT" \
+    GATEWAY_PREFIX="$GATEWAY_PREFIX" DATA_DIR="$DATA_DIR" \
+    TRIM_PKGVAR="$TRIM_PKGVAR" TRIM_PKGETC="$TRIM_PKGETC" \
+    TRIM_APPHOME="$HOME_DIR" \
+    node server.js >> "$LOG_FILE" 2>&1 &
+  echo "$!" > "$PID_FILE"
+  # 等待网关 Socket 就绪（最多 15 秒）
+  for i in $(seq 1 30); do
+    [ -S "$SOCKET_PATH" ] && break
+    sleep 0.5
+  done
+  if [ -S "$SOCKET_PATH" ]; then
+    log_msg "DeepSeek Harness 已启动（socket: $SOCKET_PATH，DSH 端口: $DSH_PORT）"
+    [ -n "$DATA_DIR" ] && log_msg "DSH 数据目录: $DATA_DIR"
+  else
+    log_msg "警告：网关 Socket 未就绪，请查看下方日志"
+  fi
+  return 0
+}
+
+stop_app() {
+  log_msg "停止 DeepSeek Harness…"
+  if [ -f "$PID_FILE" ]; then
+    local pid
+    pid="$(head -n 1 "$PID_FILE" | tr -d '[:space:]')"
+    kill "$pid" 2>/dev/null
+    sleep 2
+    kill -0 "$pid" 2>/dev/null && kill -9 "$pid" 2>/dev/null
+    rm -f "$PID_FILE"
+  fi
+  rm -f "$SOCKET_PATH"
+  log_msg "已停止"
+  return 0
+}
+
+case "$1" in
+  start)
+    start_app
+    ;;
+  stop)
+    stop_app
+    ;;
+  status)
+    status_app
+    ;;
+  *)
+    exit 1
+    ;;
+esac

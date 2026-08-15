@@ -1,0 +1,4 @@
+#!/bin/bash
+
+### Called after config change.
+exit 0

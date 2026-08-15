@@ -1,0 +1,4 @@
+#!/bin/bash
+
+### Called after uninstall. 默认保留用户数据（var 目录），可手动删除。
+exit 0
