@@ -27,6 +27,7 @@ const https = require('node:https');
 const net = require('node:net');
 const os = require('node:os');
 const path = require('node:path');
+const tar = require('tar'); // v0.7.0：数据备份/恢复（package.json dependencies 已显式声明，随包分发）
 
 const APP_NAME = 'DSH-Desktop';
 const DEFAULT_HOST = '127.0.0.1';
@@ -298,8 +299,11 @@ function ensureDshRuntime() {
     // 脚本（均自带 N-API 预编译，放行仅为保险）。
     // 同时写入 registry 配置：默认 npmmirror 镜像（国内可达），可被 config.json
     // 的 registry 字段覆盖；写 .npmrc 可让 npm 每次安装都命中同一镜像。
+    const registry = cfg.registry || 'https://registry.npmmirror.com';
     try {
-      const registry = cfg.registry || 'https://registry.npmmirror.com';
+      // v0.7.3（T-034）：目录可能尚不存在（npm --prefix 安装时才创建），先建再写，
+      // 否则首次运行 .npmrc 写失败 → allow-scripts 不生效 → 原生模块脚本被 npm 12 拦截
+      fs.mkdirSync(dshRuntimeDir(), { recursive: true });
       fs.writeFileSync(
         path.join(dshRuntimeDir(), '.npmrc'),
         `allow-scripts=@deepseek-ai/dsh-subprocess-local,koffi,node-pty,@google/genai,protobufjs\nregistry=${registry}\n`,
@@ -313,6 +317,10 @@ function ensureDshRuntime() {
       cli,
       'install',
       '--prefix', dshRuntimeDir(),
+      // v0.7.4（T-035）：registry 直接走 CLI 参数，不依赖 .npmrc 写入成败 ——
+      // .npmrc 写失败（如权限）时若回落官方源 registry.npmjs.org，国内网络
+      // 下载会卡死（600s 超时），CLI 参数保证始终命中配置/默认镜像
+      '--registry', registry,
       '--no-save',
       '--no-audit',
       '--no-fund',
@@ -325,6 +333,9 @@ function ensureDshRuntime() {
     const env = {
       ...process.env,
       ...runner.env,
+      // v0.7.3（T-034）：内置 Node 目录加入 PATH —— 无系统 Node 的机器上，
+      // koffi 等依赖的 install 脚本（cmd /c node ./cnoke.cjs）才能找到 node 命令
+      PATH: `${path.dirname(runner.execPath)}${path.delimiter}${process.env.PATH || ''}`,
       // npm 需要知道用户级目录；确保缓存落在用户可写位置
       npm_config_cache: path.join(os.homedir(), 'AppData', 'Local', 'npm-cache'),
       npm_config_update_notifier: 'false',
@@ -722,9 +733,31 @@ function createMainWindow() {
   });
   win.webContents.on('did-finish-load', () => {
     appendLog('info', `[gui] 加载完成：${win.webContents.getURL()}`);
+    // v0.7.1（T-032）：右上角「网页打开」醒目按钮（原菜单栏顶层项改悬浮按钮）。
+    // 注入固定定位按钮，点击走 preload 暴露的 openExternal（IPC → 系统浏览器）。
     win.webContents.executeJavaScript(`
-      const overlay = document.getElementById('dsh-loading-overlay');
-      if (overlay) overlay.remove();
+      (() => {
+        const overlay = document.getElementById('dsh-loading-overlay');
+        if (overlay) overlay.remove();
+        if (document.getElementById('dsh-web-open-btn')) return;
+        const url = '${webUrl()}';
+        const btn = document.createElement('button');
+        btn.id = 'dsh-web-open-btn';
+        btn.type = 'button';
+        btn.title = '在系统浏览器中打开 DSH 网页界面';
+        btn.innerHTML = '<span style="font-size:13px;line-height:1;">🌐</span><span>网页打开</span>';
+        btn.style.cssText = 'position:fixed;top:14px;right:18px;z-index:2147483646;display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border:none;border-radius:20px;cursor:pointer;background:linear-gradient(135deg,#4d6bfe,#7c5cff);color:#fff;font:600 13px/1 "Segoe UI","Microsoft YaHei",sans-serif;box-shadow:0 3px 12px rgba(77,107,254,.5);user-select:none;';
+        btn.addEventListener('mouseenter', () => { btn.style.filter = 'brightness(1.12)'; });
+        btn.addEventListener('mouseleave', () => { btn.style.filter = ''; });
+        btn.addEventListener('click', () => {
+          if (window.dshDesktop && window.dshDesktop.openExternal) {
+            window.dshDesktop.openExternal(url);
+          } else {
+            window.open(url, '_blank');
+          }
+        });
+        document.body.appendChild(btn);
+      })();
     `).catch(() => { /* ignore */ });
   });
   attachWebDiagnostics(win, 'gui');
@@ -933,9 +966,13 @@ async function downloadShellUpdate(win, onProgress) {
     ? info.downloadUrls
     : [`https://ghfast.top/https://github.com/XWJ-z/dsh-Desktop/releases/download/v${info.version}/DSH-Desktop-Setup-${info.version}.exe`];
   let lastErr = null;
+  let lastUrl = null;
   for (const url of urls) {
     try {
-      appendLog('info', `开始下载 DSH-Desktop v${info.version}：${url}`);
+      // v0.7.2（T-033）：换镜像 = 换数据源，.part 内容不兼容，删除避免混合续传
+      if (lastUrl && url !== lastUrl) rmQuiet(`${dest}.part`);
+      lastUrl = url;
+      appendLog('info', `开始下载 DSH-Desktop v${info.version}：${url}${fs.existsSync(`${dest}.part`) ? '（续传）' : ''}`);
       await downloadFile(url, dest, (ratio) => {
         // 有总量 → 0~100；无总量（chunked）→ 负值 = 已下载字节数
         if (onProgress) onProgress(ratio > 0 ? Math.round(ratio * 100) : -ratio);
@@ -963,6 +1000,249 @@ async function downloadShellUpdate(win, onProgress) {
   appendLog('info', `DSH-Desktop v${info.version} 下载完成：${dest}`);
   shell.openPath(dest);
   return { ok: true, version: info.version, path: dest };
+}
+
+// ---------------------------------------------------------------------------
+// 诊断 / 数据备份 / 数据恢复（v0.7.0）
+// ---------------------------------------------------------------------------
+/** T1（v0.7.0）：生成诊断报告 —— 环境信息 + 最近日志 + 配置（脱敏），复制到剪贴板并落盘 */
+function generateDiagnostics() {
+  try {
+    const cfg = readShellConfig();
+    const lines = [];
+    lines.push('DSH-Desktop 诊断报告');
+    lines.push('====================');
+    lines.push(`生成时间：${localTimestamp()}`);
+    lines.push(`应用版本：${app.getVersion()}`);
+    lines.push(`DSH 包：${cfg.dshPackage}@${installedDshVersion() ?? cfg.dshVersion}`);
+    lines.push(`运行器：${resolveRunner().label}`);
+    lines.push(`监听端口：${resolvedPort}`);
+    lines.push(`启动阶段：${currentStage}`);
+    lines.push(`数据目录：${app.getPath('userData')}`);
+    lines.push(`日志文件：${logPath()}`);
+    lines.push(`系统：${os.platform()} ${os.release()} (${os.arch()})`);
+    lines.push(`内存：${(os.totalmem() / 1024 / 1024 / 1024).toFixed(1)} GB 总量`);
+    lines.push('');
+    lines.push('--- 配置（脱敏）---');
+    // T4：防御性脱敏 —— 键名含 pass/token/secret/key/apiKey 的值打码
+    const mask = (obj) => JSON.stringify(obj, (k, v) =>
+      /pass|token|secret|api[_-]?key/i.test(k) && typeof v === 'string' && v ? '***' : v, 2);
+    lines.push(mask(cfg));
+    lines.push('');
+    lines.push('--- 最近日志（末 200 行）---');
+    lines.push(logLines.slice(-200).join('\n'));
+    const text = lines.join('\n');
+
+    // 落盘
+    const dir = path.join(app.getPath('userData'), 'diagnostics');
+    fs.mkdirSync(dir, { recursive: true });
+    const file = path.join(dir, `dsh-diagnostics-${localTimestamp().replace(/[: ]/g, '-')}.txt`);
+    fs.writeFileSync(file, text, 'utf8');
+
+    // 复制到剪贴板
+    clipboard.writeText(text);
+
+    dialog.showMessageBox(mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined, {
+      type: 'info', title: APP_NAME,
+      message: '诊断报告已生成',
+      detail: `已复制到剪贴板，可直接粘贴发送。\n已保存：${file}`,
+      buttons: ['打开所在目录', '关闭'],
+      defaultId: 1, cancelId: 1, noLink: true,
+    }).then(({ response }) => {
+      if (response === 0) shell.openPath(dir);
+    }).catch(() => { /* ignore */ });
+
+    appendLog('info', `诊断报告已生成：${file}`);
+  } catch (err) {
+    appendLog('error', `生成诊断报告失败：${err.message}`);
+    dialog.showErrorBox(APP_NAME, `生成诊断报告失败：${err.message}`);
+  }
+}
+
+/** T2（v0.7.0）：备份 DSH 用户数据 + 设置 → 用户选路径的 tar.gz */
+async function backupUserData() {
+  const owner = mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined;
+  const { canceled, filePath } = await dialog.showSaveDialog(owner, {
+    title: '备份 DSH 数据',
+    defaultPath: path.join(app.getPath('documents'), `dsh-backup-${localDate()}.tar.gz`),
+    filters: [{ name: '备份包', extensions: ['tar.gz'] }],
+  });
+  if (canceled || !filePath) return;
+
+  const dshHome = path.join(os.homedir(), '.dsh');
+  const settings = settingsFile();
+  const hasDsh = fs.existsSync(dshHome);
+  const hasSettings = fs.existsSync(settings);
+
+  if (!hasDsh && !hasSettings) {
+    dialog.showMessageBox(owner, {
+      type: 'warning', title: APP_NAME,
+      message: '没有可备份的数据',
+      detail: '未找到 DSH 用户数据（~/.dsh）和设置文件。首次使用后再备份。',
+      buttons: ['确定'], noLink: true,
+    });
+    return;
+  }
+
+  appendLog('info', `开始备份：~/.dsh=${hasDsh} settings=${hasSettings} → ${filePath}`);
+  dialog.showMessageBox(owner, {
+    type: 'info', title: APP_NAME,
+    message: '正在备份…',
+    detail: '数据量小（秒级）；大工作区需稍候。备份完成后自动提示。',
+    buttons: ['确定'], noLink: true,
+  });
+
+  // 暂存目录：把 .dsh / settings.json / manifest.json 统一归位到 tar 根，
+  // 保证包内只有相对路径（portable，解包到任意机器路径一致）
+  const staging = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-backup-'));
+  try {
+    const entries = [];
+    if (hasDsh) {
+      fs.cpSync(dshHome, path.join(staging, '.dsh'), { recursive: true });
+      entries.push('.dsh');
+    }
+    if (hasSettings) {
+      fs.copyFileSync(settings, path.join(staging, 'settings.json'));
+      entries.push('settings.json');
+    }
+    // manifest 记录（恢复时校验格式用）
+    const manifest = {
+      format: 'dsh-backup-v1',
+      appVersion: app.getVersion(),
+      dshPackage: readShellConfig().dshPackage,
+      dshVersion: installedDshVersion() ?? readShellConfig().dshVersion,
+      backupTime: localTimestamp(),
+      entries,
+    };
+    fs.writeFileSync(path.join(staging, 'manifest.json'), JSON.stringify(manifest, null, 2), 'utf8');
+
+    await tar.create(
+      { gzip: true, file: filePath, cwd: staging, portable: true },
+      ['manifest.json', ...entries],
+    );
+
+    appendLog('info', `备份完成：${filePath}`);
+    dialog.showMessageBox(owner, {
+      type: 'info', title: APP_NAME,
+      message: '备份完成',
+      detail: `${filePath}\n\n包含：${entries.join('、')}`,
+      buttons: ['打开所在目录', '关闭'],
+      defaultId: 1, cancelId: 1, noLink: true,
+    }).then(({ response }) => {
+      if (response === 0) shell.openPath(path.dirname(filePath));
+    }).catch(() => { /* ignore */ });
+  } catch (err) {
+    appendLog('error', `备份失败：${err.message}`);
+    dialog.showErrorBox(APP_NAME, `备份失败：${err.message}`);
+  } finally {
+    fs.rmSync(staging, { recursive: true, force: true });
+  }
+}
+
+/** T3（v0.7.0）：从备份包恢复 DSH 数据（固定路径映射，不信任包内路径） */
+async function restoreUserData() {
+  const owner = mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined;
+
+  // v0.7.1（T-032）：恢复前服务占用检查 —— DSH 服务在跑时 ~/.dsh 被占用，
+  // 重命名会 EPERM 且可能半恢复（settings 换了、数据没换），提示先退出再恢复
+  if (serverChild && serverChild.exitCode === null) {
+    dialog.showMessageBox(owner, {
+      type: 'warning', title: APP_NAME,
+      message: '恢复数据前请先退出 DSH 服务',
+      detail: 'DSH 服务正在运行，数据文件（~/.dsh）可能被占用，直接恢复会导致失败或数据不一致。\n\n请先通过托盘菜单「退出」关闭应用（或重启电脑）后，再运行「恢复数据…」。',
+      buttons: ['知道了'], noLink: true,
+    });
+    return;
+  }
+
+  const { canceled, filePaths } = await dialog.showOpenDialog(owner, {
+    title: '选择 DSH 备份包',
+    properties: ['openFile'],
+    filters: [{ name: '备份包', extensions: ['tar.gz', 'tgz'] }],
+  });
+  if (canceled || !filePaths || !filePaths[0]) return;
+  const backupFile = filePaths[0];
+
+  // 确认
+  const { response: confirmRes } = await dialog.showMessageBox(owner, {
+    type: 'warning', title: APP_NAME,
+    message: '恢复数据将覆盖本机现有 DSH 数据',
+    detail: '现有数据会被重命名为 .bak 保留（不删除）。确定继续？',
+    buttons: ['确定恢复', '取消'], defaultId: 1, cancelId: 1, noLink: true,
+  });
+  if (confirmRes !== 0) return;
+
+  // 先解压到临时目录校验（不直接解到目标，防恶意包写任意路径）
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-restore-'));
+  try {
+    await tar.extract({ file: backupFile, cwd: tmp, portable: true });
+
+    // T4：校验 manifest（格式/版本），不存在则拒绝（防随意 tar 包）
+    const manifestPath = path.join(tmp, 'manifest.json');
+    if (!fs.existsSync(manifestPath)) {
+      dialog.showErrorBox(APP_NAME, '无效的备份包：缺少 manifest.json');
+      return;
+    }
+    let manifest;
+    try {
+      manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    } catch {
+      dialog.showErrorBox(APP_NAME, '无效的备份包：manifest.json 解析失败');
+      return;
+    }
+    if (manifest.format !== 'dsh-backup-v1') {
+      dialog.showErrorBox(APP_NAME, '无效的备份包：格式不识别');
+      return;
+    }
+    const entries = Array.isArray(manifest.entries) ? manifest.entries : [];
+
+    // 固定路径映射（T4：不信任包内路径，只按约定落位）
+    const dshHome = path.join(os.homedir(), '.dsh');
+    const settings = settingsFile();
+    const stamp = Date.now();
+    const moveOld = (target) => {
+      if (fs.existsSync(target)) fs.renameSync(target, `${target}.bak-${stamp}`);
+    };
+
+    if (entries.includes('.dsh') && fs.existsSync(path.join(tmp, '.dsh'))) {
+      moveOld(dshHome);
+      fs.renameSync(path.join(tmp, '.dsh'), dshHome);
+    }
+    if (entries.includes('settings.json') && fs.existsSync(path.join(tmp, 'settings.json'))) {
+      moveOld(settings);
+      fs.mkdirSync(path.dirname(settings), { recursive: true });
+      fs.renameSync(path.join(tmp, 'settings.json'), settings);
+    }
+
+    appendLog('info', `数据恢复完成（来源：${backupFile}）`);
+
+    // 版本差异提示
+    const curDsh = installedDshVersion() ?? '未知';
+    const bakDsh = manifest.dshVersion ?? '未知';
+    const diff = curDsh !== bakDsh
+      ? `\n\n注意：备份时的 DSH 版本为 ${bakDsh}，当前为 ${curDsh}。如需一致，请到「检查更新」窗口升级 DSH。`
+      : '';
+
+    dialog.showMessageBox(owner, {
+      type: 'info', title: APP_NAME,
+      message: '数据恢复完成',
+      detail: `工作区/会话数据已还原。${diff}\n\n建议重启应用使设置生效。`,
+      buttons: ['立即重启', '稍后'],
+      defaultId: 1, cancelId: 1, noLink: true,
+    }).then(({ response }) => {
+      if (response === 0) { isQuitting = true; app.relaunch(); app.exit(0); }
+    }).catch(() => { /* ignore */ });
+  } catch (err) {
+    appendLog('error', `恢复失败：${err.message}`);
+    // T4：DSH 服务运行中占用 ~/.dsh 时重命名/写回会 EPERM —— 给出操作指引
+    let detail = `恢复失败：${err.message}`;
+    if (/EPERM|EACCES/.test(err.message)) {
+      detail += '\n\n数据文件可能正被 DSH 服务占用。请先通过托盘「退出」关闭应用（或重启电脑）后重试。';
+    }
+    dialog.showErrorBox(APP_NAME, detail);
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1017,59 +1297,123 @@ function fetchLatestShellVersion() {
 }
 
 /** 下载文件到 dest，带进度回调（0~1）；自动跟随重定向（≤5 次），总超时 10 分钟 */
+/**
+ * 下载文件到 dest，带进度回调（0~1）；自动跟随重定向（≤5 次）。
+ * v0.7.2（T-033）：断点续传 —— 下载写入 <dest>.part，中断/网络错误保留 .part，
+ * 同 URL 自动重试（≤3 次）时发 Range 续传（206 追加）；服务器忽略 Range（200）
+ * 则从头覆盖；416（.part 无效）删 .part 重来。完成后原子 rename 为 dest。
+ * 进度：有总大小 → 0~1（含续传起点）；无（chunked）→ 负值 = 累计字节数。
+ */
 function downloadFile(url, dest, onProgress) {
-  const DOWNLOAD_TIMEOUT_MS = 10 * 60 * 1000; // P2-1：下载总超时 10 分钟
+  const DOWNLOAD_TIMEOUT_MS = 10 * 60 * 1000; // P2-1：单次尝试总超时 10 分钟
   const MAX_REDIRECTS = 5;                    // P2-1：重定向上限
+  const MAX_ATTEMPTS = 3;                     // v0.7.2：同 URL 自动重试（含续传）次数
+  const part = `${dest}.part`;
   return new Promise((resolve, reject) => {
     let req;
+    let file = null;
     let redirects = 0;
+    let attempts = 0;
+    let retried416 = false;
+    let resumeFrom = 0; // 本次请求的续传起点（.part 已有字节数）
+    const resumeSize = () => {
+      try { return fs.statSync(part).size; } catch { return 0; }
+    };
     const start = (target) => {
-      const file = fs.createWriteStream(dest);
-      const timer = setTimeout(() => {         // P2-1：超时中止并清理
+      let done = false;
+      resumeFrom = resumeSize();
+      const timer = setTimeout(() => {         // P2-1：超时中止（保留 .part 供续传）
         try { req.destroy(); } catch { /* ignore */ }
-        file.destroy();
-        rmQuiet(dest);
-        reject(new Error('下载超时'));
+        if (file) { try { file.destroy(); } catch { /* ignore */ } }
+        onFail(new Error('下载超时'));
       }, DOWNLOAD_TIMEOUT_MS);
       const cleanupTimer = () => clearTimeout(timer);
-      req = https.get(target, (res) => {
+      const onFail = (err) => {                // 网络错误/超时：保留 .part，同 URL 自动重试续传
+        if (done) return;
+        done = true;
+        cleanupTimer();
+        if (attempts < MAX_ATTEMPTS) {
+          attempts++;
+          setTimeout(() => start(target), 500);
+          return;
+        }
+        reject(err);
+      };
+      // v0.6.7（T-031）：写入失败走业务兜底（删 .part 重来），不冒泡成系统级错误
+      const openStream = (flags) => {
+        file = fs.createWriteStream(part, { flags });
+        file.on('error', (err) => { if (!done) { done = true; cleanupTimer(); rmQuiet(part); reject(err); } });
+        return file;
+      };
+      const headers = resumeFrom > 0 ? { Range: `bytes=${resumeFrom}-` } : undefined;
+      req = https.get(target, { headers }, (res) => {
         if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          res.resume();
           req.destroy();
-          file.close(() => {
+          if (++redirects > MAX_REDIRECTS) {
             cleanupTimer();
-            if (++redirects > MAX_REDIRECTS) {
-              rmQuiet(dest);
-              reject(new Error('重定向次数过多'));
-              return;
-            }
-            start(res.headers.location);
-          });
+            rmQuiet(part);
+            reject(new Error('重定向次数过多'));
+            return;
+          }
+          start(res.headers.location); // 续传起点不变，.part 不变
           return;
         }
-        if (res.statusCode !== 200) {
+        if (res.statusCode === 416) {
+          // .part 已完整或与源不一致：删掉从头重来一次
+          res.resume();
+          cleanupTimer();
+          rmQuiet(part);
+          if (retried416) { reject(new Error('HTTP 416')); return; }
+          retried416 = true;
+          start(target);
+          return;
+        }
+        if (res.statusCode !== 200 && res.statusCode !== 206) {
           res.resume(); // 消费响应体，让流正常结束
-          file.on('close', () => {
-            cleanupTimer();
-            rmQuiet(dest);
-            reject(new Error(`HTTP ${res.statusCode}`));
-          });
-          file.end();
+          cleanupTimer();
+          rmQuiet(part); // 其他错误码（404 等）：.part 无意义，删掉
+          reject(new Error(`HTTP ${res.statusCode}`));
           return;
         }
-        const total = Number(res.headers['content-length']) || 0;
+        // 200 = 服务器忽略 Range（或首次下载），从头覆盖；206 = 续传追加
+        if (res.statusCode === 200) resumeFrom = 0;
+        const stream = openStream(resumeFrom > 0 ? 'a' : 'w');
+        // v0.7.2（T-033）：响应流中途断开（网络中断/服务端掐断）→ 保留 .part 走续传重试。
+        // 不监听的话 pipe 写失败会走 file 'error' 删 .part（续传失效），或永远 pending。
+        res.on('error', (err) => onFail(err));
+        res.on('close', () => { if (!done && !res.complete) onFail(new Error('连接中断')); });
+        // 总大小：206 时 content-length 是剩余字节，完整大小在 Content-Range 里
+        let total = Number(res.headers['content-length']) || 0;
+        if (res.statusCode === 206 && res.headers['content-range']) {
+          const m = /\/\s*(\d+)\s*$/.exec(res.headers['content-range']);
+          if (m) total = Number(m[1]);
+        }
         let received = 0;
         res.on('data', (c) => {
           received += c.length;
           if (onProgress) {
-            // 有 Content-Length → 0~1 比例；无（chunked）→ 负值 = 已下载字节数
-            onProgress(total ? received / total : -received);
+            const base = resumeFrom;
+            onProgress(total ? (base + received) / total : -(base + received));
           }
         });
-        res.pipe(file);
-        file.on('finish', () => { cleanupTimer(); file.close(() => resolve(dest)); });
-        file.on('error', (err) => { cleanupTimer(); rmQuiet(dest); reject(err); });
+        res.pipe(stream);
+        stream.on('finish', () => {
+          if (done) return;
+          done = true;
+          cleanupTimer();
+          stream.close(() => {
+            try {
+              fs.renameSync(part, dest); // 原子落位
+              resolve(dest);
+            } catch (err) {
+              rmQuiet(part);
+              reject(err);
+            }
+          });
+        });
       });
-      req.on('error', (err) => { cleanupTimer(); rmQuiet(dest); reject(err); });
+      req.on('error', (err) => onFail(err)); // 保留 .part 供续传
     };
     start(url);
   });
@@ -1098,7 +1442,8 @@ function shellDownloadDest(info) {
     }
   } catch { /* ignore */ }
   const file = path.join(dir, `DSH-Desktop-Setup-${info.version}.exe`);
-  rmQuiet(file); // 清掉上次同版本残留
+  // v0.7.2（T-033）：只清正式文件（需重新下载完整版）；.part 保留作为断点续传基础
+  rmQuiet(file);
   return file;
 }
 
@@ -1360,15 +1705,15 @@ function buildMenu() {
           click: () => { shell.openPath(app.getPath('userData')); },
         },
         { type: 'separator' },
+        // v0.7.0（T2/T3）：数据备份 / 恢复（打包 ~/.dsh + 设置；恢复校验 manifest 后固定路径还原）
+        { label: '备份数据…', click: () => backupUserData() },
+        { label: '恢复数据…', click: () => restoreUserData() },
+        { type: 'separator' },
         // v0.6.0（T-025）：最小化到托盘（窗口隐藏，DSH 服务继续运行）
         { label: '最小化到托盘', click: () => { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.hide(); } },
         { type: 'separator' },
         { role: 'quit', label: '退出' },
       ],
-    },
-    {
-      label: '网页打开',
-      click: () => { shell.openExternal(webUrl()); },
     },
     {
       label: '视图',
@@ -1422,6 +1767,9 @@ function buildMenu() {
           label: `检查更新${shellHasUpdate || dshHasUpdate ? '（有新版本）' : ''}`,
           click: () => { openUpdateWindow(); },
         },
+        { type: 'separator' },
+        // v0.7.0（T1）：一键诊断报告 —— 环境信息 + 最近日志 + 配置（脱敏）→ 剪贴板 + 落盘
+        { label: '生成诊断报告', click: () => generateDiagnostics() },
         { type: 'separator' },
         {
           label: '联系我们',
@@ -1500,12 +1848,20 @@ function promptShellUpdate(info) {
     }).then((r) => {
       if (r && !r.ok) {
         appendLog('error', `自动更新失败：${r.reason}${r.message ? ' ' + r.message : ''}`);
-        const reasonText = {
+        let reasonText = {
           'fetch-failed': '无法连接更新源，请检查网络',
           'no-update': '当前已是最新版本',
           'download-failed': '所有下载源均失败，请稍后重试',
           'hash-mismatch': '下载的安装包校验不通过（已删除），请重新下载',
         }[r.reason] || '未知错误';
+        // v0.6.7（T-031）：写入被拒（EPERM/EACCES）时给出可操作提示
+        if (r.reason === 'download-failed' && r.message) {
+          if (/EPERM|EACCES/.test(r.message)) {
+            reasonText = '安装包写入被拒绝（可能被其他程序或安全软件占用/拦截）。请关闭可能占用文件的程序后重试，或到 GitHub Releases 手动下载安装包。';
+          } else {
+            reasonText += `（${r.message}）`;
+          }
+        }
         dialog.showMessageBox(mainWindow, {
           type: 'error',
           title: APP_NAME,

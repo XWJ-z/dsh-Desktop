@@ -14,8 +14,8 @@
 
 ### 🪟 Windows 桌面版
 
-<a href="https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.6.6/DSH-Desktop-Setup-0.6.6.exe">
-<img src="https://img.shields.io/badge/下载安装包-DSH--Desktop--Setup--0.6.6.exe%20%E7%BA%A6113MB-2ea44f?style=for-the-badge&logo=windows&logoColor=white" alt="下载 DSH-Desktop 安装包"/>
+<a href="https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.7.4/DSH-Desktop-Setup-0.7.4.exe">
+<img src="https://img.shields.io/badge/下载安装包-DSH--Desktop--Setup--0.7.4.exe%20%E7%BA%A6114MB-2ea44f?style=for-the-badge&logo=windows&logoColor=white" alt="下载 DSH-Desktop 安装包"/>
 </a>
 
 双击运行即可安装 · 无需预装 DSH / Node.js / npm · 首次运行联网自动拉取 DSH 依赖
@@ -47,13 +47,16 @@ DSH 本身是运行在浏览器中的 Web 界面（`http://127.0.0.1:3080`）。
 - 🔌 **自动探测端口**：默认 `127.0.0.1:3080`，被占用时自动顺延
 - 📦 **纯套壳，DSH 不内置**：壳自带 Node+npm 环境，DSH 由 `npm install @deepseek-ai/dsh@<版本>` 安装到用户数据目录（与官方 `npx` 同机制）；目标电脑无需预装 Node/npm
 - 🔄 **更新 DSH 不重打包壳**：改 `windows/app/config.json` 里的 `dshVersion` 即可切换 DSH 版本，壳代码不受 DSH 版本影响（官方破坏性更新也能从容应对）
-- ⬆️ **检查更新（v0.5.3+）**：「帮助 → 检查更新」现代窗口同屏展示 **DSH**（npm 源最新版，一键升级改 config 重启安装）与 **DSH-Desktop 壳**（GitHub version.json 三源并发检查——jsDelivr/GitHub API/raw.githubusercontent 取最高版本，规避 CDN 缓存旧版漏报；多镜像下载 + SHA256 校验）两侧更新状态，带徽章/更新日志/下载进度条
+- ⬆️ **检查更新（v0.5.3+）**：「帮助 → 检查更新」现代窗口同屏展示 **DSH**（npm 源最新版，一键升级改 config 重启安装）与 **DSH-Desktop 壳**（GitHub version.json 三源并发检查——jsDelivr/GitHub API/raw.githubusercontent 取最高版本，规避 CDN 缓存旧版漏报；多镜像下载 + SHA256 校验 + **断点续传（v0.7.2+，中断自动续传）**）两侧更新状态，带徽章/更新日志/下载进度条
 - 💬 **帮助菜单（v0.5.3+，v0.6.4 起更名）**：检查更新、联系我们（QQ 群二维码大图 + 一键复制群号）、关于（现代窗口：版本/DSH/服务地址）、DeepSeek 官网、DSH 项目主页
 - 📂 **常用目录直达**：文件菜单可一键打开日志目录 / 数据目录
-- 🌐 **网页打开（v0.5.9+）**：菜单栏「网页打开」按钮，一键在系统默认浏览器中打开 DSH 网页界面
+- 🌐 **网页打开（v0.5.9+，v0.7.1 起改按钮）**：主窗口**右上角「网页打开」醒目按钮**（品牌蓝色渐变胶囊），一键在系统默认浏览器中打开 DSH 网页界面
 - 🗔️ **系统托盘（v0.6.0+）**：关闭窗口最小化到托盘，DSH 服务后台继续运行；托盘菜单可打开主界面 / 检查更新 / 开机自启 / 退出（退出前弹确认，避免误退导致服务停止）
 - ⚡ **开机自启（v0.6.0+）**：设置菜单 / 托盘菜单勾选后开机自动启动（写入注册表 Run 键，安装版生效）；v0.6.6 起自启为**静默启动**——不弹窗口，后台运行 + 托盘常驻
 - 🪟 **窗口状态记忆（v0.6.6+）**：记住主窗口位置/大小/最大化状态，下次启动还原；记忆位置在屏幕外时自动兜底默认尺寸
+- 🩺 **一键诊断报告（v0.7.0+）**：帮助菜单「生成诊断报告」一键收集环境信息（版本/DSH/运行器/端口/系统）+ 最近日志 + 配置（敏感字段自动打码），复制到剪贴板并保存本地 —— 学员出问题直接发群里，免来回询问
+- 💾 **数据备份（v0.7.0+）**：文件菜单「备份数据…」一键打包 DSH 用户数据（~/.dsh）+ 设置到 tar.gz（仅相对路径、不含可重建的运行时/安装包/日志，体积可控），换机迁移超方便
+- 📥 **数据恢复（v0.7.0+）**：文件菜单「恢复数据…」选择备份包，校验格式后还原到本机固定位置；原数据改名 `.bak` 保留不覆盖；版本差异提示 + 一键重启生效；DSH 服务运行时先提示退出再恢复（v0.7.1+）
 - ⚙️ **设置菜单（v0.6.1+）**：开机自启 / 最小化到托盘 / 启动时检查更新开关；「关闭时总是询问」可清除关闭行为记忆
 - 🔔 **启动检查更新（v0.6.5+）**：启动自动检查新版本，发现新版弹窗询问「立即更新 / 稍后」，可设置菜单关闭（默认开启）
 - 🪟 **关闭窗口询问（v0.6.1+）**：点 X 弹窗选择「退出」或「关闭到托盘」，可勾选「记住我的选择」下次直接执行
@@ -120,7 +123,7 @@ npm run installer
 # 产物位于 windows/app/dist/installer/DSH-Desktop-Setup-<version>.exe
 ```
 
-把 **DSH-Desktop-Setup-0.6.6.exe** 拷贝到目标电脑，双击运行即可：
+把 **DSH-Desktop-Setup-0.7.4.exe** 拷贝到目标电脑，双击运行即可：
 
 - 目标电脑**无需预装 DSH / Node.js / npm**（壳自带完整 Electron + npm 环境）
 - 默认安装到 `%LOCALAPPDATA%\Programs\DSH-Desktop`（**无需管理员权限**），
