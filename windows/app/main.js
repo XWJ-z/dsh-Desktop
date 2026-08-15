@@ -913,18 +913,31 @@ async function downloadShellUpdate(win, onProgress) {
 }
 
 // ---------------------------------------------------------------------------
-// 壳（DSH-Desktop）自动更新（v0.5）：GitHub version.json 多源回退 + 镜像下载
+// 壳（DSH-Desktop）自动更新（v0.5）：GitHub version.json 三源并发 + 镜像下载
 // 与「检查 DSH 更新」（官方 DSH 包）完全独立：本区检查的是壳自身版本
-// v0.5.8：多源回退（jsDelivr CDN 优先，raw.githubusercontent 兜底），
-// 取可达源中版本号最高者，规避 jsDelivr @main 解析缓存卡死导致漏报更新。
+// v0.5.9：三源并发（jsDelivr @main 快但会卡缓存 / api.github.com 国内最稳、
+// 永远最新 / raw.githubusercontent 兜底），取可达源中版本号最高者，
+// 规避 jsDelivr @main 解析缓存卡死导致漏报更新。
 // ---------------------------------------------------------------------------
 const SHELL_UPDATE_URLS = [
-  'https://cdn.jsdelivr.net/gh/XWJ-z/dsh-Desktop@main/version.json',
-  'https://raw.githubusercontent.com/XWJ-z/dsh-Desktop/main/version.json',
+  {
+    name: 'jsDelivr',
+    url: 'https://cdn.jsdelivr.net/gh/XWJ-z/dsh-Desktop@main/version.json',
+  },
+  {
+    // api.github.com：Accept raw+json 直接返回文件原文，无 CDN 缓存，永远最新
+    name: 'GitHub API',
+    url: 'https://api.github.com/repos/XWJ-z/dsh-Desktop/contents/version.json?ref=main',
+    headers: { 'User-Agent': 'DSH-Desktop', Accept: 'application/vnd.github.raw+json' },
+  },
+  {
+    name: 'raw.githubusercontent',
+    url: 'https://raw.githubusercontent.com/XWJ-z/dsh-Desktop/main/version.json',
+  },
 ];
 
 /**
- * 查询壳最新版本（多源回退：并发请求全部更新源，取版本号最高者）。
+ * 查询壳最新版本（三源并发：并发请求全部更新源，取版本号最高者）。
  * 返回 { version, download_urls, release_notes, force, hash } 或 null（全部失败/超时静默）。
  */
 function fetchLatestShellVersion() {
@@ -938,13 +951,14 @@ function fetchLatestShellVersion() {
       hash: String(info.hash || '').toLowerCase(),
     };
   };
-  return Promise.all(SHELL_UPDATE_URLS.map((u) => fetchJson(u).then(parse)))
+  return Promise.all(SHELL_UPDATE_URLS.map((s) => fetchJson(s.url, 8000, s.headers || {}).then(parse)))
     .then((results) => {
       const valid = results.filter(Boolean);
       if (valid.length === 0) return null;
       valid.sort((a, b) => (compareSemver(a.version, b.version) < 0 ? 1 : -1));
       const best = valid[0];
-      appendLog('info', `版本检查：${valid.length} 个更新源可达，取最高 v${best.version}`);
+      const detail = SHELL_UPDATE_URLS.map((s, i) => `${s.name}=${results[i] ? results[i].version : '×'}`).join(', ');
+      appendLog('info', `版本检查：${valid.length}/3 源可达（${detail}），取最高 v${best.version}`);
       return best;
     });
 }

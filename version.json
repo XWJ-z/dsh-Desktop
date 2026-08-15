@@ -1,8 +1,8 @@
 {
   "version": "0.5.9",
-  "release_notes": "1. 新增：菜单栏「网页打开」按钮，点击后使用系统默认浏览器打开 DSH 网页界面\n2. 修复：版本检查逻辑（最新<当前不再误提示可更新）\n3. 修复：关于窗口与菜单的「项目主页」链接指向本项目\n4. 优化：更新窗口「壳」改为「桌面端」；首次启动文案\n5. 修复：应用图标多尺寸、安装版图片资源内置；移除失效镜像",
+  "release_notes": "1. 新增：壳版本检查三源并发（jsDelivr / GitHub API / raw.githubusercontent）取最高版本，规避 CDN 缓存旧版漏报\n2. 新增：菜单栏「网页打开」按钮，点击后使用系统默认浏览器打开 DSH 网页界面\n3. 修复：版本检查逻辑（最新<当前不再误提示可更新）\n4. 修复：关于窗口与菜单的「项目主页」链接指向本项目\n5. 优化：更新窗口「壳」改为「桌面端」；首次启动文案\n6. 修复：应用图标多尺寸、安装版图片资源内置；移除失效镜像",
   "force": false,
-  "hash": "d5a66e03a8fe3354157c626e177f5d7f9785115be5a4649d653809ea9fdedc7b",
+  "hash": "65d4e52cadba960d2873773fffcb9f0047a3109212aba4f2dc7b53edace39e0f",
   "download_urls": [
     "https://ghfast.top/https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.5.9/DSH-Desktop-Setup-0.5.9.exe",
     "https://gh-proxy.com/https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.5.9/DSH-Desktop-Setup-0.5.9.exe"

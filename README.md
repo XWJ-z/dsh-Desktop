@@ -4,7 +4,7 @@
 
 # 🐋 DSH-Desktop
 
-**DeepSeek Harness Web GUI（DSH）的 Windows 桌面版** —— 一键安装，开箱即用
+**DeepSeek Harness Web GUI（DSH）** —— Windows 桌面版 & 飞牛 OS 原生应用，一键安装，开箱即用
 
 [![GitHub Release](https://img.shields.io/github/v/release/XWJ-z/dsh-Desktop?style=for-the-badge&label=最新版本)](https://github.com/XWJ-z/dsh-Desktop/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/XWJ-z/dsh-Desktop/total?style=for-the-badge&label=累计下载)](https://github.com/XWJ-z/dsh-Desktop/releases)
@@ -34,24 +34,40 @@
 
 </div>
 
+## 🪟 Windows 桌面版
+
 将 **DeepSeek Harness Web GUI（DSH）** 封装成 Windows 桌面应用（**DSH-Desktop**）的工程——**纯套壳**：壳只提供运行环境，DSH 本体由 npm 按配置的版本提供。
 
 DSH 本身是运行在浏览器中的 Web 界面（`http://127.0.0.1:3080`）。本工程用 **Electron** 写了一个原生外壳：自带 Node+npm 环境，启动时自动用 `npm install` 拉取指定版本的 `@deepseek-ai/dsh`（等价于官方一键使用 `npx @deepseek-ai/dsh web`），然后拉起 `dsh web` 服务，等待就绪后在独立窗口中承载完整的 GUI，关闭窗口即停止服务。应用使用 DSH-Desktop 品牌图标。
 
-## 特性
+### Windows 特性
 
 - 🐋 **DeepSeek 品牌**：官方鲸鱼图标，应用名 DSH-Desktop
 - 🖥️ **一键启动**：双击运行，自动拉取并启动 DSH 服务、打开桌面窗口，无需手动开终端
 - 🔌 **自动探测端口**：默认 `127.0.0.1:3080`，被占用时自动顺延
 - 📦 **纯套壳，DSH 不内置**：壳自带 Node+npm 环境，DSH 由 `npm install @deepseek-ai/dsh@<版本>` 安装到用户数据目录（与官方 `npx` 同机制）；目标电脑无需预装 Node/npm
 - 🔄 **更新 DSH 不重打包壳**：改 `windows/app/config.json` 里的 `dshVersion` 即可切换 DSH 版本，壳代码不受 DSH 版本影响（官方破坏性更新也能从容应对）
-- ⬆️ **更新菜单（v0.5.3+）**：「更新 → 检查更新」现代窗口同屏展示 **DSH**（npm 源最新版，一键升级改 config 重启安装）与 **DSH-Desktop 壳**（GitHub version.json 经 jsDelivr 国内可达，多镜像下载 + SHA256 校验）两侧更新状态，带徽章/更新日志/下载进度条
+- ⬆️ **更新菜单（v0.5.3+）**：「更新 → 检查更新」现代窗口同屏展示 **DSH**（npm 源最新版，一键升级改 config 重启安装）与 **DSH-Desktop 壳**（GitHub version.json 三源并发检查——jsDelivr/GitHub API/raw.githubusercontent 取最高版本，规避 CDN 缓存旧版漏报；多镜像下载 + SHA256 校验）两侧更新状态，带徽章/更新日志/下载进度条
 - 💬 **关于我们菜单（v0.5.3+）**：联系我们（QQ 群二维码大图 + 一键复制群号）、关于（现代窗口：版本/DSH/服务地址）、DeepSeek 官网、DSH 项目主页
 - 📂 **常用目录直达**：文件菜单可一键打开日志目录 / 数据目录
 - 🌐 **网页打开（v0.5.9+）**：菜单栏「网页打开」按钮，一键在系统默认浏览器中打开 DSH 网页界面
 - 📜 **内置日志**：DSH 服务日志落盘到用户数据目录（本地时间戳，按当天日期分文件），可实时在加载页查看
 - 🚀 **启动界面友好**：loading 页显示启动阶段与下载进度（MB 增长）、壳/DSH 版本号；日志区可折叠、出错自动展开；logo 入场动画
 - 🔒 **安全默认**：仅允许访问本地 DSH 服务，外部链接走系统浏览器；默认关闭遥测
+
+## 🐮 飞牛 OS（fnOS）应用
+
+**DeepSeek Harness Web GUI（DSH）的飞牛 OS 原生应用**，一键安装，开箱即用。
+
+- 📦 **原生应用包**：`dsh-0.2.5.fpk`（fnpack 打包，应用名 `dsh` / DeepSeek Harness）
+- 🖥️ **平台要求**：飞牛 OS（fnOS）v1.1.3100+，全平台
+- ⚙️ **运行依赖**：`nodejs_v22`（安装时自动关联）
+- 🚀 **桌面入口**：`dsh.main`，支持停止应用（ctl_stop）
+- 🏷️ **应用信息**：开发者 DeepSeek · 发布者 清零 · 来源 thirdparty
+
+**安装方式**：下载 [dsh-0.2.5.fpk](https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.5.9/dsh-0.2.5.fpk) → 在飞牛 OS 应用中心手动安装。
+
+> 开发打包、真机测试、上架说明见 `fnos/dsh-fnos/README.md`（`fnos/` 目录含应用源码、`fnpack.exe` 打包工具、回归验证脚本与 `release/` 发布产物；`fnos/代码审查/` 为内部文档不上传）。
 
 ## 快速开始
 
@@ -178,7 +194,7 @@ dsh-Desktop/
 │   │   └── decisions/          # 架构决策记录（ADR）
 │   └── 代码审查/               # 审查报告与修复任务清单
 ├── version.json                # 壳自动更新清单（GitHub 根目录，jsDelivr 可达）
-├── fnos/                       # 飞牛 OS（fnOS）版本（待开发）
+├── fnos/                       # 飞牛 OS（fnOS）应用开发（dsh-fnos：源码 + 工具 + release；代码审查不上传）
 ├── README.md
 └── .gitignore
 ```
@@ -221,9 +237,9 @@ dsh-Desktop/
 
 ## 环境要求
 
-- Windows 10/11 x64
-- 首次运行需联网（下载 DSH 依赖）；此后离线可用
-- Node.js ≥ 20（仅开发/打包需要；**运行期无需任何外部环境**——壳内置 Node 运行时）
+- 🪟 **Windows**：Windows 10/11 x64；首次运行需联网（下载 DSH 依赖）；此后离线可用
+- 🐮 **飞牛 OS**：fnOS ≥ 1.1.3100，安装 `dsh-0.2.5.fpk`（自动关联 `nodejs_v22`）
+- 开发/打包需 Node.js ≥ 20（**运行期无需任何外部环境**——壳内置 Node 运行时）
 
 ## 相关链接
 
