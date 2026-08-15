@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' file: data:; style-src 'unsafe-inline'; script-src 'self' file:; img-src 'self' file: data:" />
+  <title>关于 DSH-Desktop</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+      background: radial-gradient(1200px 600px at 50% -10%, #1a2233 0%, #0f1115 60%);
+      color: #dbe2f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 20px;
+      text-align: center;
+      user-select: none;
+    }
+    .logo {
+      width: 72px; height: 72px; border-radius: 18px;
+      object-fit: contain; box-shadow: 0 12px 40px rgba(90,110,255,0.35);
+      margin-bottom: 14px;
+    }
+    h1 { font-size: 20px; font-weight: 600; margin-bottom: 2px; }
+    .version-tag { font-size: 14px; color: #6d8dff; font-weight: 600; margin-bottom: 18px; }
+    .card {
+      width: 100%; max-width: 340px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 18px 20px;
+      margin-bottom: 18px;
+    }
+    .row {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 13px; padding: 6px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .row:last-child { border-bottom: none; }
+    .row .label { color: #8b96ad; }
+    .row .value { color: #dbe2f0; font-weight: 500; text-align: right; word-break: break-all; }
+    .badge {
+      font-size: 10px; padding: 1px 8px; border-radius: 999px; margin-left: 6px; font-weight: 600;
+    }
+    .badge.update { color: #9db4ff; background: rgba(109,141,255,0.12); border: 1px solid rgba(109,141,255,0.4); }
+    .btn-row { display: flex; gap: 10px; width: 100%; max-width: 340px; }
+    .btn {
+      flex: 1; padding: 10px 0; border-radius: 8px; font-size: 13px; font-weight: 600;
+      cursor: pointer; border: none; text-align: center; text-decoration: none; color: #fff;
+      background: linear-gradient(180deg, #6d8dff, #5a7cf0);
+    }
+    .btn:hover { filter: brightness(1.1); }
+    .btn.ghost {
+      background: transparent; color: #8b96ad;
+      border: 1px solid rgba(255,255,255,0.18);
+    }
+    .btn.ghost:hover { color: #dbe2f0; border-color: rgba(255,255,255,0.35); }
+    .footer { font-size: 11px; color: #5a6478; margin-top: 16px; line-height: 1.7; }
+  </style>
+</head>
+<body>
+  <img class="logo" id="logo" alt="" />
+  <h1>DSH-Desktop</h1>
+  <div class="version-tag" id="app-version">v-</div>
+
+  <div class="card">
+    <div class="row"><span class="label">DSH 运行时</span><span class="value" id="dsh-ver">-</span></div>
+    <div class="row"><span class="label">DSH 最新</span><span class="value" id="dsh-latest">-</span></div>
+    <div class="row">
+      <span class="label">DSH-Desktop 最新</span>
+      <span class="value" id="shell-latest">-<span class="badge update" id="shell-newer-badge" style="display:none">可更新</span></span>
+    </div>
+    <div class="row"><span class="label">服务地址</span><span class="value" id="service-url">-</span></div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn" id="check-update-btn">检查更新</button>
+    <a class="btn ghost" id="home-btn" href="#">项目主页</a>
+  </div>
+
+  <div class="footer">
+    DeepSeek Harness Web GUI 的桌面套壳，基于 Electron<br />
+    DSH 由 npm 按配置版本提供 · © 2026 DeepSeek
+  </div>
+
+  <script src="about.js"></script>
+</body>
+</html>

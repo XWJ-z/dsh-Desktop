@@ -14,8 +14,8 @@
 
 ### ⬇️ 下载安装（Windows）
 
-<a href="https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.5.2/DSH-Desktop-Setup-0.5.2.exe">
-<img src="https://img.shields.io/badge/下载安装包-DSH--Desktop--Setup--0.5.2.exe%20%E7%BA%A6120MB-2ea44f?style=for-the-badge&logo=windows&logoColor=white" alt="下载 DSH-Desktop 安装包"/>
+<a href="https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.5.3/DSH-Desktop-Setup-0.5.3.exe">
+<img src="https://img.shields.io/badge/下载安装包-DSH--Desktop--Setup--0.5.3.exe%20%E7%BA%A6120MB-2ea44f?style=for-the-badge&logo=windows&logoColor=white" alt="下载 DSH-Desktop 安装包"/>
 </a>
 
 双击运行即可安装 · 无需预装 DSH / Node.js / npm · 首次运行联网自动拉取 DSH 依赖
@@ -26,7 +26,7 @@
 
 将 **DeepSeek Harness Web GUI（DSH）** 封装成 Windows 桌面应用（**DSH-Desktop**）的工程——**纯套壳**：壳只提供运行环境，DSH 本体由 npm 按配置的版本提供。
 
-DSH 本身是运行在浏览器中的 Web 界面（`http://127.0.0.1:3080`）。本工程用 **Electron** 写了一个原生外壳：自带 Node+npm 环境，启动时自动用 `npm install` 拉取指定版本的 `@deepseek-ai/dsh`（等价于官方一键使用 `npx @deepseek-ai/dsh web`），然后拉起 `dsh web` 服务，等待就绪后在独立窗口中承载完整的 GUI，关闭窗口即停止服务。应用图标使用 DeepSeek 官方鲸鱼标识。
+DSH 本身是运行在浏览器中的 Web 界面（`http://127.0.0.1:3080`）。本工程用 **Electron** 写了一个原生外壳：自带 Node+npm 环境，启动时自动用 `npm install` 拉取指定版本的 `@deepseek-ai/dsh`（等价于官方一键使用 `npx @deepseek-ai/dsh web`），然后拉起 `dsh web` 服务，等待就绪后在独立窗口中承载完整的 GUI，关闭窗口即停止服务。应用使用 DSH-Desktop 品牌图标。
 
 ## 特性
 
@@ -35,10 +35,9 @@ DSH 本身是运行在浏览器中的 Web 界面（`http://127.0.0.1:3080`）。
 - 🔌 **自动探测端口**：默认 `127.0.0.1:3080`，被占用时自动顺延
 - 📦 **纯套壳，DSH 不内置**：壳自带 Node+npm 环境，DSH 由 `npm install @deepseek-ai/dsh@<版本>` 安装到用户数据目录（与官方 `npx` 同机制）；目标电脑无需预装 Node/npm
 - 🔄 **更新 DSH 不重打包壳**：改 `windows/app/config.json` 里的 `dshVersion` 即可切换 DSH 版本，壳代码不受 DSH 版本影响（官方破坏性更新也能从容应对）
-- ⬆️ **检查 DSH 更新**：帮助菜单「检查 DSH 更新」查询 npm 源最新版并一键升级（备份 config.json 后改写版本号、重启自动安装），启动后静默检查、有新版时菜单提示
-- 🔄 **检查 DSH-Desktop 更新**：壳自身版本自动检查（GitHub version.json 经 jsDelivr 国内可达），发现新版提示更新日志、多镜像加速下载、SHA256 校验后打开安装包
-- 💬 **联系我们**：帮助菜单查看 QQ 用户群二维码并一键复制群号
-- 📂 **常用目录直达**：文件菜单可一键打开日志目录 / 数据目录；帮助菜单直达 DeepSeek 官网与 DSH 项目主页
+- ⬆️ **更新菜单（v0.5.3+）**：「更新 → 检查更新」现代窗口同屏展示 **DSH**（npm 源最新版，一键升级改 config 重启安装）与 **DSH-Desktop 壳**（GitHub version.json 经 jsDelivr 国内可达，多镜像下载 + SHA256 校验）两侧更新状态，带徽章/更新日志/下载进度条
+- 💬 **关于我们菜单（v0.5.3+）**：联系我们（QQ 群二维码大图 + 一键复制群号）、关于（现代窗口：版本/DSH/服务地址）、DeepSeek 官网、DSH 项目主页
+- 📂 **常用目录直达**：文件菜单可一键打开日志目录 / 数据目录
 - 📜 **内置日志**：DSH 服务日志落盘到用户数据目录（本地时间戳，按当天日期分文件），可实时在加载页查看
 - 🚀 **启动界面友好**：loading 页显示启动阶段与下载进度（MB 增长）、壳/DSH 版本号；日志区可折叠、出错自动展开；logo 入场动画
 - 🔒 **安全默认**：仅允许访问本地 DSH 服务，外部链接走系统浏览器；默认关闭遥测
@@ -87,7 +86,7 @@ npm run installer
 # 产物位于 windows/app/dist/installer/DSH-Desktop-Setup-<version>.exe
 ```
 
-把 **DSH-Desktop-Setup-0.5.2.exe** 拷贝到目标电脑，双击运行即可：
+把 **DSH-Desktop-Setup-0.5.3.exe** 拷贝到目标电脑，双击运行即可：
 
 - 目标电脑**无需预装 DSH / Node.js / npm**（壳自带完整 Electron + npm 环境）
 - 默认安装到 `%LOCALAPPDATA%\Programs\DSH-Desktop`（**无需管理员权限**），
@@ -114,25 +113,16 @@ npm run installer
 - 壳代码、安装包都不需要重新构建——DSH 与壳完全解耦；
 - 官方破坏性更新时，先在本机验证新版本可用，再更新版本号即可。
 
-### 菜单内检查更新（v0.4+）
+### 菜单内检查更新（v0.5.3+）
 
-帮助菜单提供 **「检查 DSH 更新」**：自动查询 npm 源上的最新版，与当前 DSH 版本对比：
+「更新」菜单 → **「检查更新」**：现代窗口同屏展示两侧更新状态（卡片 + 徽章 + 进度条）：
 
-- 有新版 → 弹窗显示 `当前 → 最新`，点【立即升级】自动备份并改写
-  `config.json` 的 `dshVersion`，随后重启应用自动安装新版（无需手动改文件）；
-- 无新版 → 提示「已是最新版本」；断网 → 友好提示，不影响使用；
-- 应用启动后会**静默检查一次**，发现新版时菜单项显示「检查 DSH 更新（有新版本）」；
-- 关于对话框（帮助 → 关于 DSH-Desktop）同步显示 DSH 最新版本，并提供「检查更新」按钮。
-
-### 壳自动更新（v0.5+）
-
-帮助菜单 **「检查 DSH-Desktop 更新」** 检查**壳自身**的新版本（与上面的 DSH 官方包更新无关）：
-
-- 版本来源：仓库根 `version.json`，经 jsDelivr CDN 国内可达；
-- 有新版 → 显示当前/最新版本与更新日志，点【下载更新】从镜像列表逐个尝试下载，
-  完成后校验 SHA256 并打开安装包（用户按向导完成升级）；
-- 启动后静默检查一次，有新版时菜单项显示「检查 DSH-Desktop 更新（有新版本）」；
-- 更新提示可跳过（`force: false`），断网静默不影响使用。
+- **DSH 卡片**：当前/最新版本 + 更新日志，有新版点【立即升级】自动备份并改写
+  `config.json` 的 `dshVersion`，随后重启应用自动安装新版；
+- **DSH-Desktop 壳卡片**：当前/最新版本 + 更新内容，点【下载更新】从镜像列表逐个
+  尝试下载（进度条实时显示），完成后校验 SHA256 并打开安装包（用户按向导完成升级）；
+- 应用启动后**静默检查一次**，有新版时菜单项显示「检查更新（有新版本）」；
+- 断网 → 卡片显示"查询失败"，不影响使用。
 
 **发布新版本操作（维护者）：**
 1. `windows/app/package.json` 版本号递增 → `npm run installer` 产出新安装包；
@@ -156,6 +146,9 @@ dsh-Desktop/
 │   │   ├── preload.js          # 预加载脚本（contextBridge 最小暴露）
 │   │   ├── electron-builder.yml# 安装程序配置（NSIS，asar 关闭，extraResources 内置 Node）
 │   │   ├── renderer/loading.html # 启动加载页（内联 logo + 阶段指示器 + 实时日志）
+│   │   ├── renderer/update.html  # 更新窗口（v0.5.3 现代化：壳+DSH 卡片/徽章/进度条）
+│   │   ├── renderer/contact.html # 联系我们窗口（v0.5.3：二维码大图 + 复制群号）
+│   │   ├── renderer/about.html   # 关于窗口（v0.5.3：版本信息卡片 + 链接按钮）
 │   │   ├── resources/node/     # 内置 Node 运行时（fetch-node.js 下载，node.exe）
 │   │   ├── scripts/
 │   │   │   ├── render-icon.js  # DeepSeek 品牌图标栅格化（SVG → png/ico）

@@ -49,6 +49,9 @@ process.on('unhandledRejection', (reason) => {
 // ---------------------------------------------------------------------------
 let mainWindow = null;          // 主窗口（GUI）
 let loadingWindow = null;       // 启动加载窗口
+let updateWin = null;           // 更新窗口（v0.5.3 现代化）
+let contactWin = null;          // 联系我们窗口（v0.5.3 现代化）
+let aboutWin = null;            // 关于窗口（v0.5.3 现代化）
 let serverChild = null;         // dsh web 服务子进程
 let resolvedPort = DEFAULT_PORT;
 let logLines = [];
@@ -767,42 +770,96 @@ function updateDshVersion(newVersion) {
   } catch { return false; }
 }
 
-/** 菜单项：帮助 → 检查 DSH 更新（带 10 秒防抖） */
-async function checkDshUpdate(win) {
-  const owner = win || mainWindow; // 对话框父窗口兜底
-  const now = Date.now();
-  if (now - lastCheckAt < CHECK_UPDATE_COOLDOWN_MS) return; // 防抖，防止连点
-  lastCheckAt = now;
+// ---------------------------------------------------------------------------
+// 更新窗口逻辑层（v0.5.3）：查询/升级/下载，返回数据不弹 dialog，UI 由 update.html 负责
+// ---------------------------------------------------------------------------
+/**
+ * 查询壳+DSH 两侧更新信息（并发，各自静默）。
+ * 返回 { dsh: { current, latest, notes, updating }, shell: { current, latest, notes, force, downloading } }
+ *  - latest 为 null 表示查询失败/无源
+ */
+async function queryUpdateInfo() {
+  const cfg = readShellConfig();
+  const [dshLatest, shellLatest] = await Promise.all([
+    fetchLatestDshVersion(),
+    fetchLatestShellVersion(),
+  ]);
+  const dshCurrent = installedDshVersion() ?? cfg.dshVersion;
+  const dshNotes = dshLatest && compareSemver(dshCurrent, dshLatest) < 0
+    ? `可升级到 ${dshLatest}（重启自动安装）`
+    : '';
+  return {
+    dsh: {
+      current: dshCurrent,
+      latest: dshLatest,
+      notes: dshNotes,
+      updating: false,
+    },
+    shell: {
+      current: app.getVersion(),
+      latest: shellLatest ? shellLatest.version : null,
+      notes: shellLatest ? shellLatest.releaseNotes : '',
+      force: shellLatest ? shellLatest.force : false,
+      downloading: false,
+    },
+  };
+}
+
+/** DSH 升级：备份+改写 config.json 的 dshVersion → relaunch 重启安装 */
+function upgradeDshVersion() {
   const cfg = readShellConfig();
   const current = installedDshVersion() ?? cfg.dshVersion;
-  const latest = await fetchLatestDshVersion();
-  if (!latest) {
-    dialog.showMessageBox(owner, { type: 'info', title: '检查更新',
-      message: '无法连接 npm 源', detail: '请检查网络后重试。' });
-    return;
-  }
-  const cmp = compareSemver(current, latest);
-  if (cmp >= 0) {
-    dialog.showMessageBox(owner, { type: 'info', title: '检查更新',
-      message: '已是最新版本', detail: `DSH：${current}` });
-    return;
-  }
-  const r = dialog.showMessageBoxSync(owner, {
-    type: 'question', title: '发现新版本',
-    message: `DSH 有新版本：${current} → ${latest}`,
-    detail: '升级后将修改 app/config.json 的 dshVersion，重启应用自动安装新版。\n是否立即升级？',
-    buttons: ['立即升级', '稍后'], cancelId: 1,
-  });
-  if (r === 0) {
+  return fetchLatestDshVersion().then((latest) => {
+    if (!latest || compareSemver(current, latest) >= 0) return { ok: false, reason: 'no-update' };
     if (updateDshVersion(latest)) {
-      dialog.showMessageBoxSync(owner, { type: 'info', title: '升级',
-        message: '配置已更新', detail: '应用将重启以安装 DSH 新版本。' });
-      app.relaunch(); app.exit(0);
-    } else {
-      dialog.showMessageBoxSync(owner, { type: 'error', title: '升级',
-        message: '改写 config.json 失败', detail: '请手动修改 dshVersion 后重启。' });
+      return { ok: true, from: current, to: latest };
+    }
+    return { ok: false, reason: 'write-failed' };
+  });
+}
+
+/** 壳更新下载：多镜像逐个 fallback → SHA256 校验 → 打开安装包；进度经 onProgress(0~100) 回调 */
+async function downloadShellUpdate(win, onProgress) {
+  const owner = win || mainWindow;
+  const info = await fetchLatestShellVersion();
+  if (!info) return { ok: false, reason: 'fetch-failed' };
+  const current = app.getVersion();
+  if (compareSemver(current, info.version) >= 0) return { ok: false, reason: 'no-update' };
+
+  const dest = shellDownloadDest(info);
+  const urls = info.downloadUrls.length > 0
+    ? info.downloadUrls
+    : [`https://mirror.ghproxy.com/https://github.com/XWJ-z/dsh-Desktop/releases/download/v${info.version}/DSH-Desktop-Setup-${info.version}.exe`];
+  let lastErr = null;
+  for (const url of urls) {
+    try {
+      appendLog('info', `开始下载 DSH-Desktop v${info.version}：${url}`);
+      await downloadFile(url, dest, (ratio) => {
+        if (onProgress) onProgress(Math.round(ratio * 100));
+        appendLog('info', `下载进度：${Math.round(ratio * 100)}%`);
+      });
+      lastErr = null;
+      break;
+    } catch (err) {
+      lastErr = err;
+      appendLog('warn', `下载失败（${url}）：${err.message}，尝试下一个镜像…`);
     }
   }
+  if (lastErr) return { ok: false, reason: 'download-failed', message: lastErr.message };
+
+  // SHA256 校验（hash 缺失时跳过）
+  if (info.hash) {
+    const actual = await sha256File(dest);
+    if (actual !== info.hash) {
+      rmQuiet(dest);
+      appendLog('error', `安装包 SHA256 校验失败：期望 ${info.hash}，实际 ${actual}`);
+      return { ok: false, reason: 'hash-mismatch' };
+    }
+    appendLog('info', '安装包 SHA256 校验通过');
+  }
+  appendLog('info', `DSH-Desktop v${info.version} 下载完成：${dest}`);
+  shell.openPath(dest);
+  return { ok: true, version: info.version, path: dest };
 }
 
 // ---------------------------------------------------------------------------
@@ -885,122 +942,56 @@ function shellDownloadDest(info) {
   return file;
 }
 
-/**
- * 菜单项：帮助 → 检查 DSH-Desktop 更新（壳自身版本）
- * 流程：查 version.json → 比较 → 有新版弹窗（更新日志+下载）→ 多镜像逐个下载
- *       → SHA256 校验 → 打开安装包。失败均静默/友好提示，不打扰。
- */
-async function checkShellUpdate(win) {
-  const owner = win || mainWindow;
-  const info = await fetchLatestShellVersion();
-  if (!info) {
-    dialog.showMessageBox(owner, { type: 'info', title: '检查 DSH-Desktop 更新',
-      message: '无法连接更新源', detail: '请检查网络后重试（jsDelivr 国内可达）。' });
-    return;
-  }
-  const current = app.getVersion();
-  if (compareSemver(current, info.version) >= 0) {
-    dialog.showMessageBox(owner, { type: 'info', title: '检查 DSH-Desktop 更新',
-      message: '已是最新版本', detail: `DSH-Desktop：${current}` });
-    return;
-  }
-  // 有新版：弹更新确认（force 时不可跳过）
-  const buttons = info.force ? ['下载更新', '退出'] : ['下载更新', '稍后'];
-  const r = dialog.showMessageBoxSync(owner, {
-    type: 'question',
-    title: `发现新版本 v${info.version}`,
-    message: `DSH-Desktop 有新版本：${current} → ${info.version}`,
-    detail: info.releaseNotes
-      ? `更新内容：\n${info.releaseNotes}\n\n是否立即下载更新？`
-      : '是否立即下载更新？',
-    buttons,
-    cancelId: 1,
-  });
-  if (r !== 0) return; // 稍后 / 退出
-
-  // 下载：多镜像逐个 fallback，镜像 URL 逐个尝试
-  const dest = shellDownloadDest(info);
-  const urls = info.downloadUrls.length > 0
-    ? info.downloadUrls
-    : [`https://mirror.ghproxy.com/https://github.com/XWJ-z/dsh-Desktop/releases/download/v${info.version}/DSH-Desktop-Setup-${info.version}.exe`];
-  let lastErr = null;
-  for (const url of urls) {
-    try {
-      appendLog('info', `开始下载 DSH-Desktop v${info.version}：${url}`);
-      await downloadFile(url, dest, (ratio) => {
-        appendLog('info', `下载进度：${Math.round(ratio * 100)}%`);
-      });
-      lastErr = null;
-      break;
-    } catch (err) {
-      lastErr = err;
-      appendLog('warn', `下载失败（${url}）：${err.message}，尝试下一个镜像…`);
-    }
-  }
-  if (lastErr) {
-    dialog.showMessageBoxSync(owner, { type: 'error', title: '下载失败',
-      message: '所有下载源均失败', detail: `请稍后重试，或到 GitHub Releases 手动下载。\n${lastErr.message}` });
-    return;
-  }
-  // SHA256 校验（hash 缺失时跳过）
-  if (info.hash) {
-    const actual = await sha256File(dest);
-    if (actual !== info.hash) {
-      rmQuiet(dest);
-      appendLog('error', `安装包 SHA256 校验失败：期望 ${info.hash}，实际 ${actual}`);
-      dialog.showMessageBoxSync(owner, { type: 'error', title: '校验失败',
-        message: '下载的安装包校验不通过（可能被篡改或下载不完整）', detail: '已删除该文件，请重新下载。' });
-      return;
-    }
-    appendLog('info', '安装包 SHA256 校验通过');
-  }
-  appendLog('info', `DSH-Desktop v${info.version} 下载完成：${dest}`);
-  const open = dialog.showMessageBoxSync(owner, { type: 'info', title: '下载完成',
-    message: `DSH-Desktop v${info.version} 已下载`,
-    detail: '安装包将打开，请按安装向导完成升级（安装完成后旧版本自动替换）。',
-    buttons: ['打开安装包', '稍后'], defaultId: 0, cancelId: 1 });
-  if (open === 0) shell.openPath(dest);
+// ---------------------------------------------------------------------------
+// 现代化窗口（v0.5.3）：更新 / 联系我们 / 关于（安全基线：contextIsolation+sandbox）
+// ---------------------------------------------------------------------------
+/** 安全基线 webPreferences（新窗口统一使用） */
+function secureWebPreferences() {
+  return {
+    preload: path.join(__dirname, 'preload.js'),
+    contextIsolation: true,
+    nodeIntegration: false,
+    sandbox: true,
+  };
 }
 
-// ---------------------------------------------------------------------------
-// 联系我们（v0.5）：帮助菜单 → QQ 群二维码 + 群号 + 复制
-// ---------------------------------------------------------------------------
-/** 帮助菜单 → 联系我们（二维码 + 群号 + 复制群号；无加群链接则不做跳转） */
-async function showContactDialog(win) {
-  const owner = win || mainWindow;
-  const cfg = readShellConfig();
-  const group = cfg.qqGroup;
-  if (!group || !group.number) {
-    dialog.showMessageBox(owner, { type: 'info', title: '联系我们',
-      message: '尚未配置 QQ 群', detail: '请在 config.json 的 qqGroup 字段中填写群号与二维码路径。' });
-    return;
-  }
-  // 二维码路径：config 相对 app 目录（app.getAppPath()），或绝对路径
-  let qrPath = group.qrImage;
-  if (qrPath && !path.isAbsolute(qrPath)) qrPath = path.join(app.getAppPath(), qrPath);
-  const qrExists = qrPath && fs.existsSync(qrPath);
-  const lines = [
-    'DSH-Desktop 用户交流群',
-    '',
-    qrExists ? '（二维码见下图，手机 QQ 扫码加入）' : '（未找到二维码图片，请直接搜索群号加入）',
-    '',
-    `群号：${group.number}`,
-  ].join('\n');
-  const r = dialog.showMessageBoxSync(owner, {
-    type: 'info',
-    title: '联系我们',
-    message: lines,
-    buttons: ['复制群号', '打开二维码', '关闭'],
-    defaultId: 0,
-    cancelId: 2,
+/** 现代化更新窗口（深色卡片风；壳+DSH 一个窗口） */
+function openUpdateWindow() {
+  if (updateWin && !updateWin.isDestroyed()) { updateWin.focus(); return; }
+  updateWin = new BrowserWindow({
+    width: 560, height: 640, resizable: false, minimizable: false,
+    parent: mainWindow, modal: true, title: '检查更新',
+    backgroundColor: '#0f1115',
+    webPreferences: secureWebPreferences(),
   });
-  if (r === 0) {
-    clipboard.writeText(group.number);
-    dialog.showMessageBoxSync(owner, { type: 'info', title: '联系我们',
-      message: '已复制群号', detail: group.number });
-  } else if (r === 1 && qrExists) {
-    shell.openPath(qrPath); // 用系统看图打开二维码（可放大扫码）
-  }
+  updateWin.loadFile(path.join(__dirname, 'renderer', 'update.html'));
+  updateWin.on('closed', () => { updateWin = null; });
+}
+
+/** 联系我们窗口（QQ群二维码+群号+复制） */
+function openContactWindow() {
+  if (contactWin && !contactWin.isDestroyed()) { contactWin.focus(); return; }
+  contactWin = new BrowserWindow({
+    width: 400, height: 560, resizable: false, minimizable: false,
+    parent: mainWindow, modal: true, title: '联系我们',
+    backgroundColor: '#0f1115',
+    webPreferences: secureWebPreferences(),
+  });
+  contactWin.loadFile(path.join(__dirname, 'renderer', 'contact.html'));
+  contactWin.on('closed', () => { contactWin = null; });
+}
+
+/** 关于窗口（现代化：版本信息卡片 + 链接按钮） */
+function openAboutWindow() {
+  if (aboutWin && !aboutWin.isDestroyed()) { aboutWin.focus(); return; }
+  aboutWin = new BrowserWindow({
+    width: 420, height: 560, resizable: false, minimizable: false,
+    parent: mainWindow, modal: true, title: '关于 DSH-Desktop',
+    backgroundColor: '#0f1115',
+    webPreferences: secureWebPreferences(),
+  });
+  aboutWin.loadFile(path.join(__dirname, 'renderer', 'about.html'));
+  aboutWin.on('closed', () => { aboutWin = null; });
 }
 
 // ---------------------------------------------------------------------------
@@ -1037,27 +1028,24 @@ function buildMenu() {
       ],
     },
     {
-      label: '帮助',
+      label: '更新',
       submenu: [
         {
-          label: `检查 DSH 更新${dshHasUpdate ? '（有新版本）' : ''}`,
-          click: () => { checkDshUpdate(mainWindow); },
+          label: `检查更新${shellHasUpdate || dshHasUpdate ? '（有新版本）' : ''}`,
+          click: () => { openUpdateWindow(); },
         },
-        {
-          label: `检查 DSH-Desktop 更新${shellHasUpdate ? '（有新版本）' : ''}`,
-          click: () => { checkShellUpdate(mainWindow); },
-        },
-        { type: 'separator' },
+      ],
+    },
+    {
+      label: '关于我们',
+      submenu: [
         {
           label: '联系我们',
-          click: () => { showContactDialog(mainWindow); },
+          click: () => { openContactWindow(); },
         },
-        { type: 'separator' },
         {
           label: '关于 DSH-Desktop',
-          click: () => {
-            showAboutDialog(mainWindow);
-          },
+          click: () => { openAboutWindow(); },
         },
         { type: 'separator' },
         {
@@ -1072,43 +1060,6 @@ function buildMenu() {
     },
   ];
   return Menu.buildFromTemplate(template);
-}
-
-/** 关于对话框（B5：追加 DSH 最新版本行 + "检查更新"按钮；v0.5 追加壳最新版本） */
-async function showAboutDialog(win) {
-  const owner = win || mainWindow; // 对话框父窗口兜底
-  const cfg = readShellConfig();
-  const [dshLatest, shellLatest] = await Promise.all([
-    fetchLatestDshVersion(),          // 官方 DSH 包最新版（静默，失败为 null）
-    fetchLatestShellVersion(),        // 壳自身最新版（静默，失败为 null）
-  ]);
-  const shellNewer = shellLatest && compareSemver(app.getVersion(), shellLatest.version) < 0;
-  const detail = [
-    `版本：${app.getVersion()}`,
-    `DSH：${cfg.dshPackage}@${installedDshVersion() ?? cfg.dshVersion}`,
-    `DSH 最新：${dshLatest ?? '未知'}`,
-    `DSH-Desktop 最新：${shellLatest ? shellLatest.version + (shellNewer ? '（可更新）' : '') : '未知'}`,
-    `服务地址：${webUrl()}`,
-    '',
-    'DeepSeek Harness Web GUI 的桌面套壳，基于 Electron；DSH 由 npm 按配置版本提供。',
-  ].join('\n');
-  const r = dialog.showMessageBoxSync(owner, {
-    type: 'info',
-    title: '关于',
-    message: APP_NAME,
-    detail,
-    buttons: ['检查更新', '关闭'],
-    defaultId: 0,
-    cancelId: 1,
-  });
-  if (r === 0) {
-    // 「检查更新」优先查壳（DSH-Desktop），壳有新版本则下载；否则查 DSH
-    if (shellNewer) {
-      checkShellUpdate(owner);
-    } else {
-      checkDshUpdate(owner);
-    }
-  }
 }
 
 /** 启动后静默检查更新：有新版 → 置标志 + 日志 + 重建菜单（不打扰） */
@@ -1145,6 +1096,64 @@ if (!gotLock) {
     ipcMain.handle('dsh:installed-dsh-version', () => installedDshVersion());
     ipcMain.handle('dsh:port', () => resolvedPort);
     ipcMain.handle('dsh:stage', () => currentStage); // L6：页面就绪后查询当前阶段
+
+    // v0.5.3：更新窗口 / 联系我们 IPC
+    ipcMain.handle('update:query', () => queryUpdateInfo());
+    ipcMain.handle('update:dsh-upgrade', () => upgradeDshVersion());
+    ipcMain.handle('update:shell-download', () => {
+      return downloadShellUpdate(updateWin || mainWindow, (percent) => {
+        if (updateWin && !updateWin.isDestroyed()) {
+          updateWin.webContents.send('update:progress', { percent });
+        }
+      });
+    });
+    ipcMain.handle('clip:copy', (_e, text) => {
+      clipboard.writeText(String(text ?? ''));
+      return true;
+    });
+    // 联系我们窗口：向渲染进程提供二维码路径与群号（文件路径经 IPC 传递最稳）
+    ipcMain.handle('contact:info', () => {
+      const group = readShellConfig().qqGroup;
+      const iconPath = path.join(app.getAppPath(), 'assets', 'icon.png');
+      if (!group || !group.number) {
+        return { number: '', qrPath: null, iconPath: fs.existsSync(iconPath) ? iconPath : null };
+      }
+      let qrPath = group.qrImage;
+      if (qrPath && !path.isAbsolute(qrPath)) qrPath = path.join(app.getAppPath(), qrPath);
+      return {
+        number: group.number,
+        qrPath: fs.existsSync(qrPath) ? qrPath : null,
+        iconPath: fs.existsSync(iconPath) ? iconPath : null,
+      };
+    });
+    // 关于窗口：版本信息 + 图标 + 动作
+    ipcMain.handle('about:info', async () => {
+      const cfg = readShellConfig();
+      const [dshLatest, shellLatest] = await Promise.all([
+        fetchLatestDshVersion(),
+        fetchLatestShellVersion(),
+      ]);
+      const iconPath = path.join(app.getAppPath(), 'assets', 'icon.png');
+      return {
+        appVersion: app.getVersion(),
+        dsh: `${cfg.dshPackage}@${installedDshVersion() ?? cfg.dshVersion}`,
+        dshLatest: dshLatest ?? '未知',
+        shellLatest: shellLatest ? shellLatest.version : '未知',
+        shellNewer: !!(shellLatest && compareSemver(app.getVersion(), shellLatest.version) < 0),
+        url: webUrl(),
+        iconPath: fs.existsSync(iconPath) ? iconPath : null,
+      };
+    });
+    // 关于窗口动作：打开更新窗口（关闭关于）、打开外部链接
+    ipcMain.handle('about:open-update', () => {
+      if (aboutWin && !aboutWin.isDestroyed()) aboutWin.close();
+      openUpdateWindow();
+      return true;
+    });
+    ipcMain.handle('app:open-external', (_e, url) => {
+      if (typeof url === 'string' && /^https?:/i.test(url)) shell.openExternal(url);
+      return true;
+    });
 
     resolvedPort = parsePortArg() ?? await pickPort(DEFAULT_PORT);
     appendLog('info', `${APP_NAME} v${app.getVersion()} 启动，目标端口 ${resolvedPort}`);

@@ -34,6 +34,9 @@ fnos/代码审查/
 # 同步临时目录
 .sync_temp_dir/
 
+# 一次性发布验证脚本
+windows/app/scripts/_verify-*.js
+
 # 系统文件
 .DS_Store
 Thumbs.db

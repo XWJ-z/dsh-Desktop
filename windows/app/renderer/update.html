@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' file: data:; style-src 'unsafe-inline'; script-src 'self' file:; img-src 'self' file: data:" />
+  <title>检查更新</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+      background: radial-gradient(1200px 600px at 50% -10%, #1a2233 0%, #0f1115 60%);
+      color: #dbe2f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px 18px;
+      user-select: none;
+    }
+    .header {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .header h1 { font-size: 17px; font-weight: 600; }
+    .refresh {
+      font-size: 12px; color: #8b96ad; cursor: pointer; padding: 4px 10px;
+      border: 1px solid rgba(255,255,255,0.14); border-radius: 999px;
+      background: rgba(255,255,255,0.04);
+    }
+    .refresh:hover { color: #dbe2f0; border-color: rgba(109,141,255,0.5); }
+    .card {
+      width: 100%;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 16px 16px 14px;
+      margin-bottom: 14px;
+    }
+    .card-title { font-size: 14px; font-weight: 600; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+    .row {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 13px; margin-bottom: 7px; flex-wrap: wrap;
+    }
+    .row .label { color: #8b96ad; width: 64px; flex-shrink: 0; }
+    .row .value { color: #dbe2f0; font-weight: 500; }
+    .badge {
+      font-size: 11px; padding: 2px 10px; border-radius: 999px; font-weight: 600;
+    }
+    .badge.latest  { color: #6fe3a1; background: rgba(111,227,161,0.12); border: 1px solid rgba(111,227,161,0.35); }
+    .badge.update  { color: #9db4ff; background: rgba(109,141,255,0.12); border: 1px solid rgba(109,141,255,0.4); }
+    .badge.unknown { color: #8b96ad; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); }
+    .notes {
+      font-size: 12px; color: #8b96ad; line-height: 1.6;
+      background: rgba(0,0,0,0.25); border-radius: 8px; padding: 8px 10px;
+      margin: 6px 0 10px; white-space: pre-wrap; word-break: break-all;
+      max-height: 90px; overflow-y: auto;
+    }
+    .progress-wrap { margin: 8px 0 10px; }
+    .progress-bar {
+      height: 8px; border-radius: 999px; background: rgba(255,255,255,0.08);
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%; width: 0%; border-radius: 999px;
+      background: linear-gradient(90deg, #6d8dff, #9db4ff);
+      transition: width .15s ease;
+    }
+    .progress-text { font-size: 11px; color: #9db4ff; margin-top: 4px; text-align: right; }
+    .btn-row { display: flex; gap: 10px; margin-top: 4px; }
+    .btn {
+      flex: 1; padding: 9px 0; border-radius: 8px; font-size: 13px; font-weight: 600;
+      cursor: pointer; border: none; text-align: center;
+      background: linear-gradient(180deg, #6d8dff, #5a7cf0); color: #fff;
+    }
+    .btn:hover { filter: brightness(1.1); }
+    .btn:disabled { opacity: .45; cursor: not-allowed; filter: none; }
+    .btn.ghost {
+      background: transparent; color: #8b96ad;
+      border: 1px solid rgba(255,255,255,0.18);
+    }
+    .btn.ghost:hover { color: #dbe2f0; border-color: rgba(255,255,255,0.35); }
+    .status { font-size: 11px; color: #5a6478; text-align: center; margin-top: 2px; }
+    .spinner {
+      width: 16px; height: 16px; display: inline-block; vertical-align: -3px;
+      border: 2px solid rgba(255,255,255,0.15); border-top-color: #6d8dff;
+      border-radius: 50%; animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🔄 检查更新</h1>
+    <div class="refresh" id="refresh">刷新</div>
+  </div>
+
+  <!-- DSH 卡片 -->
+  <div class="card">
+    <div class="card-title">DeepSeek Harness（DSH）</div>
+    <div class="row"><span class="label">当前版本</span><span class="value" id="dsh-current">-</span></div>
+    <div class="row">
+      <span class="label">最新版本</span><span class="value" id="dsh-latest">-</span>
+      <span class="badge unknown" id="dsh-badge">未知</span>
+    </div>
+    <div class="notes" id="dsh-notes" style="display:none"></div>
+    <div class="btn-row">
+      <button class="btn" id="dsh-upgrade" style="display:none">立即升级</button>
+    </div>
+    <div class="status" id="dsh-status"></div>
+  </div>
+
+  <!-- 壳卡片 -->
+  <div class="card">
+    <div class="card-title">DSH-Desktop（壳）</div>
+    <div class="row"><span class="label">当前版本</span><span class="value" id="shell-current">-</span></div>
+    <div class="row">
+      <span class="label">最新版本</span><span class="value" id="shell-latest">-</span>
+      <span class="badge unknown" id="shell-badge">未知</span>
+    </div>
+    <div class="notes" id="shell-notes" style="display:none"></div>
+    <div class="progress-wrap" id="shell-progress" style="display:none">
+      <div class="progress-bar"><div class="progress-fill" id="shell-progress-fill"></div></div>
+      <div class="progress-text" id="shell-progress-text">0%</div>
+    </div>
+    <div class="btn-row">
+      <button class="btn" id="shell-download" style="display:none">下载更新</button>
+    </div>
+    <div class="status" id="shell-status"></div>
+  </div>
+
+  <script src="update.js"></script>
+</body>
+</html>

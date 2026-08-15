@@ -34,4 +34,27 @@ contextBridge.exposeInMainWorld('dshDesktop', {
     ipcRenderer.on('dsh:log', handler);
     return () => ipcRenderer.removeListener('dsh:log', handler);
   },
+  // ── v0.5.3：更新窗口 / 联系我们 / 关于窗口（最小暴露）──
+  /** 查询壳+DSH 两侧更新信息 */
+  queryUpdate: () => ipcRenderer.invoke('update:query'),
+  /** 触发 DSH 升级（改 config + 重启） */
+  upgradeDsh: () => ipcRenderer.invoke('update:dsh-upgrade'),
+  /** 触发壳更新下载（进度经 onUpdateProgress 推送） */
+  downloadShellUpdate: () => ipcRenderer.invoke('update:shell-download'),
+  /** 订阅壳更新下载进度（{ percent: 0-100 }，返回取消订阅函数） */
+  onUpdateProgress: (callback) => {
+    const handler = (_event, info) => callback(info);
+    ipcRenderer.on('update:progress', handler);
+    return () => ipcRenderer.removeListener('update:progress', handler);
+  },
+  /** 复制文本到剪贴板 */
+  copyText: (text) => ipcRenderer.invoke('clip:copy', text),
+  /** 获取联系我们信息（群号 + 二维码路径） */
+  getContactInfo: () => ipcRenderer.invoke('contact:info'),
+  /** 获取关于信息（版本/DSH/服务地址/图标） */
+  getAboutInfo: () => ipcRenderer.invoke('about:info'),
+  /** 关于窗口：关闭并打开更新窗口 */
+  openUpdateWindow: () => ipcRenderer.invoke('about:open-update'),
+  /** 打开外部链接（仅 http/https） */
+  openExternal: (url) => ipcRenderer.invoke('app:open-external', url),
 });
