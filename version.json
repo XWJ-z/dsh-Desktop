@@ -1,12 +1,10 @@
 {
-  "version": "0.5.6",
-  "release_notes": "1. 修复：关于窗口与菜单的「项目主页」链接指向本项目（XWJ-z/dsh-Desktop）\n2. 优化：首次启动引导文案（去掉约几十 MB 描述）\n3. 修复：应用图标多尺寸、安装版图片资源内置\n4. 保留：Linear UI、更新下载进度反馈",
+  "version": "0.5.8",
+  "release_notes": "1. 修复：版本检查逻辑（最新<当前不再误提示可更新）\n2. 修复：关于窗口与菜单的「项目主页」链接指向本项目\n3. 优化：更新窗口「壳」改为「桌面端」；首次启动文案\n4. 修复：应用图标多尺寸、安装版图片资源内置；移除失效镜像",
   "force": false,
-  "hash": "8266ca3454ad88aa059c7de704e74008a4299da7eb0a314cc3133968f677c163",
+  "hash": "cc739e46cde24bddc2f9f31c462ff907c4da432515aa0f43695d8ce2a35662e1",
   "download_urls": [
-    "https://ghfast.top/https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.5.6/DSH-Desktop-Setup-0.5.6.exe",
-    "https://gh-proxy.com/https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.5.6/DSH-Desktop-Setup-0.5.6.exe",
-    "https://mirror.ghproxy.com/https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.5.6/DSH-Desktop-Setup-0.5.6.exe"
+    "https://ghfast.top/https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.5.8/DSH-Desktop-Setup-0.5.8.exe",
+    "https://gh-proxy.com/https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.5.8/DSH-Desktop-Setup-0.5.8.exe"
   ]
 }
-

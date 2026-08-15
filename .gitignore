@@ -26,7 +26,10 @@ windows/app/resources/node/
 # 不上传的内部文档与审查记录（本地保留）
 windows/docs/
 windows/代码审查/
-fnos/代码审查/
+
+# fnOS 版本（开发中，暂不发布）
+fnos/
+refapp.fpk
 
 # 根目录安装包（超 GitHub 100MB 限制，改走 GitHub Release 分发）
 /DSH-Desktop-Setup-*.exe

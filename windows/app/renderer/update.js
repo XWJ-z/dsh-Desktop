@@ -38,7 +38,8 @@ async function load() {
   el('dsh-current').textContent = d.current;
   if (d.latest) {
     el('dsh-latest').textContent = d.latest;
-    const newer = d.latest !== d.current; // 版本不同即提示（比大小由主进程 notes 决定）
+    // updatable 由主进程语义化比较得出（修复：最新<当前时不再误提示）
+    const newer = !!d.updatable;
     setBadge('dsh-badge', newer ? 'update' : 'latest', newer ? '可更新' : '最新');
     if (d.notes) { el('dsh-notes').textContent = d.notes; el('dsh-notes').style.display = ''; }
     el('dsh-upgrade').style.display = newer ? '' : 'none';
@@ -48,12 +49,12 @@ async function load() {
   }
   el('dsh-status').textContent = '';
 
-  // ── 壳卡片 ──
+  // ── 桌面端卡片 ──
   const s = info.shell;
   el('shell-current').textContent = s.current;
   if (s.latest) {
     el('shell-latest').textContent = s.latest;
-    const newer = s.latest !== s.current;
+    const newer = !!s.updatable;
     setBadge('shell-badge', newer ? 'update' : 'latest', newer ? '可更新' : '最新');
     if (s.notes) { el('shell-notes').textContent = s.notes; el('shell-notes').style.display = ''; }
     el('shell-download').style.display = newer ? '' : 'none';
@@ -76,7 +77,7 @@ el('dsh-upgrade').addEventListener('click', async () => {
   } else {
     el('dsh-upgrade').disabled = false;
     el('dsh-status').textContent = r && r.reason === 'write-failed'
-      ? '改写 config.json 失败，请手动修改后重启'
+      ? `改写 config.json 失败（${r.configPath || ''}）。请以管理员身份运行，或手动编辑该文件后重启`
       : '当前已是最新版本或查询失败';
   }
 });

@@ -14,8 +14,8 @@
 
 ### ⬇️ 下载安装（Windows）
 
-<a href="https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.5.6/DSH-Desktop-Setup-0.5.6.exe">
-<img src="https://img.shields.io/badge/下载安装包-DSH--Desktop--Setup--0.5.6.exe%20%E7%BA%A6120MB-2ea44f?style=for-the-badge&logo=windows&logoColor=white" alt="下载 DSH-Desktop 安装包"/>
+<a href="https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.5.8/DSH-Desktop-Setup-0.5.8.exe">
+<img src="https://img.shields.io/badge/下载安装包-DSH--Desktop--Setup--0.5.8.exe%20%E7%BA%A6120MB-2ea44f?style=for-the-badge&logo=windows&logoColor=white" alt="下载 DSH-Desktop 安装包"/>
 </a>
 
 双击运行即可安装 · 无需预装 DSH / Node.js / npm · 首次运行联网自动拉取 DSH 依赖
@@ -86,7 +86,7 @@ npm run installer
 # 产物位于 windows/app/dist/installer/DSH-Desktop-Setup-<version>.exe
 ```
 
-把 **DSH-Desktop-Setup-0.5.6.exe** 拷贝到目标电脑，双击运行即可：
+把 **DSH-Desktop-Setup-0.5.8.exe** 拷贝到目标电脑，双击运行即可：
 
 - 目标电脑**无需预装 DSH / Node.js / npm**（壳自带完整 Electron + npm 环境）
 - 默认安装到 `%LOCALAPPDATA%\Programs\DSH-Desktop`（**无需管理员权限**），

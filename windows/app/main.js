@@ -36,9 +36,17 @@ const SERVER_READY_TIMEOUT_MS = 240_000; // 等待 dsh web 就绪的上限（含
 const CHILD_GRACE_MS = 5_000;         // 关闭子进程的宽限期
 const NPM_INSTALL_TIMEOUT_MS = 600_000;  // 下载/安装 DSH 运行时的上限（10 分钟）
 
-// 未捕获异常/拒绝：记录后继续（避免窗口服务抖动导致整体退出）
+// 未捕获异常/拒绝：记录后继续（避免窗口服务抖动导致整体退出）；
+// ENOENT 等致命错误（P2-8）额外弹窗提示，避免静默不稳定态
 process.on('uncaughtException', (err) => {
   try { appendLog('error', `未捕获异常：${err && err.stack ? err.stack : String(err)}`); } catch { /* ignore */ }
+  const code = err && err.code;
+  if (code === 'ENOENT' || code === 'EACCES' || code === 'EPERM') {
+    try {
+      dialog.showErrorBox(APP_NAME,
+        `发生系统级错误（${code}）：${err && err.message ? err.message : String(err)}\n\n请检查文件/网络权限后重试。`);
+    } catch { /* ignore */ }
+  }
 });
 process.on('unhandledRejection', (reason) => {
   try { appendLog('error', `未处理的 Promise 拒绝：${String(reason)}`); } catch { /* ignore */ }
@@ -99,6 +107,9 @@ function localDate() {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
+const MAX_LOG_FILE_BYTES = 5 * 1024 * 1024; // P2-6：单日日志超 5MB 轮转
+let logFilePath = null;                       // 当前日志文件（含轮转后缀），缓存避免重复探测
+
 function logPath() {
   const stamp = localDate();
   const candidates = [
@@ -109,7 +120,18 @@ function logPath() {
   for (const dir of candidates) {
     try {
       fs.mkdirSync(dir, { recursive: true });
-      return path.join(dir, `dsh-${stamp}.log`);
+      // P2-6：若当前文件超限，轮转到 dsh-YYYY-MM-DD-N.log（N 递增）
+      const base = path.join(dir, `dsh-${stamp}.log`);
+      if (!logFilePath || path.dirname(logFilePath) !== dir || !fs.existsSync(logFilePath)) {
+        if (!fs.existsSync(base) || fs.statSync(base).size < MAX_LOG_FILE_BYTES) {
+          logFilePath = base;
+        } else {
+          let n = 1;
+          while (fs.existsSync(path.join(dir, `dsh-${stamp}-${n}.log`))) n++;
+          logFilePath = path.join(dir, `dsh-${stamp}-${n}.log`);
+        }
+      }
+      return logFilePath;
     } catch { /* try next */ }
   }
   return path.join(os.tmpdir(), `dsh-${stamp}.log`);
@@ -119,7 +141,14 @@ function appendLog(level, message) {
   const line = `[${localTimestamp()}] [${level}] ${message}`;
   logLines.push(line);
   if (logLines.length > 800) logLines.shift();
-  try { fs.appendFileSync(logPath(), line + os.EOL); } catch { /* ignore */ }
+  try {
+    // P2-6：写前检查当前文件是否超限，超限则强制下次轮转（重置缓存）
+    if (logFilePath && fs.existsSync(logFilePath) &&
+        fs.statSync(logFilePath).size >= MAX_LOG_FILE_BYTES) {
+      logFilePath = null;
+    }
+    fs.appendFileSync(logPath(), line + os.EOL);
+  } catch { /* ignore */ }
   console.log(line);
   // 仅向启动加载窗口广播日志（审查 M3：GUI 窗口不监听 dsh:log，避免无效 IPC）
   if (loadingWindow && !loadingWindow.isDestroyed()) {
@@ -202,29 +231,26 @@ function dshSpec(cfg) {
   return cfg.dshVersion === 'latest' ? cfg.dshPackage : `${cfg.dshPackage}@${cfg.dshVersion}`;
 }
 
-/** 已安装到运行时的 DSH 入口（不存在返回 null） */
-function installedDshBin() {
+/** 已安装 DSH 包目录：<dshenv>/node_modules/<scope>/<name>（P2-3 抽取公共函数） */
+function dshPkgDir() {
   const cfg = readShellConfig();
   const [scope, name] = cfg.dshPackage.startsWith('@')
     ? cfg.dshPackage.split('/')
     : ['', cfg.dshPackage];
-  const dir = scope
+  return scope
     ? path.join(dshRuntimeDir(), 'node_modules', scope, name)
     : path.join(dshRuntimeDir(), 'node_modules', name);
-  return path.join(dir, 'lib', 'bin.js');
+}
+
+/** 已安装到运行时的 DSH 入口（不存在返回 null） */
+function installedDshBin() {
+  return path.join(dshPkgDir(), 'lib', 'bin.js');
 }
 
 /** 已安装 DSH 的实际版本（未安装返回 null） */
 function installedDshVersion() {
-  const cfg = readShellConfig();
-  const [scope, name] = cfg.dshPackage.startsWith('@')
-    ? cfg.dshPackage.split('/')
-    : ['', cfg.dshPackage];
-  const dir = scope
-    ? path.join(dshRuntimeDir(), 'node_modules', scope, name)
-    : path.join(dshRuntimeDir(), 'node_modules', name);
   try {
-    const pkg = JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8'));
+    const pkg = JSON.parse(fs.readFileSync(path.join(dshPkgDir(), 'package.json'), 'utf8'));
     return pkg.version ?? null;
   } catch {
     return null;
@@ -303,7 +329,7 @@ function ensureDshRuntime() {
     let child;
     try {
       child = trackChild(
-        spawn(runner.execPath, args, { env, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: false }),
+        spawn(runner.execPath, args, { env, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true }),
         'npm-install',
       );
     } catch (err) {
@@ -507,7 +533,7 @@ function spawnServer(port) {
         let child;
         try {
           child = trackChild(
-            spawn(runner.execPath, args, { env, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: false }),
+            spawn(runner.execPath, args, { env, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true }),
             'dsh-server',
           );
         } catch (err) {
@@ -697,15 +723,26 @@ function createMainWindow() {
 // DSH 版本检查（任务B：查询 npm registry + 语义化比较 + 升级改写 config.json）
 // 约定：全程只动壳（config.json），DSH 本体零接触；失败一律静默（返回 null/false）
 // ---------------------------------------------------------------------------
-/** GET 并解析 JSON；失败/超时返回 null（静默） */
-function fetchJson(url, timeoutMs = 8000) {
+/** GET 并解析 JSON；失败/超时返回 null（静默）。响应体超 maxBytes（默认 5MB）放弃。 */
+function fetchJson(url, timeoutMs = 8000, headers = {}, maxBytes = 5 * 1024 * 1024) {
   return new Promise((resolve) => {
     let req;
     try {
-      req = https.get(url, { timeout: timeoutMs }, (res) => {
+      req = https.get(url, { timeout: timeoutMs, headers }, (res) => {
         let body = '';
-        res.on('data', (c) => (body += c));
-        res.on('end', () => { try { resolve(JSON.parse(body)); } catch { resolve(null); } });
+        let aborted = false;
+        res.on('data', (c) => {
+          if (aborted) return;
+          body += c;
+          if (body.length > maxBytes) { // P2-4：防超大响应体耗尽内存
+            aborted = true;
+            req.destroy();
+            resolve(null);
+          }
+        });
+        res.on('end', () => {
+          if (!aborted) { try { resolve(JSON.parse(body)); } catch { resolve(null); } }
+        });
       });
       req.on('error', () => resolve(null));
       req.on('timeout', () => { req.destroy(); resolve(null); });
@@ -721,7 +758,9 @@ function fetchLatestDshVersion() {
   const cfg = readShellConfig();
   const pkgPath = cfg.dshPackage.replace('/', '%2f'); // scoped 包需编码 /
   const base = (cfg.registry || 'https://registry.npmmirror.com').replace(/\/$/, '');
-  return fetchJson(`${base}/${pkgPath}`).then((pkg) => pkg?.['dist-tags']?.latest ?? null);
+  // P1-3：Accept 精简头只拉 dist-tags+版本摘要（几十 KB），避免全量元数据（5-20MB）
+  return fetchJson(`${base}/${pkgPath}`, 8000, { Accept: 'application/vnd.npm.install-v1+json' })
+    .then((pkg) => pkg?.['dist-tags']?.latest ?? null);
 }
 
 /**
@@ -779,8 +818,9 @@ function updateDshVersion(newVersion) {
 // ---------------------------------------------------------------------------
 /**
  * 查询壳+DSH 两侧更新信息（并发，各自静默）。
- * 返回 { dsh: { current, latest, notes, updating }, shell: { current, latest, notes, force, downloading } }
+ * 返回 { dsh: { current, latest, notes, updatable, updating }, shell: { current, latest, notes, updatable, force, downloading } }
  *  - latest 为 null 表示查询失败/无源
+ *  - updatable 用语义化比较（避免字符串比较：最新<当前（如 CDN 缓存旧版）时误提示更新）
  */
 async function queryUpdateInfo() {
   const cfg = readShellConfig();
@@ -789,20 +829,22 @@ async function queryUpdateInfo() {
     fetchLatestShellVersion(),
   ]);
   const dshCurrent = installedDshVersion() ?? cfg.dshVersion;
-  const dshNotes = dshLatest && compareSemver(dshCurrent, dshLatest) < 0
-    ? `可升级到 ${dshLatest}（重启自动安装）`
-    : '';
+  const dshUpdatable = !!dshLatest && compareSemver(dshCurrent, dshLatest) < 0;
+  const dshNotes = dshUpdatable ? `可升级到 ${dshLatest}（重启自动安装）` : '';
+  const shellUpdatable = !!shellLatest && compareSemver(app.getVersion(), shellLatest.version) < 0;
   return {
     dsh: {
       current: dshCurrent,
       latest: dshLatest,
       notes: dshNotes,
+      updatable: dshUpdatable,
       updating: false,
     },
     shell: {
       current: app.getVersion(),
       latest: shellLatest ? shellLatest.version : null,
       notes: shellLatest ? shellLatest.releaseNotes : '',
+      updatable: shellUpdatable,
       force: shellLatest ? shellLatest.force : false,
       downloading: false,
     },
@@ -816,9 +858,12 @@ function upgradeDshVersion() {
   return fetchLatestDshVersion().then((latest) => {
     if (!latest || compareSemver(current, latest) >= 0) return { ok: false, reason: 'no-update' };
     if (updateDshVersion(latest)) {
+      // 延迟 relaunch，给渲染端"已更新配置"提示留出展示时间（审查 v12 P0：恢复重启逻辑）
+      setTimeout(() => { app.relaunch(); app.exit(0); }, 1500);
       return { ok: true, from: current, to: latest };
     }
-    return { ok: false, reason: 'write-failed' };
+    // P1-4：附带 config 路径，便于提示用户手动处理（如安装目录为受保护路径 EACCES）
+    return { ok: false, reason: 'write-failed', configPath: path.join(app.getAppPath(), 'config.json') };
   });
 }
 
@@ -833,7 +878,7 @@ async function downloadShellUpdate(win, onProgress) {
   const dest = shellDownloadDest(info);
   const urls = info.downloadUrls.length > 0
     ? info.downloadUrls
-    : [`https://mirror.ghproxy.com/https://github.com/XWJ-z/dsh-Desktop/releases/download/v${info.version}/DSH-Desktop-Setup-${info.version}.exe`];
+    : [`https://ghfast.top/https://github.com/XWJ-z/dsh-Desktop/releases/download/v${info.version}/DSH-Desktop-Setup-${info.version}.exe`];
   let lastErr = null;
   for (const url of urls) {
     try {
@@ -868,17 +913,22 @@ async function downloadShellUpdate(win, onProgress) {
 }
 
 // ---------------------------------------------------------------------------
-// 壳（DSH-Desktop）自动更新（v0.5）：GitHub version.json via jsDelivr + 镜像下载
+// 壳（DSH-Desktop）自动更新（v0.5）：GitHub version.json 多源回退 + 镜像下载
 // 与「检查 DSH 更新」（官方 DSH 包）完全独立：本区检查的是壳自身版本
+// v0.5.8：多源回退（jsDelivr CDN 优先，raw.githubusercontent 兜底），
+// 取可达源中版本号最高者，规避 jsDelivr @main 解析缓存卡死导致漏报更新。
 // ---------------------------------------------------------------------------
-const SHELL_UPDATE_URL = 'https://cdn.jsdelivr.net/gh/XWJ-z/dsh-Desktop@main/version.json';
+const SHELL_UPDATE_URLS = [
+  'https://cdn.jsdelivr.net/gh/XWJ-z/dsh-Desktop@main/version.json',
+  'https://raw.githubusercontent.com/XWJ-z/dsh-Desktop/main/version.json',
+];
 
 /**
- * 查询壳最新版本（GitHub 仓库 version.json，经 jsDelivr CDN 国内可达）。
- * 返回 { version, download_urls, release_notes, force, hash } 或 null（失败/超时静默）。
+ * 查询壳最新版本（多源回退：并发请求全部更新源，取版本号最高者）。
+ * 返回 { version, download_urls, release_notes, force, hash } 或 null（全部失败/超时静默）。
  */
 function fetchLatestShellVersion() {
-  return fetchJson(SHELL_UPDATE_URL).then((info) => {
+  const parse = (info) => {
     if (!info || typeof info.version !== 'string') return null;
     return {
       version: String(info.version),
@@ -887,24 +937,52 @@ function fetchLatestShellVersion() {
       force: !!info.force,
       hash: String(info.hash || '').toLowerCase(),
     };
-  });
+  };
+  return Promise.all(SHELL_UPDATE_URLS.map((u) => fetchJson(u).then(parse)))
+    .then((results) => {
+      const valid = results.filter(Boolean);
+      if (valid.length === 0) return null;
+      valid.sort((a, b) => (compareSemver(a.version, b.version) < 0 ? 1 : -1));
+      const best = valid[0];
+      appendLog('info', `版本检查：${valid.length} 个更新源可达，取最高 v${best.version}`);
+      return best;
+    });
 }
 
-/** 下载文件到 dest，带进度回调（0~1）；自动跟随重定向 */
+/** 下载文件到 dest，带进度回调（0~1）；自动跟随重定向（≤5 次），总超时 10 分钟 */
 function downloadFile(url, dest, onProgress) {
+  const DOWNLOAD_TIMEOUT_MS = 10 * 60 * 1000; // P2-1：下载总超时 10 分钟
+  const MAX_REDIRECTS = 5;                    // P2-1：重定向上限
   return new Promise((resolve, reject) => {
     let req;
+    let redirects = 0;
     const start = (target) => {
       const file = fs.createWriteStream(dest);
+      const timer = setTimeout(() => {         // P2-1：超时中止并清理
+        try { req.destroy(); } catch { /* ignore */ }
+        file.destroy();
+        rmQuiet(dest);
+        reject(new Error('下载超时'));
+      }, DOWNLOAD_TIMEOUT_MS);
+      const cleanupTimer = () => clearTimeout(timer);
       req = https.get(target, (res) => {
         if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
           req.destroy();
-          file.close(() => start(res.headers.location));
+          file.close(() => {
+            cleanupTimer();
+            if (++redirects > MAX_REDIRECTS) {
+              rmQuiet(dest);
+              reject(new Error('重定向次数过多'));
+              return;
+            }
+            start(res.headers.location);
+          });
           return;
         }
         if (res.statusCode !== 200) {
           res.resume(); // 消费响应体，让流正常结束
           file.on('close', () => {
+            cleanupTimer();
             rmQuiet(dest);
             reject(new Error(`HTTP ${res.statusCode}`));
           });
@@ -921,10 +999,10 @@ function downloadFile(url, dest, onProgress) {
           }
         });
         res.pipe(file);
-        file.on('finish', () => file.close(() => resolve(dest)));
-        file.on('error', (err) => { rmQuiet(dest); reject(err); });
+        file.on('finish', () => { cleanupTimer(); file.close(() => resolve(dest)); });
+        file.on('error', (err) => { cleanupTimer(); rmQuiet(dest); reject(err); });
       });
-      req.on('error', (err) => { rmQuiet(dest); reject(err); });
+      req.on('error', (err) => { cleanupTimer(); rmQuiet(dest); reject(err); });
     };
     start(url);
   });
@@ -941,12 +1019,19 @@ function sha256File(file) {
   });
 }
 
-/** 下载安装包到用户数据目录 updates/ 下，返回本地路径 */
+/** 下载安装包到用户数据目录 updates/ 下，返回本地路径；先清理该目录旧版本安装包（P2-2） */
 function shellDownloadDest(info) {
   const dir = path.join(app.getPath('userData'), 'updates');
   try { fs.mkdirSync(dir, { recursive: true }); } catch { /* ignore */ }
+  try {
+    for (const old of fs.readdirSync(dir)) {
+      if (/^DSH-Desktop-Setup-.*\.exe$/.test(old) && old !== `DSH-Desktop-Setup-${info.version}.exe`) {
+        rmQuiet(path.join(dir, old));
+      }
+    }
+  } catch { /* ignore */ }
   const file = path.join(dir, `DSH-Desktop-Setup-${info.version}.exe`);
-  rmQuiet(file); // 清掉上次残留
+  rmQuiet(file); // 清掉上次同版本残留
   return file;
 }
 
@@ -1092,9 +1177,12 @@ if (!gotLock) {
   app.quit();
 } else {
   app.on('second-instance', () => {
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore();
-      mainWindow.focus();
+    // P2-5：优先聚焦顶层 modal 窗口（更新/联系我们/关于），避免被主窗口遮挡
+    const modal = [updateWin, contactWin, aboutWin].find((w) => w && !w.isDestroyed());
+    const target = modal || mainWindow;
+    if (target) {
+      if (target.isMinimized()) target.restore();
+      target.focus();
     }
   });
 
@@ -1213,7 +1301,16 @@ if (!gotLock) {
   });
 
   app.on('before-quit', () => { stopServer(); });
-  app.on('will-quit', () => { appendLog('info', '应用退出中…'); });
+  app.on('will-quit', (event) => {
+    appendLog('info', '应用退出中…');
+    // 审查 v12 P1-2：SIGTERM 宽限期定时器可能随主进程退出被终止，导致残留子进程
+    // 未被强制清理；这里在真正退出前同步兜底 SIGKILL 一次（幂等，安全）。
+    for (const child of trackedChildren) {
+      try {
+        if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
+      } catch { /* ignore */ }
+    }
+  });
   app.on('quit', (_event, exitCode) => { appendLog('info', `应用已退出，code=${exitCode}`); });
   app.on('window-all-closed', () => { app.quit(); });
   app.on('activate', () => {
