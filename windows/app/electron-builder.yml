@@ -12,7 +12,10 @@ copyright: "Copyright © 2026 DeepSeek"
 
 directories:
   output: dist/installer
-  buildResources: assets
+  # 注意：不要将 assets 设为 buildResources——electron-builder 约定 buildResources
+  # 目录不会复制进应用包（构建专用），会导致安装版缺失 icon.png/qq-group.png
+  # （联系我们二维码、关于/联系窗口 logo 加载失败）。assets 由下方 files 随包分发，
+  # win.icon 的 assets/icon.ico 相对 app 目录解析，不受影响。
 
 # 打包壳本体 + 内置 Node 运行时（main/preload/renderer/assets/config/
 # node_modules 生产依赖 = npm），排除 docs/scripts/缓存等开发文件。

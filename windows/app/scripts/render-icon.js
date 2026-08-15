@@ -25,21 +25,33 @@ function buildHtml() {
   </style></head><body>${svgContent}</body></html>`;
 }
 
-function pngToIco(pngBuffer) {
+/**
+ * pngToIco — 将多张 PNG 打包为标准多尺寸 ICO（Windows 图标规范）
+ * @param {Array<{size: number, png: Buffer}>} multiPngs 建议 256/128/64/48/32/24/16
+ * 注意：多尺寸 ICO 避免单尺寸在任务栏(16px)/资源管理器/快捷方式小图标场景被暴力
+ * 缩放导致模糊（审查 v9.0 任务4b 根因）。
+ */
+function pngToIco(multiPngs) {
+  const count = multiPngs.length;
   const header = Buffer.alloc(6);
   header.writeUInt16LE(0, 0);
   header.writeUInt16LE(1, 2);
-  header.writeUInt16LE(1, 4);
-  const entry = Buffer.alloc(16);
-  entry[0] = 0;
-  entry[1] = 0;
-  entry[2] = 0;
-  entry[3] = 0;
-  entry.writeUInt16LE(1, 4);
-  entry.writeUInt16LE(32, 6);
-  entry.writeUInt32LE(pngBuffer.length, 8);
-  entry.writeUInt32LE(22, 12);
-  return Buffer.concat([header, entry, pngBuffer]);
+  header.writeUInt16LE(count, 4);
+  let entries = Buffer.alloc(0);
+  let offset = 6 + count * 16;
+  for (const { size, png } of multiPngs) {
+    const entry = Buffer.alloc(16);
+    entry[0] = size >= 256 ? 0 : size;
+    entry[1] = size >= 256 ? 0 : size;
+    entry[2] = 0; entry[3] = 0;
+    entry.writeUInt16LE(1, 4);
+    entry.writeUInt16LE(32, 6);
+    entry.writeUInt32LE(png.length, 8);
+    entry.writeUInt32LE(offset, 12);
+    entries = Buffer.concat([entries, entry]);
+    offset += png.length;
+  }
+  return Buffer.concat([header, entries, ...multiPngs.map((m) => m.png)]);
 }
 
 async function render(size) {
@@ -68,11 +80,15 @@ app.whenReady().then(async () => {
     fs.writeFileSync(path.join(assetsDir, 'icon.png'), image512.toPNG());
     console.log(`已生成 icon.png（512x512，${image512.toPNG().length} 字节）`);
 
-    // 用 nativeImage.resize 缩放出 256（避免二次开窗）
-    const image256 = image512.resize({ width: 256, height: 256 });
-    const png256 = image256.toPNG();
-    fs.writeFileSync(path.join(assetsDir, 'icon.ico'), pngToIco(png256));
-    console.log(`已生成 icon.ico（256x256，${png256.length + 22} 字节）`);
+    // 用 nativeImage.resize 缩放出多尺寸 PNG（审查 v9.0：Windows 图标需多尺寸，
+    // 避免任务栏/快捷方式小图标被暴力缩放模糊）
+    const SIZES = [256, 128, 64, 48, 32, 24, 16];
+    const multiPngs = SIZES.map((size) => ({
+      size,
+      png: image512.resize({ width: size, height: size }).toPNG(),
+    }));
+    fs.writeFileSync(path.join(assetsDir, 'icon.ico'), pngToIco(multiPngs));
+    console.log(`已生成 icon.ico（${SIZES.join('/')}，${pngToIco(multiPngs).length} 字节）`);
   } catch (err) {
     console.error('[render-icon] 失败：', err);
     process.exitCode = 1;

@@ -311,10 +311,14 @@ function ensureDshRuntime() {
       return;
     }
 
-    // 任务D2：安装期间每 2 秒统计运行时目录体积并推送到加载页（下载进度可视化）
-    pushProgress(dirSizeMB(dshRuntimeDir()));
+    // 任务D2：安装期间每 2 秒统计"dshenv + npm 缓存"总量并推送到加载页
+    // （下载进度可视化：npm 先写缓存、解压才写 dshenv，仅统计 dshenv 会恒为 0）
+    const npmCacheDir = process.env.npm_config_cache || path.join(os.homedir(), 'AppData', 'Local', 'npm-cache');
+    const installTotalMB = () =>
+      (parseFloat(dirSizeMB(dshRuntimeDir())) + parseFloat(dirSizeMB(npmCacheDir))).toFixed(1);
+    pushProgress(installTotalMB());
     const progressTimer = setInterval(() => {
-      pushProgress(dirSizeMB(dshRuntimeDir()));
+      pushProgress(installTotalMB());
     }, 2000);
 
     const onData = (label) => (chunk) => {
@@ -835,8 +839,9 @@ async function downloadShellUpdate(win, onProgress) {
     try {
       appendLog('info', `开始下载 DSH-Desktop v${info.version}：${url}`);
       await downloadFile(url, dest, (ratio) => {
-        if (onProgress) onProgress(Math.round(ratio * 100));
-        appendLog('info', `下载进度：${Math.round(ratio * 100)}%`);
+        // 有总量 → 0~100；无总量（chunked）→ 负值 = 已下载字节数
+        if (onProgress) onProgress(ratio > 0 ? Math.round(ratio * 100) : -ratio);
+        if (ratio > 0) appendLog('info', `下载进度：${Math.round(ratio * 100)}%`);
       });
       lastErr = null;
       break;
@@ -910,7 +915,10 @@ function downloadFile(url, dest, onProgress) {
         let received = 0;
         res.on('data', (c) => {
           received += c.length;
-          if (total && onProgress) onProgress(received / total);
+          if (onProgress) {
+            // 有 Content-Length → 0~1 比例；无（chunked）→ 负值 = 已下载字节数
+            onProgress(total ? received / total : -received);
+          }
         });
         res.pipe(file);
         file.on('finish', () => file.close(() => resolve(dest)));
@@ -1053,8 +1061,8 @@ function buildMenu() {
           click: () => { shell.openExternal('https://www.deepseek.com'); },
         },
         {
-          label: 'DSH 项目主页',
-          click: () => { shell.openExternal('https://github.com/deepseek-ai/dsh'); },
+          label: 'DSH-Desktop 项目主页',
+          click: () => { shell.openExternal('https://github.com/XWJ-z/dsh-Desktop'); },
         },
       ],
     },

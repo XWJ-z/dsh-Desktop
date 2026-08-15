@@ -33,7 +33,7 @@ el('check-update-btn').addEventListener('click', () => {
 
 el('home-btn').addEventListener('click', (e) => {
   e.preventDefault();
-  if (dsh && dsh.openExternal) dsh.openExternal('https://github.com/deepseek-ai/dsh');
+  if (dsh && dsh.openExternal) dsh.openExternal('https://github.com/XWJ-z/dsh-Desktop');
 });
 
 init();

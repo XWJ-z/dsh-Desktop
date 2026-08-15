@@ -92,8 +92,17 @@ el('shell-download').addEventListener('click', async () => {
   // 订阅进度
   if (dsh.onUpdateProgress) {
     dsh.onUpdateProgress(({ percent }) => {
-      el('shell-progress-fill').style.width = `${percent}%`;
-      el('shell-progress-text').textContent = `${percent}%`;
+      if (percent < 0) {
+        // 无总量（chunked）：显示已下载 MB + 不定进度动画
+        const mb = (Math.abs(percent) / 1024 / 1024).toFixed(1);
+        el('shell-progress-fill').style.width = '30%';
+        el('shell-progress-text').textContent = `已下载 ${mb} MB…`;
+        el('shell-progress-fill').classList.add('indeterminate');
+      } else {
+        el('shell-progress-fill').classList.remove('indeterminate');
+        el('shell-progress-fill').style.width = `${percent}%`;
+        el('shell-progress-text').textContent = `${percent}%`;
+      }
     });
   }
 

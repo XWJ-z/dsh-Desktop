@@ -5,61 +5,85 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' file: data:; style-src 'unsafe-inline'; script-src 'self' file:; img-src 'self' file: data:" />
   <title>关于 DSH-Desktop</title>
   <style>
-    :root { color-scheme: dark; }
+    :root {
+      color-scheme: dark;
+      --bg-deep: #08090a;
+      --bg-panel: #0f1011;
+      --bg-surface: #191a1b;
+      --bg-hover: #28282c;
+      --text-primary: #f7f8f8;
+      --text-secondary: #d0d6e0;
+      --text-tertiary: #8a8f98;
+      --text-quaternary: #62666d;
+      --brand: #5e6ad2;
+      --accent: #7170ff;
+      --accent-hover: #828fff;
+      --success: #10b981;
+      --warn: #f5a623;
+      --border-subtle: rgba(255,255,255,0.05);
+      --border-standard: rgba(255,255,255,0.08);
+      --radius-btn: 6px;
+      --radius-card: 8px;
+      --radius-panel: 12px;
+      --font: 'Inter', 'Segoe UI', 'Microsoft YaHei', system-ui, sans-serif;
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
-      background: radial-gradient(1200px 600px at 50% -10%, #1a2233 0%, #0f1115 60%);
-      color: #dbe2f0;
+      font-family: var(--font);
+      background:
+        radial-gradient(700px 350px at 50% -12%, rgba(94,106,210,0.12) 0%, transparent 60%),
+        var(--bg-deep);
+      color: var(--text-primary);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 24px 20px;
+      padding: 24px;
       text-align: center;
       user-select: none;
     }
     .logo {
-      width: 72px; height: 72px; border-radius: 18px;
-      object-fit: contain; box-shadow: 0 12px 40px rgba(90,110,255,0.35);
+      width: 64px; height: 64px; border-radius: var(--radius-panel);
+      object-fit: contain; box-shadow: 0 8px 32px rgba(94,106,210,0.3);
       margin-bottom: 14px;
     }
-    h1 { font-size: 20px; font-weight: 600; margin-bottom: 2px; }
-    .version-tag { font-size: 14px; color: #6d8dff; font-weight: 600; margin-bottom: 18px; }
+    h1 { font-size: 20px; font-weight: 590; letter-spacing: -0.24px; margin-bottom: 2px; }
+    .version-tag { font-size: 14px; color: var(--brand); font-weight: 590; margin-bottom: 20px; }
     .card {
       width: 100%; max-width: 340px;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 14px;
-      padding: 18px 20px;
-      margin-bottom: 18px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-standard);
+      border-radius: var(--radius-panel);
+      padding: 20px;
+      margin-bottom: 20px;
+      text-align: left;
     }
     .row {
       display: flex; justify-content: space-between; align-items: center;
-      font-size: 13px; padding: 6px 0;
-      border-bottom: 1px solid rgba(255,255,255,0.05);
+      font-size: 14px; padding: 7px 0;
+      border-bottom: 1px solid var(--border-subtle);
     }
     .row:last-child { border-bottom: none; }
-    .row .label { color: #8b96ad; }
-    .row .value { color: #dbe2f0; font-weight: 500; text-align: right; word-break: break-all; }
+    .row .label { color: var(--text-tertiary); }
+    .row .value { color: var(--text-secondary); font-weight: 500; text-align: right; word-break: break-all; }
     .badge {
       font-size: 10px; padding: 1px 8px; border-radius: 999px; margin-left: 6px; font-weight: 600;
     }
-    .badge.update { color: #9db4ff; background: rgba(109,141,255,0.12); border: 1px solid rgba(109,141,255,0.4); }
+    .badge.update { color: var(--accent); background: rgba(113,112,255,0.12); border: 1px solid rgba(113,112,255,0.35); }
     .btn-row { display: flex; gap: 10px; width: 100%; max-width: 340px; }
     .btn {
-      flex: 1; padding: 10px 0; border-radius: 8px; font-size: 13px; font-weight: 600;
+      flex: 1; padding: 10px 0; border-radius: var(--radius-btn); font-size: 14px; font-weight: 590;
       cursor: pointer; border: none; text-align: center; text-decoration: none; color: #fff;
-      background: linear-gradient(180deg, #6d8dff, #5a7cf0);
+      background: var(--brand);
     }
-    .btn:hover { filter: brightness(1.1); }
+    .btn:hover { background: var(--accent-hover); }
     .btn.ghost {
-      background: transparent; color: #8b96ad;
-      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.02); color: var(--text-tertiary);
+      border: 1px solid var(--border-standard);
     }
-    .btn.ghost:hover { color: #dbe2f0; border-color: rgba(255,255,255,0.35); }
-    .footer { font-size: 11px; color: #5a6478; margin-top: 16px; line-height: 1.7; }
+    .btn.ghost:hover { color: var(--text-primary); border-color: rgba(255,255,255,0.16); }
+    .footer { font-size: 11px; color: var(--text-quaternary); margin-top: 16px; line-height: 1.7; }
   </style>
 </head>
 <body>

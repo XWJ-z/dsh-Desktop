@@ -61,7 +61,7 @@ if (window.dshDesktop) {
         if (verlineEl) verlineEl.textContent = `DSH-Desktop v${shellVer} · DSH ${dshVer ?? '未安装'}`;
         // 未安装 DSH = 首次启动：显示引导文案
         if (dshVer == null && subtitleEl) {
-          subtitleEl.textContent = '首次启动需要下载 DSH 运行时（约几十 MB），请耐心等待';
+          subtitleEl.textContent = '首次启动需要下载 DSH 运行时，请耐心等待';
         }
       })
       .catch(() => { /* ignore */ });

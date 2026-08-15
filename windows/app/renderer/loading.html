@@ -5,25 +5,49 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' file: data:; style-src 'unsafe-inline'; script-src 'self' file:; img-src 'self' file: data:" />
   <title>DSH-Desktop — 正在启动…</title>
   <style>
-    :root { color-scheme: dark; }
+    :root {
+      color-scheme: dark;
+      --bg-deep: #08090a;
+      --bg-panel: #0f1011;
+      --bg-surface: #191a1b;
+      --bg-hover: #28282c;
+      --text-primary: #f7f8f8;
+      --text-secondary: #d0d6e0;
+      --text-tertiary: #8a8f98;
+      --text-quaternary: #62666d;
+      --brand: #5e6ad2;
+      --accent: #7170ff;
+      --accent-hover: #828fff;
+      --success: #10b981;
+      --warn: #f5a623;
+      --border-subtle: rgba(255,255,255,0.05);
+      --border-standard: rgba(255,255,255,0.08);
+      --radius-btn: 6px;
+      --radius-card: 8px;
+      --radius-panel: 12px;
+      --font: 'Inter', 'Segoe UI', 'Microsoft YaHei', system-ui, sans-serif;
+      --font-mono: 'JetBrains Mono', Consolas, monospace;
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { height: 100%; }
     body {
-      font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
-      background: radial-gradient(1200px 600px at 50% -10%, #1a2233 0%, #0f1115 60%);
-      color: #dbe2f0;
+      font-family: var(--font);
+      background:
+        radial-gradient(900px 450px at 50% -12%, rgba(94,106,210,0.14) 0%, transparent 60%),
+        var(--bg-deep);
+      color: var(--text-primary);
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 18px;
+      gap: 16px;
       user-select: none;
     }
     .logo {
       width: 72px; height: 72px;
-      border-radius: 18px;
+      border-radius: var(--radius-panel);
       object-fit: contain;
-      box-shadow: 0 12px 40px rgba(90, 110, 255, 0.35);
+      box-shadow: 0 12px 40px rgba(94,106,210,0.3);
       animation: logoIn .6s ease-out;
     }
     @keyframes logoIn {
@@ -31,66 +55,71 @@
       to   { opacity: 1; transform: scale(1); }
     }
     .spinner {
-      width: 34px; height: 34px;
-      border: 3px solid rgba(255,255,255,0.15);
-      border-top-color: #6d8dff;
+      width: 32px; height: 32px;
+      border: 3px solid rgba(255,255,255,0.12);
+      border-top-color: var(--accent);
       border-radius: 50%;
       animation: spin 0.9s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .title { font-size: 18px; font-weight: 600; }
-    .subtitle { font-size: 13px; color: #8b96ad; }
+    .title { font-size: 20px; font-weight: 590; letter-spacing: -0.24px; }
+    .subtitle { font-size: 14px; color: var(--text-tertiary); text-align: center; }
     #stages {
       display: flex;
-      gap: 10px;
+      flex-wrap: wrap;              /* 任务2b：窄窗口自动换行 */
+      gap: 8px;
       align-items: center;
-      margin-top: 2px;
+      justify-content: center;
+      margin-top: 4px;
+      max-width: min(720px, 92vw);
     }
     .stage {
       display: flex;
       align-items: center;
       gap: 6px;
-      padding: 5px 12px;
+      padding: 6px 14px;
       border-radius: 999px;
-      font-size: 12px;
-      color: #66718a;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.06);
+      font-size: 13px;
+      white-space: nowrap;          /* 任务2b：文字不截断 */
+      flex-shrink: 0;               /* 任务2b：防挤压 */
+      color: var(--text-quaternary);
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--border-standard);
       transition: all .25s ease;
     }
     .stage.active {
-      color: #9db4ff;
-      border-color: rgba(109,141,255,0.5);
-      background: rgba(109,141,255,0.12);
-      box-shadow: 0 0 14px rgba(109,141,255,0.25);
+      color: var(--accent);
+      border-color: rgba(113,112,255,0.5);
+      background: rgba(113,112,255,0.1);
+      box-shadow: 0 0 16px rgba(113,112,255,0.2);
     }
-    .stage.done { color: #6fe3a1; border-color: rgba(111,227,161,0.4); background: rgba(111,227,161,0.08); }
+    .stage.done { color: var(--success); border-color: rgba(16,185,129,0.3); background: rgba(16,185,129,0.07); }
     .stage.done::before { content: '✓ '; }
     #log-wrap { width: min(640px, 80vw); margin-top: 8px; }
     #log-toggle {
-      font-size: 11px; color: #5a6478;
+      font-size: 12px; color: var(--text-quaternary);
       padding: 4px 6px; cursor: pointer; user-select: none;
       width: fit-content;
     }
-    #log-toggle:hover { color: #8b96ad; }
+    #log-toggle:hover { color: var(--text-tertiary); }
     #log {
       height: 0; opacity: 0;
       padding: 0 12px;
-      background: rgba(0,0,0,0.35);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 8px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border-standard);
+      border-radius: var(--radius-card);
       overflow-y: auto;
-      font-family: Consolas, "Cascadia Mono", monospace;
+      font-family: var(--font-mono);
       font-size: 11px;
       line-height: 1.6;
-      color: #7f8aa4;
+      color: var(--text-tertiary);
       white-space: pre-wrap;
       word-break: break-all;
       transition: height .25s ease, opacity .25s ease;
     }
     #log-wrap.expanded #log { height: 180px; padding: 10px 12px; opacity: 1; }
-    .error { color: #ff7b7b; }
-    .verline { font-size: 11px; color: #5a6478; margin-top: 4px; }
+    .error { color: #ff6b6b; }
+    .verline { font-size: 11px; color: var(--text-quaternary); margin-top: 4px; }
   </style>
 </head>
 <body>
