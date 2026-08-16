@@ -2,47 +2,12 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' file: data:; style-src 'unsafe-inline'; script-src 'self' file:; img-src 'self' file: data:" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' file: data:; style-src 'self' file: 'unsafe-inline'; script-src 'self' file:; img-src 'self' file: data:" />
   <title>DSH-Desktop — 正在启动…</title>
+  <link rel="stylesheet" href="shared.css" />
   <style>
-    :root {
-      color-scheme: dark;
-      --bg-deep: #08090a;
-      --bg-panel: #0f1011;
-      --bg-surface: #191a1b;
-      --bg-hover: #28282c;
-      --text-primary: #f7f8f8;
-      --text-secondary: #d0d6e0;
-      --text-tertiary: #8a8f98;
-      --text-quaternary: #62666d;
-      --brand: #5e6ad2;
-      --accent: #7170ff;
-      --accent-hover: #828fff;
-      --success: #10b981;
-      --warn: #f5a623;
-      --border-subtle: rgba(255,255,255,0.05);
-      --border-standard: rgba(255,255,255,0.08);
-      --radius-btn: 6px;
-      --radius-card: 8px;
-      --radius-panel: 12px;
-      --font: 'Inter', 'Segoe UI', 'Microsoft YaHei', system-ui, sans-serif;
-      --font-mono: 'JetBrains Mono', Consolas, monospace;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; }
-    body {
-      font-family: var(--font);
-      background:
-        radial-gradient(900px 450px at 50% -12%, rgba(94,106,210,0.14) 0%, transparent 60%),
-        var(--bg-deep);
-      color: var(--text-primary);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 16px;
-      user-select: none;
-    }
+    /* shared.css 提供主题 token + body 基础；此处仅 loading 页面特有样式 */
+    body { justify-content: center; gap: 16px; }
     .logo {
       width: 72px; height: 72px;
       border-radius: var(--radius-panel);

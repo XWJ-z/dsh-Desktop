@@ -73,6 +73,8 @@ const CHECK_UPDATE_COOLDOWN_MS = 10_000;
 let tray = null;                // 托盘图标
 let isQuitting = false;         // 真正退出标志（区分"关窗隐藏"与"退出"）
 let trayExitConfirmed = false;  // 本会话首次托盘「退出」弹确认；取消后重置
+let serverStopRequested = false; // v0.7.10：主动停止 DSH 服务（恢复数据前释放占用），
+                                  // 避免触发「服务意外退出」误报弹窗
 
 // 登记所有由本进程派生的子进程（npm install + dsh 服务），退出时统一清理，
 // 避免 Windows 下残留 node/npm 进程（审查 M1）。
@@ -521,6 +523,32 @@ function stopServer() {
   }, CHILD_GRACE_MS);
 }
 
+/**
+ * v0.7.10（老大反馈）：仅停止 DSH 服务子进程，应用（壳）保持运行。
+ * 场景：恢复数据前释放 ~/.dsh 占用 —— 原先要求用户「退出整个应用」，但壳重启
+ * 又会自动拉起服务，导致永远无法恢复。本函数只 kill serverChild（不退出应用），
+ * 恢复完成后用户重启应用即重新拉起服务。
+ * @returns {Promise<void>} 服务已停止（或原本就没在跑）时 resolve
+ */
+function stopServerOnly() {
+  return new Promise((resolve) => {
+    const child = serverChild;
+    if (!child || child.exitCode !== null) { serverChild = null; resolve(); return; }
+    serverStopRequested = true; // 避免 exit 事件误判「服务意外退出」弹窗
+    appendLog('info', '正在停止 DSH 服务（恢复数据前释放占用）…');
+    try { child.kill('SIGTERM'); } catch { /* ignore */ }
+    const forceKill = setTimeout(() => {
+      try { if (child.exitCode === null) child.kill('SIGKILL'); } catch { /* ignore */ }
+    }, CHILD_GRACE_MS);
+    const done = () => { clearTimeout(forceKill); resolve(); };
+    if (child.exitCode !== null) { done(); return; }
+    child.once('exit', done);
+    child.once('error', done);
+    // 兜底：事件万一未触发，宽限期后强制结束并返回
+    setTimeout(done, CHILD_GRACE_MS + 500);
+  });
+}
+
 function spawnServer(port) {
   return new Promise((resolve, reject) => {
     ensureDshRuntime()
@@ -574,6 +602,8 @@ function spawnServer(port) {
         child.on('exit', (code, signal) => {
           appendLog('warn', `DSH 进程退出 code=${code} signal=${signal}`);
           if (quitting) return;
+          // v0.7.10：主动停止（恢复数据前停服务）不视为异常，不弹「服务意外退出」
+          if (serverStopRequested) { serverStopRequested = false; serverChild = null; return; }
           // 服务意外退出：提示用户
           if (mainWindow && !mainWindow.isDestroyed()) {
             const message = `DSH 服务意外退出（code=${code}, signal=${signal}）。\n\n详细日志：${logPath()}`;
@@ -710,6 +740,9 @@ function createMainWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      // v0.7.10（老大反馈）：托盘隐藏期间不禁用渲染节流 —— 隐藏时 WebContents
+      // 被冻结，托盘恢复需重新绘制导致黑屏等待；关闭节流后恢复即时显示
+      backgroundThrottling: false,
     },
   });
   win.once('ready-to-show', () => {
@@ -718,9 +751,10 @@ function createMainWindow() {
   });
   mainWindow = win;
 
-  // GUI 加载过渡覆盖层：loadURL 前先显示"正在加载界面…"，did-finish-load 后隐藏
-  win.webContents.on('did-start-loading', () => {
-    appendLog('info', `[gui] 开始加载：${win.webContents.getURL()}`);
+  // GUI 加载过渡覆盖层：DSH 页面加载期间显示"正在加载界面…"，did-finish-load 后移除。
+  // v0.7.10（老大反馈）：原 did-start-loading 注入时文档可能未就绪（executeJavaScript
+  // 失败被吞 → 无提示黑屏）；改在 dom-ready（body 就绪）注入，成功率高。
+  win.webContents.on('dom-ready', () => {
     win.webContents.executeJavaScript(`
       if (!document.getElementById('dsh-loading-overlay')) {
         const overlay = document.createElement('div');
@@ -729,36 +763,11 @@ function createMainWindow() {
         overlay.textContent = '正在加载界面…';
         document.body.appendChild(overlay);
       }
-    `).catch(() => { /* 文档可能尚未就绪 */ });
+    `).catch(() => { /* ignore */ });
   });
   win.webContents.on('did-finish-load', () => {
     appendLog('info', `[gui] 加载完成：${win.webContents.getURL()}`);
-    // v0.7.1（T-032）：右上角「网页打开」醒目按钮（原菜单栏顶层项改悬浮按钮）。
-    // 注入固定定位按钮，点击走 preload 暴露的 openExternal（IPC → 系统浏览器）。
-    win.webContents.executeJavaScript(`
-      (() => {
-        const overlay = document.getElementById('dsh-loading-overlay');
-        if (overlay) overlay.remove();
-        if (document.getElementById('dsh-web-open-btn')) return;
-        const url = '${webUrl()}';
-        const btn = document.createElement('button');
-        btn.id = 'dsh-web-open-btn';
-        btn.type = 'button';
-        btn.title = '在系统浏览器中打开 DSH 网页界面';
-        btn.innerHTML = '<span style="font-size:13px;line-height:1;">🌐</span><span>网页打开</span>';
-        btn.style.cssText = 'position:fixed;top:14px;right:18px;z-index:2147483646;display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border:none;border-radius:20px;cursor:pointer;background:linear-gradient(135deg,#4d6bfe,#7c5cff);color:#fff;font:600 13px/1 "Segoe UI","Microsoft YaHei",sans-serif;box-shadow:0 3px 12px rgba(77,107,254,.5);user-select:none;';
-        btn.addEventListener('mouseenter', () => { btn.style.filter = 'brightness(1.12)'; });
-        btn.addEventListener('mouseleave', () => { btn.style.filter = ''; });
-        btn.addEventListener('click', () => {
-          if (window.dshDesktop && window.dshDesktop.openExternal) {
-            window.dshDesktop.openExternal(url);
-          } else {
-            window.open(url, '_blank');
-          }
-        });
-        document.body.appendChild(btn);
-      })();
-    `).catch(() => { /* ignore */ });
+    injectWebOpenButton(win);
   });
   attachWebDiagnostics(win, 'gui');
 
@@ -792,6 +801,98 @@ function createMainWindow() {
   appendLog('info', `加载 DSH Web GUI：${webUrl()}`);
   win.loadURL(webUrl());
   return win;
+}
+
+/**
+ * v0.7.1（T-032）/ v0.7.5（T-036）/ v0.7.6（T-037）：主窗口「网页打开」醒目按钮注入。
+ *  - 默认位置：顶部居中（v0.7.6 起，原右上角）；可拖拽到任意位置（避开 Session log 等界面元素）
+ *  - 位置持久化：settings.webOpenBtnPos（退出时经 saveSettings 落盘，重启恢复）；null = 默认布局
+ *  - 点击走 preload 暴露的 openExternal（IPC → 系统浏览器）；位移 <4px 视为点击
+ */
+function injectWebOpenButton(win) {
+  if (!win || win.isDestroyed()) return;
+  const saved = settings.webOpenBtnPos;
+  win.webContents.executeJavaScript(`
+    (() => {
+      const overlay = document.getElementById('dsh-loading-overlay');
+      if (overlay) overlay.remove();
+      if (document.getElementById('dsh-web-open-btn')) return;
+      const url = '${webUrl()}';
+      const saved = ${JSON.stringify(saved || null)};
+      const btn = document.createElement('button');
+      btn.id = 'dsh-web-open-btn';
+      btn.type = 'button';
+      btn.title = '在系统浏览器中打开 DSH 网页界面（可拖拽调整位置）';
+      btn.innerHTML = '<span style="font-size:13px;line-height:1;">🌐</span><span>网页打开</span>';
+      btn.style.cssText = 'position:fixed;' + (saved ? 'left:' + saved.x + 'px;top:' + saved.y + 'px;right:auto;transform:none;' : 'top:14px;left:50%;right:auto;transform:translateX(-50%);') + 'z-index:2147483646;display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border:none;border-radius:20px;cursor:pointer;background:linear-gradient(135deg,#4d6bfe,#7c5cff);color:#fff;font:600 13px/1 "Segoe UI","Microsoft YaHei",sans-serif;box-shadow:0 3px 12px rgba(77,107,254,.5);user-select:none;';
+      btn.addEventListener('mouseenter', () => { btn.style.filter = 'brightness(1.12)'; });
+      btn.addEventListener('mouseleave', () => { btn.style.filter = ''; });
+      // v0.7.5（T-036）/ v0.7.6（T-037）：拖拽移动 —— pointer 事件 + 捕获；
+      // 起始若为居中模式（transform），先固化为绝对 left 再拖，避免 transform 干扰
+      let dragging = false;
+      let moved = false;
+      let sx = 0, sy = 0, ox = 0, oy = 0;
+      btn.addEventListener('pointerdown', (e) => {
+        dragging = true;
+        moved = false;
+        sx = e.clientX; sy = e.clientY;
+        const r = btn.getBoundingClientRect();
+        ox = r.left; oy = r.top;
+        btn.style.transform = 'none';
+        btn.style.left = r.left + 'px';
+        try { btn.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+        e.preventDefault();
+      });
+      btn.addEventListener('pointermove', (e) => {
+        if (!dragging) return;
+        const dx = e.clientX - sx, dy = e.clientY - sy;
+        if (!moved && Math.hypot(dx, dy) < 4) return;
+        moved = true;
+        let nx = ox + dx, ny = oy + dy;
+        nx = Math.min(Math.max(nx, 0), Math.max(0, window.innerWidth - btn.offsetWidth));
+        ny = Math.min(Math.max(ny, 0), Math.max(0, window.innerHeight - btn.offsetHeight));
+        btn.style.left = nx + 'px';
+        btn.style.top = ny + 'px';
+        btn.style.right = 'auto';
+      });
+      const endDrag = () => {
+        if (!dragging) return;
+        dragging = false;
+        if (moved) {
+          const r = btn.getBoundingClientRect();
+          if (window.dshDesktop && window.dshDesktop.saveWebOpenBtnPos) {
+            window.dshDesktop.saveWebOpenBtnPos({ x: Math.round(r.left), y: Math.round(r.top) });
+          }
+        }
+      };
+      btn.addEventListener('pointerup', endDrag);
+      btn.addEventListener('pointercancel', endDrag);
+      btn.addEventListener('click', (e) => {
+        if (moved) { e.preventDefault(); e.stopPropagation(); moved = false; return; }
+        if (window.dshDesktop && window.dshDesktop.openExternal) {
+          window.dshDesktop.openExternal(url);
+        } else {
+          window.open(url, '_blank');
+        }
+      });
+      document.body.appendChild(btn);
+    })();
+  `).catch(() => { /* ignore */ });
+}
+
+/** v0.7.6（T-037）：恢复默认布局 —— 清除按钮位置记忆，回到顶部居中 */
+function resetWebOpenBtnLayout() {
+  settings.webOpenBtnPos = null;
+  saveSettings();
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.executeJavaScript(`
+      const btn = document.getElementById('dsh-web-open-btn');
+      if (btn) btn.remove();
+    `).catch(() => { /* ignore */ }).then(() => {
+      injectWebOpenButton(mainWindow); // 重新注入（默认顶部居中）
+    });
+  }
+  appendLog('info', '已恢复默认布局（网页打开按钮回顶部居中）');
 }
 
 // ---------------------------------------------------------------------------
@@ -1003,247 +1104,37 @@ async function downloadShellUpdate(win, onProgress) {
 }
 
 // ---------------------------------------------------------------------------
-// 诊断 / 数据备份 / 数据恢复（v0.7.0）
+// 诊断 / 数据备份 / 数据恢复（v0.7.0 起；v0.7.10 拆为独立模块，29 改进意见 1）
+// 自包含函数已抽到 modules/，main.js 只负责组装依赖注入（deps）并调用。
 // ---------------------------------------------------------------------------
-/** T1（v0.7.0）：生成诊断报告 —— 环境信息 + 最近日志 + 配置（脱敏），复制到剪贴板并落盘 */
-function generateDiagnostics() {
-  try {
-    const cfg = readShellConfig();
-    const lines = [];
-    lines.push('DSH-Desktop 诊断报告');
-    lines.push('====================');
-    lines.push(`生成时间：${localTimestamp()}`);
-    lines.push(`应用版本：${app.getVersion()}`);
-    lines.push(`DSH 包：${cfg.dshPackage}@${installedDshVersion() ?? cfg.dshVersion}`);
-    lines.push(`运行器：${resolveRunner().label}`);
-    lines.push(`监听端口：${resolvedPort}`);
-    lines.push(`启动阶段：${currentStage}`);
-    lines.push(`数据目录：${app.getPath('userData')}`);
-    lines.push(`日志文件：${logPath()}`);
-    lines.push(`系统：${os.platform()} ${os.release()} (${os.arch()})`);
-    lines.push(`内存：${(os.totalmem() / 1024 / 1024 / 1024).toFixed(1)} GB 总量`);
-    lines.push('');
-    lines.push('--- 配置（脱敏）---');
-    // T4：防御性脱敏 —— 键名含 pass/token/secret/key/apiKey 的值打码
-    const mask = (obj) => JSON.stringify(obj, (k, v) =>
-      /pass|token|secret|api[_-]?key/i.test(k) && typeof v === 'string' && v ? '***' : v, 2);
-    lines.push(mask(cfg));
-    lines.push('');
-    lines.push('--- 最近日志（末 200 行）---');
-    lines.push(logLines.slice(-200).join('\n'));
-    const text = lines.join('\n');
+const { createDiagnostics } = require('./modules/diagnostics');
+const { createBackup } = require('./modules/backup');
 
-    // 落盘
-    const dir = path.join(app.getPath('userData'), 'diagnostics');
-    fs.mkdirSync(dir, { recursive: true });
-    const file = path.join(dir, `dsh-diagnostics-${localTimestamp().replace(/[: ]/g, '-')}.txt`);
-    fs.writeFileSync(file, text, 'utf8');
+const generateDiagnostics = createDiagnostics({
+  appName: APP_NAME,
+  app, dialog, clipboard, shell, fs, os, path,
+  appendLog, localTimestamp,
+  readShellConfig, installedDshVersion, resolveRunner,
+  getResolvedPort: () => resolvedPort,
+  getCurrentStage: () => currentStage,
+  getLogPath: logPath,
+  getLogLines: () => logLines,
+  getOwnerWindow: () => (mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined),
+});
 
-    // 复制到剪贴板
-    clipboard.writeText(text);
-
-    dialog.showMessageBox(mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined, {
-      type: 'info', title: APP_NAME,
-      message: '诊断报告已生成',
-      detail: `已复制到剪贴板，可直接粘贴发送。\n已保存：${file}`,
-      buttons: ['打开所在目录', '关闭'],
-      defaultId: 1, cancelId: 1, noLink: true,
-    }).then(({ response }) => {
-      if (response === 0) shell.openPath(dir);
-    }).catch(() => { /* ignore */ });
-
-    appendLog('info', `诊断报告已生成：${file}`);
-  } catch (err) {
-    appendLog('error', `生成诊断报告失败：${err.message}`);
-    dialog.showErrorBox(APP_NAME, `生成诊断报告失败：${err.message}`);
-  }
-}
-
-/** T2（v0.7.0）：备份 DSH 用户数据 + 设置 → 用户选路径的 tar.gz */
-async function backupUserData() {
-  const owner = mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined;
-  const { canceled, filePath } = await dialog.showSaveDialog(owner, {
-    title: '备份 DSH 数据',
-    defaultPath: path.join(app.getPath('documents'), `dsh-backup-${localDate()}.tar.gz`),
-    filters: [{ name: '备份包', extensions: ['tar.gz'] }],
-  });
-  if (canceled || !filePath) return;
-
-  const dshHome = path.join(os.homedir(), '.dsh');
-  const settings = settingsFile();
-  const hasDsh = fs.existsSync(dshHome);
-  const hasSettings = fs.existsSync(settings);
-
-  if (!hasDsh && !hasSettings) {
-    dialog.showMessageBox(owner, {
-      type: 'warning', title: APP_NAME,
-      message: '没有可备份的数据',
-      detail: '未找到 DSH 用户数据（~/.dsh）和设置文件。首次使用后再备份。',
-      buttons: ['确定'], noLink: true,
-    });
-    return;
-  }
-
-  appendLog('info', `开始备份：~/.dsh=${hasDsh} settings=${hasSettings} → ${filePath}`);
-  dialog.showMessageBox(owner, {
-    type: 'info', title: APP_NAME,
-    message: '正在备份…',
-    detail: '数据量小（秒级）；大工作区需稍候。备份完成后自动提示。',
-    buttons: ['确定'], noLink: true,
-  });
-
-  // 暂存目录：把 .dsh / settings.json / manifest.json 统一归位到 tar 根，
-  // 保证包内只有相对路径（portable，解包到任意机器路径一致）
-  const staging = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-backup-'));
-  try {
-    const entries = [];
-    if (hasDsh) {
-      fs.cpSync(dshHome, path.join(staging, '.dsh'), { recursive: true });
-      entries.push('.dsh');
-    }
-    if (hasSettings) {
-      fs.copyFileSync(settings, path.join(staging, 'settings.json'));
-      entries.push('settings.json');
-    }
-    // manifest 记录（恢复时校验格式用）
-    const manifest = {
-      format: 'dsh-backup-v1',
-      appVersion: app.getVersion(),
-      dshPackage: readShellConfig().dshPackage,
-      dshVersion: installedDshVersion() ?? readShellConfig().dshVersion,
-      backupTime: localTimestamp(),
-      entries,
-    };
-    fs.writeFileSync(path.join(staging, 'manifest.json'), JSON.stringify(manifest, null, 2), 'utf8');
-
-    await tar.create(
-      { gzip: true, file: filePath, cwd: staging, portable: true },
-      ['manifest.json', ...entries],
-    );
-
-    appendLog('info', `备份完成：${filePath}`);
-    dialog.showMessageBox(owner, {
-      type: 'info', title: APP_NAME,
-      message: '备份完成',
-      detail: `${filePath}\n\n包含：${entries.join('、')}`,
-      buttons: ['打开所在目录', '关闭'],
-      defaultId: 1, cancelId: 1, noLink: true,
-    }).then(({ response }) => {
-      if (response === 0) shell.openPath(path.dirname(filePath));
-    }).catch(() => { /* ignore */ });
-  } catch (err) {
-    appendLog('error', `备份失败：${err.message}`);
-    dialog.showErrorBox(APP_NAME, `备份失败：${err.message}`);
-  } finally {
-    fs.rmSync(staging, { recursive: true, force: true });
-  }
-}
-
-/** T3（v0.7.0）：从备份包恢复 DSH 数据（固定路径映射，不信任包内路径） */
-async function restoreUserData() {
-  const owner = mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined;
-
-  // v0.7.1（T-032）：恢复前服务占用检查 —— DSH 服务在跑时 ~/.dsh 被占用，
-  // 重命名会 EPERM 且可能半恢复（settings 换了、数据没换），提示先退出再恢复
-  if (serverChild && serverChild.exitCode === null) {
-    dialog.showMessageBox(owner, {
-      type: 'warning', title: APP_NAME,
-      message: '恢复数据前请先退出 DSH 服务',
-      detail: 'DSH 服务正在运行，数据文件（~/.dsh）可能被占用，直接恢复会导致失败或数据不一致。\n\n请先通过托盘菜单「退出」关闭应用（或重启电脑）后，再运行「恢复数据…」。',
-      buttons: ['知道了'], noLink: true,
-    });
-    return;
-  }
-
-  const { canceled, filePaths } = await dialog.showOpenDialog(owner, {
-    title: '选择 DSH 备份包',
-    properties: ['openFile'],
-    filters: [{ name: '备份包', extensions: ['tar.gz', 'tgz'] }],
-  });
-  if (canceled || !filePaths || !filePaths[0]) return;
-  const backupFile = filePaths[0];
-
-  // 确认
-  const { response: confirmRes } = await dialog.showMessageBox(owner, {
-    type: 'warning', title: APP_NAME,
-    message: '恢复数据将覆盖本机现有 DSH 数据',
-    detail: '现有数据会被重命名为 .bak 保留（不删除）。确定继续？',
-    buttons: ['确定恢复', '取消'], defaultId: 1, cancelId: 1, noLink: true,
-  });
-  if (confirmRes !== 0) return;
-
-  // 先解压到临时目录校验（不直接解到目标，防恶意包写任意路径）
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-restore-'));
-  try {
-    await tar.extract({ file: backupFile, cwd: tmp, portable: true });
-
-    // T4：校验 manifest（格式/版本），不存在则拒绝（防随意 tar 包）
-    const manifestPath = path.join(tmp, 'manifest.json');
-    if (!fs.existsSync(manifestPath)) {
-      dialog.showErrorBox(APP_NAME, '无效的备份包：缺少 manifest.json');
-      return;
-    }
-    let manifest;
-    try {
-      manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-    } catch {
-      dialog.showErrorBox(APP_NAME, '无效的备份包：manifest.json 解析失败');
-      return;
-    }
-    if (manifest.format !== 'dsh-backup-v1') {
-      dialog.showErrorBox(APP_NAME, '无效的备份包：格式不识别');
-      return;
-    }
-    const entries = Array.isArray(manifest.entries) ? manifest.entries : [];
-
-    // 固定路径映射（T4：不信任包内路径，只按约定落位）
-    const dshHome = path.join(os.homedir(), '.dsh');
-    const settings = settingsFile();
-    const stamp = Date.now();
-    const moveOld = (target) => {
-      if (fs.existsSync(target)) fs.renameSync(target, `${target}.bak-${stamp}`);
-    };
-
-    if (entries.includes('.dsh') && fs.existsSync(path.join(tmp, '.dsh'))) {
-      moveOld(dshHome);
-      fs.renameSync(path.join(tmp, '.dsh'), dshHome);
-    }
-    if (entries.includes('settings.json') && fs.existsSync(path.join(tmp, 'settings.json'))) {
-      moveOld(settings);
-      fs.mkdirSync(path.dirname(settings), { recursive: true });
-      fs.renameSync(path.join(tmp, 'settings.json'), settings);
-    }
-
-    appendLog('info', `数据恢复完成（来源：${backupFile}）`);
-
-    // 版本差异提示
-    const curDsh = installedDshVersion() ?? '未知';
-    const bakDsh = manifest.dshVersion ?? '未知';
-    const diff = curDsh !== bakDsh
-      ? `\n\n注意：备份时的 DSH 版本为 ${bakDsh}，当前为 ${curDsh}。如需一致，请到「检查更新」窗口升级 DSH。`
-      : '';
-
-    dialog.showMessageBox(owner, {
-      type: 'info', title: APP_NAME,
-      message: '数据恢复完成',
-      detail: `工作区/会话数据已还原。${diff}\n\n建议重启应用使设置生效。`,
-      buttons: ['立即重启', '稍后'],
-      defaultId: 1, cancelId: 1, noLink: true,
-    }).then(({ response }) => {
-      if (response === 0) { isQuitting = true; app.relaunch(); app.exit(0); }
-    }).catch(() => { /* ignore */ });
-  } catch (err) {
-    appendLog('error', `恢复失败：${err.message}`);
-    // T4：DSH 服务运行中占用 ~/.dsh 时重命名/写回会 EPERM —— 给出操作指引
-    let detail = `恢复失败：${err.message}`;
-    if (/EPERM|EACCES/.test(err.message)) {
-      detail += '\n\n数据文件可能正被 DSH 服务占用。请先通过托盘「退出」关闭应用（或重启电脑）后重试。';
-    }
-    dialog.showErrorBox(APP_NAME, detail);
-  } finally {
-    fs.rmSync(tmp, { recursive: true, force: true });
-  }
-}
+const { backupUserData, restoreUserData } = createBackup({
+  appName: APP_NAME,
+  app, dialog, shell, fs, os, path, tar,
+  appendLog, localTimestamp, localDate,
+  readShellConfig, installedDshVersion, settingsFile,
+  getOwnerWindow: () => (mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined),
+  isServerRunning: () => !!(serverChild && serverChild.exitCode === null),
+  // v0.7.10（老大反馈）：恢复数据前可只停 DSH 服务（不退出应用），而非要求整体退出
+  stopServerOnly,
+  // v0.7.10（老大反馈）：备份进度条 —— 进度窗口 + 主窗口任务栏进度
+  openBackupProgress, updateBackupProgress, closeBackupProgress,
+  setQuitting: () => { isQuitting = true; },
+});
 
 // ---------------------------------------------------------------------------
 // 壳（DSH-Desktop）自动更新（v0.5）：GitHub version.json 三源并发 + 镜像下载
@@ -1271,7 +1162,8 @@ const SHELL_UPDATE_URLS = [
 
 /**
  * 查询壳最新版本（三源并发：并发请求全部更新源，取版本号最高者）。
- * 返回 { version, download_urls, release_notes, force, hash } 或 null（全部失败/超时静默）。
+ * 返回 { version, download_urls, release_notes, force, hash, minVersion } 或 null（全部失败/超时静默）。
+ * v0.7.10（29 建议 A）：新增 minVersion 字段 —— 低于该版本的旧客户端启动时强制提示升级
  */
 function fetchLatestShellVersion() {
   const parse = (info) => {
@@ -1282,6 +1174,7 @@ function fetchLatestShellVersion() {
       releaseNotes: String(info.release_notes || ''),
       force: !!info.force,
       hash: String(info.hash || '').toLowerCase(),
+      minVersion: String(info.minVersion || ''), // v0.7.10：最低支持版本（空 = 不限制）
     };
   };
   return Promise.all(SHELL_UPDATE_URLS.map((s) => fetchJson(s.url, 8000, s.headers || {}).then(parse)))
@@ -1332,6 +1225,9 @@ function downloadFile(url, dest, onProgress) {
         if (done) return;
         done = true;
         cleanupTimer();
+        // v0.7.10（v18.0 L1 遗留修复）：显式销毁旧写入流 —— 不关的话重试时旧流
+        // 仍持有 .part 句柄，新流打开可能失败/残留文件，且断点续传的旧流永远不回收
+        if (file) { try { file.destroy(); } catch { /* ignore */ } }
         if (attempts < MAX_ATTEMPTS) {
           attempts++;
           setTimeout(() => start(target), 500);
@@ -1499,18 +1395,80 @@ function openAboutWindow() {
   aboutWin.on('closed', () => { aboutWin = null; });
 }
 
-/** 关闭行为询问弹窗（v0.6.1 T-027）：退出 / 关闭到托盘 + 记住我的选择 */
-let closeChoiceWin = null;
+/** 关闭行为询问弹窗（v0.6.1 T-027 → v0.7.10 改原生）：退出 / 关闭到托盘 + 记住我的选择。
+ *  老大要求：和恢复数据弹窗一样用 Windows 原生对话框，不做深色美化。 */
 function openCloseChoiceWindow(parentWin) {
-  if (closeChoiceWin && !closeChoiceWin.isDestroyed()) { closeChoiceWin.focus(); return; }
-  closeChoiceWin = new BrowserWindow({
-    width: 400, height: 190, resizable: false, minimizable: false, maximizable: false,
-    parent: parentWin, modal: true, title: '关闭 DSH-Desktop',
-    backgroundColor: '#0f1115',
+  dialog.showMessageBox(parentWin, {
+    type: 'question',
+    title: APP_NAME,
+    message: '关闭 DSH-Desktop？',
+    detail: '关闭到托盘 —— 窗口隐藏，DSH 服务继续后台运行\n退出 —— 停止 DSH 服务并退出应用',
+    buttons: ['关闭到托盘', '退出'],
+    defaultId: 0, cancelId: 1, noLink: true,
+    checkboxLabel: '记住我的选择，下次不再询问',
+    checkboxChecked: false,
+  }).then(({ response, checkboxChecked }) => {
+    if (response === 0) {
+      // 关闭到托盘
+      if (checkboxChecked) setCloseChoice('tray', true);
+      appendLog('info', '用户选择关闭到托盘');
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.hide();
+    } else {
+      // 退出
+      if (checkboxChecked) setCloseChoice('quit', true);
+      appendLog('info', '用户选择退出（关闭窗口）');
+      isQuitting = true;
+      app.quit();
+    }
+  }).catch(() => { /* ignore */ });
+}
+
+/**
+ * v0.7.10（老大反馈）：备份进度窗口 —— 极简原生风格（进度条 + 文字，不美化）。
+ * 同时把进度同步到主窗口任务栏（win.setProgressBar）。
+ */
+let backupProgressWin = null;
+
+/** 打开备份进度窗口（幂等：已存在则复用） */
+function openBackupProgress() {
+  if (backupProgressWin && !backupProgressWin.isDestroyed()) { backupProgressWin.show(); return; }
+  backupProgressWin = new BrowserWindow({
+    width: 360, height: 110, resizable: false, minimizable: false, maximizable: false,
+    parent: mainWindow, modal: false, title: '备份数据',
     webPreferences: secureWebPreferences(),
   });
-  closeChoiceWin.loadFile(path.join(__dirname, 'renderer', 'close-choice.html'));
-  closeChoiceWin.on('closed', () => { closeChoiceWin = null; });
+  backupProgressWin.loadFile(path.join(__dirname, 'renderer', 'progress.html'));
+  backupProgressWin.on('closed', () => { backupProgressWin = null; });
+}
+
+/**
+ * 更新备份进度。
+ * @param {number} percent 0~100（100 = 完成）
+ * @param {string} text 状态文字
+ */
+function updateBackupProgress(percent, text) {
+  const pct = Math.max(0, Math.min(100, Math.round(percent)));
+  if (backupProgressWin && !backupProgressWin.isDestroyed()) {
+    backupProgressWin.webContents.executeJavaScript(`
+      const bar = document.getElementById('bar');
+      if (bar) bar.value = ${pct};
+      const t = document.getElementById('text');
+      if (t) t.textContent = ${JSON.stringify(String(text || ''))};
+    `).catch(() => { /* ignore */ });
+  }
+  // 主窗口任务栏进度（完成/关闭时 -1 清除）
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    try { mainWindow.setProgressBar(pct >= 100 ? -1 : pct / 100); } catch { /* ignore */ }
+  }
+}
+
+/** 关闭备份进度窗口（清除任务栏进度） */
+function closeBackupProgress() {
+  if (backupProgressWin && !backupProgressWin.isDestroyed()) backupProgressWin.close();
+  backupProgressWin = null;
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    try { mainWindow.setProgressBar(-1); } catch { /* ignore */ }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1528,6 +1486,7 @@ let settings = {
   checkUpdateOnStart: true,   // v0.6.5（T-030）：启动时检查更新并弹窗询问（默认开启）
   winBounds: null,            // T5（v0.6.6）：主窗口位置/大小 {x,y,width,height}
   winMaximized: false,        // T5：最大化状态
+  webOpenBtnPos: null,        // v0.7.6（T-037）：网页打开按钮拖拽位置（退出保存，重启恢复；null=默认顶部居中）
 };
 
 function settingsFile() {
@@ -1628,10 +1587,16 @@ function createTray() {
 
 function updateTrayMenu() {
   if (!tray) return;
+  // v0.7.10（29 建议 C）：托盘菜单显示 DSH 运行时版本（只读，用户一眼看到版本）
+  const dshVer = installedDshVersion() ?? readShellConfig().dshVersion;
   const ctx = Menu.buildFromTemplate([
     { label: '打开主界面', click: () => showMainWindow() },
     { label: '远程连接（即将推出）', enabled: false }, // 占位（v0.6.0 暂未实现）
     { type: 'separator' },
+    {
+      label: `DSH ${dshVer}`,
+      enabled: false,
+    },
     {
       label: '开机自启',
       type: 'checkbox',
@@ -1723,6 +1688,8 @@ function buildMenu() {
         { role: 'zoomOut', label: '缩小' },
         { type: 'separator' },
         { role: 'togglefullscreen', label: '全屏' },
+        // v0.7.7（T-038）：布局/显示控制归位视图菜单（Windows 惯例），网页打开按钮回顶部居中
+        { label: '恢复默认布局', click: () => resetWebOpenBtnLayout() },
         { type: 'separator' },
         { label: '开发者工具', accelerator: 'F12', click: () => { if (mainWindow) mainWindow.webContents.toggleDevTools(); } },
       ],
@@ -1823,6 +1790,16 @@ async function checkUpdatesOnStart() {
     if (settings.checkUpdateOnStart || shellInfo.force) promptShellUpdate(shellInfo);
   }
 
+  // v0.7.10（29 建议 A）：minVersion 门槛 —— 当前版本低于服务端声明的最低支持版本时，
+  // 无视「启动时检查更新」开关强制提示升级（重大漏洞下线旧版场景，配合 force 使用）。
+  // 仅当壳本身有新版本时才有意义（minVersion 由新 version.json 下发，若已是最新则无需处理）。
+  if (shellInfo && shellInfo.minVersion &&
+      compareSemver(app.getVersion(), shellInfo.version) < 0 &&
+      compareSemver(app.getVersion(), shellInfo.minVersion) < 0) {
+    appendLog('warn', `当前版本 v${app.getVersion()} 低于最低支持版本 v${shellInfo.minVersion}，强制提示更新`);
+    promptShellUpdate(shellInfo);
+  }
+
   if (dshHasUpdate || shellHasUpdate) Menu.setApplicationMenu(buildMenu());
 }
 
@@ -1908,6 +1885,14 @@ if (!gotLock) {
     ipcMain.handle('dsh:installed-dsh-version', () => installedDshVersion());
     ipcMain.handle('dsh:port', () => resolvedPort);
     ipcMain.handle('dsh:stage', () => currentStage); // L6：页面就绪后查询当前阶段
+    // v0.7.5（T-036）/ v0.7.6（T-037）：网页打开按钮拖拽位置上报（立即落盘 + 退出时 saveSettings 双保险）
+    ipcMain.handle('web-open-btn:pos', (_e, pos) => {
+      if (pos && typeof pos.x === 'number' && typeof pos.y === 'number') {
+        settings.webOpenBtnPos = { x: pos.x, y: pos.y };
+        saveSettings();
+      }
+      return true;
+    });
 
     // v0.5.3：更新窗口 / 联系我们 IPC
     ipcMain.handle('update:query', () => queryUpdateInfo());
@@ -1965,24 +1950,6 @@ if (!gotLock) {
     });
     ipcMain.handle('app:open-external', (_e, url) => {
       if (typeof url === 'string' && /^https?:/i.test(url)) shell.openExternal(url);
-      return true;
-    });
-    // v0.6.1（T-027）：关闭行为询问弹窗的选择（{ action: 'quit'|'tray', remember: bool }）
-    ipcMain.handle('close:choose', (_e, choice) => {
-      const action = choice && choice.action;
-      const remember = !!(choice && choice.remember);
-      if (closeChoiceWin && !closeChoiceWin.isDestroyed()) closeChoiceWin.close();
-      closeChoiceWin = null;
-      if (action === 'quit') {
-        if (remember) setCloseChoice('quit', true);
-        appendLog('info', '用户选择退出（关闭窗口）');
-        isQuitting = true;
-        app.quit();
-      } else if (action === 'tray') {
-        if (remember) setCloseChoice('tray', true);
-        appendLog('info', '用户选择关闭到托盘');
-        if (mainWindow && !mainWindow.isDestroyed()) mainWindow.hide();
-      }
       return true;
     });
 

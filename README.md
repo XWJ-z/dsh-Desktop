@@ -14,8 +14,8 @@
 
 ### 🪟 Windows 桌面版
 
-<a href="https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.7.4/DSH-Desktop-Setup-0.7.4.exe">
-<img src="https://img.shields.io/badge/下载安装包-DSH--Desktop--Setup--0.7.4.exe%20%E7%BA%A6114MB-2ea44f?style=for-the-badge&logo=windows&logoColor=white" alt="下载 DSH-Desktop 安装包"/>
+<a href="https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.7.10/DSH-Desktop-Setup-0.7.10.exe">
+<img src="https://img.shields.io/badge/下载安装包-DSH--Desktop--Setup--0.7.10.exe%20%E7%BA%A6114MB-2ea44f?style=for-the-badge&logo=windows&logoColor=white" alt="下载 DSH-Desktop 安装包"/>
 </a>
 
 双击运行即可安装 · 无需预装 DSH / Node.js / npm · 首次运行联网自动拉取 DSH 依赖
@@ -50,7 +50,7 @@ DSH 本身是运行在浏览器中的 Web 界面（`http://127.0.0.1:3080`）。
 - ⬆️ **检查更新（v0.5.3+）**：「帮助 → 检查更新」现代窗口同屏展示 **DSH**（npm 源最新版，一键升级改 config 重启安装）与 **DSH-Desktop 壳**（GitHub version.json 三源并发检查——jsDelivr/GitHub API/raw.githubusercontent 取最高版本，规避 CDN 缓存旧版漏报；多镜像下载 + SHA256 校验 + **断点续传（v0.7.2+，中断自动续传）**）两侧更新状态，带徽章/更新日志/下载进度条
 - 💬 **帮助菜单（v0.5.3+，v0.6.4 起更名）**：检查更新、联系我们（QQ 群二维码大图 + 一键复制群号）、关于（现代窗口：版本/DSH/服务地址）、DeepSeek 官网、DSH 项目主页
 - 📂 **常用目录直达**：文件菜单可一键打开日志目录 / 数据目录
-- 🌐 **网页打开（v0.5.9+，v0.7.1 起改按钮）**：主窗口**右上角「网页打开」醒目按钮**（品牌蓝色渐变胶囊），一键在系统默认浏览器中打开 DSH 网页界面
+- 🌐 **网页打开（v0.5.9+，v0.7.1 起改按钮，v0.7.5 起可拖拽，v0.7.6 位置记忆）**：主窗口**「网页打开」醒目按钮**（品牌蓝色渐变胶囊，默认顶部居中，可拖拽到任意位置避开界面元素；拖拽位置退出时保存、重启恢复；视图菜单可「恢复默认布局」），一键在系统默认浏览器中打开 DSH 网页界面
 - 🗔️ **系统托盘（v0.6.0+）**：关闭窗口最小化到托盘，DSH 服务后台继续运行；托盘菜单可打开主界面 / 检查更新 / 开机自启 / 退出（退出前弹确认，避免误退导致服务停止）
 - ⚡ **开机自启（v0.6.0+）**：设置菜单 / 托盘菜单勾选后开机自动启动（写入注册表 Run 键，安装版生效）；v0.6.6 起自启为**静默启动**——不弹窗口，后台运行 + 托盘常驻
 - 🪟 **窗口状态记忆（v0.6.6+）**：记住主窗口位置/大小/最大化状态，下次启动还原；记忆位置在屏幕外时自动兜底默认尺寸
@@ -67,13 +67,14 @@ DSH 本身是运行在浏览器中的 Web 界面（`http://127.0.0.1:3080`）。
 
 ## 🐮 飞牛 OS（fnOS）应用
 
-**DeepSeek Harness Web GUI（DSH）的飞牛 OS 原生应用**，一键安装，开箱即用。
+**DeepSeek Harness Web GUI（DSH）的飞牛 OS 原生应用**，一键安装，开箱即用（v0.2.5 已提交应用中心，上架审核中）。
 
 - 📦 **原生应用包**：`dsh-0.2.5.fpk`（fnpack 打包，应用名 `dsh` / DeepSeek Harness）
 - 🖥️ **平台要求**：飞牛 OS（fnOS）v1.1.3100+，全平台
 - ⚙️ **运行依赖**：`nodejs_v22`（安装时自动关联）
 - 🚀 **桌面入口**：`dsh.main`，支持停止应用（ctl_stop）
-- 🏷️ **应用信息**：开发者 DeepSeek · 发布者 清零 · 来源 thirdparty
+- 🏷️ **应用信息**：开发者 zx · 发布者 zx · 来源 thirdparty
+- 🔗 **Win-飞牛联动**：版本号/配置/更新检查的共享协议见《[Win-飞牛联动协议草案](windows/docs/decisions/0003-win-fnos-protocol.md)》（跨端联动立项时复用）
 
 **安装方式**：下载 [dsh-0.2.5.fpk](https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.5.9/dsh-0.2.5.fpk) → 在飞牛 OS 应用中心手动安装。
 
@@ -123,7 +124,7 @@ npm run installer
 # 产物位于 windows/app/dist/installer/DSH-Desktop-Setup-<version>.exe
 ```
 
-把 **DSH-Desktop-Setup-0.7.4.exe** 拷贝到目标电脑，双击运行即可：
+把 **DSH-Desktop-Setup-0.7.10.exe** 拷贝到目标电脑，双击运行即可：
 
 - 目标电脑**无需预装 DSH / Node.js / npm**（壳自带完整 Electron + npm 环境）
 - 默认安装到 `%LOCALAPPDATA%\Programs\DSH-Desktop`（**无需管理员权限**），
@@ -195,12 +196,13 @@ dsh-Desktop/
 │   │   │   ├── installer.js    # 安装程序构建脚本（electron-builder NSIS）
 │   │   │   └── rebuild-native.js # 原生模块 ABI 预检（通常全部通过，无需重建）
 │   │   └── assets/             # 品牌图标 + QQ 群二维码（icon.png / icon.ico / qq-group.png）
+│   ├── tests/                   # 自动化测试（v0.7.10+）
+│   │   └── smoke.js            # 最小集成冒烟测试（起壳→就绪→健康→退出→无残留，npm run smoke）
 │   ├── docs/                   # 文档
 │   │   ├── PROJECT.md          # 项目说明（背景 / 架构 / 技术决策）
 │   │   ├── TASKS.md            # 任务管理看板
 │   │   ├── MILESTONES.md       # 里程碑
-│   │   ├── dev-log/            # 开发日志
-│   │   │   └── DEVELOPMENT_LOG.md # 开发日志（持续追加）
+│   │   ├── dev-log/            # 开发日志（按月建文件夹、按天写文件：<YYYY-MM>/<YYYY-MM-DD>.md）
 │   │   └── decisions/          # 架构决策记录（ADR）
 │   └── 代码审查/               # 审查报告与修复任务清单
 ├── version.json                # 壳自动更新清单（GitHub 根目录，jsDelivr 可达）
@@ -244,6 +246,35 @@ dsh-Desktop/
   `--expose-internals`（DSH HMR 需要）；原生模块均为 N-API 预编译，无需 rebuild
 - **DSH 运行时**：始终安装在用户数据目录（`%APPDATA%\DSH-Desktop\dshenv`），
   首次联网下载，之后离线可用；改 `config.json` 版本号即升级
+
+## 📐 版本命名规则（vX.Y.Z）
+
+> 本项目版本号遵循 `vX.Y.Z` 三段式规则（Z 从 1 开始，无 0）：
+
+| 段位 | 含义 | 说明 |
+|------|------|------|
+| **X** | 大版本（重大更新/架构级迭代）| **0 为开发版本**；X 加一 = 重大更新、大版本迭代（如 0.x → 1.x）|
+| **Y** | 功能集合版本 | 当前大版本下的新增功能集合（每加一个 Y，代表一批新功能）|
+| **Z** | 修复迭代版本 | Y 功能版本下的修复/迭代版本 |
+
+**特殊规则：**
+
+1. **Z = 4 → 紧急更新**：表示有重大漏洞或安全问题，跳过常规迭代直接发布修复版。
+   - 例：`0.7.2` 发现大漏洞 → 发布 `0.7.4` 修复
+   - 例：`0.11.18` 出现漏洞/安全问题 → 发布 `0.11.24` 修复
+2. **Z 末尾为 0 → 当前 Y 版本的最终版本**：该功能版本线的最后一个版本，**发布后不再有后续**。
+   - 例：`0.7.10`、`0.8.20` 均为最终版本（有了 `0.7.10` 就不会有 `0.7.11` 等）
+3. **Z 从 1 开始，没有 0**：
+   - ❌ `0.8.0` 不合法 → ✅ 应为 `0.8.1`
+   - ❌ `1.0.0` 不合法 → ✅ 应为 `1.0.1`
+   - （Z 末尾的 0 仅用于「最终版本」标记，如 0.7.10 / 0.8.20）
+
+**示例（当前版本线）：**
+
+| 版本 | 说明 |
+|------|------|
+| v0.7.4 | Z=4 紧急更新（修复首次安装下载卡死）|
+| v0.7.10 | Z 末尾 0 = v0.7 功能线的最终版本（稳定里程碑）|
 
 ## 环境要求
 

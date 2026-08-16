@@ -8,7 +8,7 @@
 
 appId: com.deepseek.dsh-desktop
 productName: DSH-Desktop
-copyright: "Copyright © 2026 DeepSeek"
+copyright: "Copyright © 2026 zx"
 
 directories:
   output: dist/installer
@@ -65,7 +65,7 @@ win:
   # 未配置本块 = 不签名（现状，构建不受影响）。
   #
   # azureSignOptions:
-  #   publisherName: "你的组织/发布者名称"          # 必须与证书配置文件中的发行者一致
+  #   publisherName: "zx"                          # 必须与证书配置文件中的发行者一致
   #   endpoint: "https://eastus.trustedsigning.azure.net"  # 账户所在区域端点
   #   certificateProfileName: "你的证书配置文件名称"
   #   codeSigningAccountName: "你的 Trusted Signing 账户名"

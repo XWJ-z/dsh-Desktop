@@ -1,0 +1,86 @@
+/* ==========================================================================
+   DSH-Desktop 共享样式（v0.7.10，29 改进意见 2）
+   深色主题设计 token + 通用组件类。loading/update/contact/about 四页面统一引用，
+   消除重复样式；页面特有样式保留在各页面 <style> 中。
+   （close-choice 于 v0.7.10 改 Windows 原生弹窗，文件已移除）
+   ========================================================================== */
+
+/* ── 深色主题设计 token（Linear 风格，四页面统一）── */
+:root {
+  color-scheme: dark;
+  --bg-deep: #08090a;
+  --bg-panel: #0f1011;
+  --bg-surface: #191a1b;
+  --bg-hover: #28282c;
+  --text-primary: #f7f8f8;
+  --text-secondary: #d0d6e0;
+  --text-tertiary: #8a8f98;
+  --text-quaternary: #62666d;
+  --brand: #5e6ad2;
+  --accent: #7170ff;
+  --accent-hover: #828fff;
+  --success: #10b981;
+  --warn: #f5a623;
+  --border-subtle: rgba(255,255,255,0.05);
+  --border-standard: rgba(255,255,255,0.08);
+  --radius-btn: 6px;
+  --radius-card: 8px;
+  --radius-panel: 12px;
+  --font: 'Inter', 'Segoe UI', 'Microsoft YaHei', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', Consolas, monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font);
+  background:
+    radial-gradient(700px 350px at 50% -12%, rgba(94,106,210,0.12) 0%, transparent 60%),
+    var(--bg-deep);
+  color: var(--text-primary);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px;
+  user-select: none;
+}
+
+h1 { font-size: 20px; font-weight: 590; letter-spacing: -0.24px; }
+
+/* ── 卡片（about / update 通用）── */
+.card {
+  width: 100%;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-standard);
+  border-radius: var(--radius-panel);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.card-title { font-size: 15px; font-weight: 590; margin-bottom: 14px; color: var(--text-primary); }
+
+/* ── 信息行（about / update 通用；justify-content 差异页面内覆盖）── */
+.row { display: flex; align-items: center; gap: 10px; font-size: 14px; flex-wrap: wrap; }
+.row .label { color: var(--text-tertiary); }
+.row .value { color: var(--text-secondary); font-weight: 500; }
+
+/* ── 徽章（about / update 通用）── */
+.badge { font-size: 11px; padding: 2px 10px; border-radius: 999px; font-weight: 600; }
+.badge.latest  { color: var(--success); background: rgba(16,185,129,0.12); border: 1px solid rgba(16,185,129,0.3); }
+.badge.update  { color: var(--accent); background: rgba(113,112,255,0.12); border: 1px solid rgba(113,112,255,0.35); }
+.badge.unknown { color: var(--text-quaternary); background: rgba(255,255,255,0.04); border: 1px solid var(--border-subtle); }
+
+/* ── 按钮（about / update / contact 通用）── */
+.btn-row { display: flex; gap: 10px; width: 100%; }
+.btn {
+  flex: 1; padding: 10px 0; border-radius: var(--radius-btn); font-size: 14px; font-weight: 590;
+  cursor: pointer; border: none; text-align: center; color: #fff;
+  background: var(--brand);
+}
+.btn:hover { background: var(--accent-hover); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn.ghost {
+  background: rgba(255,255,255,0.02); color: var(--text-tertiary);
+  border: 1px solid var(--border-standard);
+}
+.btn.ghost:hover { color: var(--text-primary); border-color: rgba(255,255,255,0.16); }

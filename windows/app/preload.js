@@ -57,7 +57,6 @@ contextBridge.exposeInMainWorld('dshDesktop', {
   openUpdateWindow: () => ipcRenderer.invoke('about:open-update'),
   /** 打开外部链接（仅 http/https） */
   openExternal: (url) => ipcRenderer.invoke('app:open-external', url),
-  // ── v0.6.1：关闭行为选择 ──
-  /** 提交关闭选择（{ action: 'quit'|'tray', remember: bool }） */
-  chooseCloseAction: (choice) => ipcRenderer.invoke('close:choose', choice),
+  /** 网页打开按钮拖拽位置上报（v0.7.5：会话内记忆） */
+  saveWebOpenBtnPos: (pos) => ipcRenderer.invoke('web-open-btn:pos', pos),
 });
