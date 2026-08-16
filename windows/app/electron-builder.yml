@@ -78,6 +78,11 @@ nsis:
   perMachine: false
   allowToChangeInstallationDirectory: true
   allowElevation: true
+  # v0.8.13（T1 修复）：覆盖安装前自动结束旧版本运行中的实例 ——
+  # 否则托盘常驻的旧进程持有单实例锁，新版本双击静默退出（"无反应"）。
+  # 注：electron-builder 26.x 已移除旧版 killRunningProcesses 选项（schema 校验会失败），
+  # 但其 NSIS 模板对 assisted 安装已内置等效逻辑（installSection.nsh 的 CHECK_APP_RUNNING：
+  # 检测到运行中的 DSH-Desktop.exe → 弹窗确认 → 同用户 taskkill → 强制终止重试），无需配置。
   createDesktopShortcut: true
   createStartMenuShortcut: true
   shortcutName: DSH-Desktop

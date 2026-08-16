@@ -97,6 +97,7 @@ el('shell-download').addEventListener('click', async () => {
   if (shellDownloading || !dsh || !dsh.downloadShellUpdate) return;
   shellDownloading = true;
   el('shell-download').disabled = true;
+  el('shell-download').textContent = '下载中…'; // v0.8.11（T0.5）：下载中禁用态提示
   el('shell-progress').style.display = '';
   el('shell-status').textContent = '开始下载…';
 
@@ -119,6 +120,7 @@ el('shell-download').addEventListener('click', async () => {
 
   const r = await dsh.downloadShellUpdate();
   shellDownloading = false;
+  el('shell-download').textContent = '下载更新'; // v0.8.11（T0.5）：恢复按钮文案
   if (r && r.ok) {
     el('shell-progress-fill').style.width = '100%';
     el('shell-progress-text').textContent = '100%';

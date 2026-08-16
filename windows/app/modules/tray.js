@@ -17,7 +17,7 @@
  *   - readShellConfig    读取壳配置（DSH 版本显示）
  *   - installedDshVersion 已安装 DSH 版本（未安装返回 null）
  *   - getMainWindow      主窗口（getter；弹窗 owner）
- *   - getIsQuitting / setIsQuitting   真正退出标志（getter/setter）
+ *   - setIsQuitting      真正退出标志（setter；v0.8.30 R2 移除未使用的 getIsQuitting）
  */
 
 function createTrayModule(deps) {
@@ -26,7 +26,7 @@ function createTrayModule(deps) {
     appendLog, APP_NAME,
     getSettings, setAutostart, showMainWindow, openUpdateWindow,
     readShellConfig, installedDshVersion,
-    getMainWindow, getIsQuitting, setIsQuitting,
+    getMainWindow, setIsQuitting,
   } = deps;
 
   let tray = null;                // 托盘图标

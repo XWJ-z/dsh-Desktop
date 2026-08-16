@@ -68,4 +68,11 @@ contextBridge.exposeInMainWorld('dshDesktop', {
   openExternal: (url) => ipcRenderer.invoke('app:open-external', url),
   /** 网页打开按钮拖拽位置上报（v0.7.5：会话内记忆） */
   saveWebOpenBtnPos: (pos) => ipcRenderer.invoke('web-open-btn:pos', pos),
+  // ── v0.8.11（T0.6 / T5 / T5.3）：公告 + 桌面宠物 ──
+  /** 获取公告数据（远程拉取；打开即标记已读） */
+  getNotices: () => ipcRenderer.invoke('notice:data'),
+  /** 设置宠物隐藏状态（右键隐藏宠物） */
+  setPetHidden: (v) => ipcRenderer.invoke('pet:hidden', v),
+  /** 宠物气泡通知（key: 'copied' 等） */
+  petNotify: (key) => ipcRenderer.invoke('pet:notify', key),
 });

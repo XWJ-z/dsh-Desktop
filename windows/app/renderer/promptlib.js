@@ -44,6 +44,7 @@ async function injectOrCopy(item) {
   } else {
     await dsh.copyText(item.text);
     showBanner('已复制到剪贴板，去输入框粘贴（Ctrl+V）', false);
+    if (dsh.petNotify) dsh.petNotify('copied'); // v0.8.11（T5.3）：鲸鱼气泡提示
   }
 }
 

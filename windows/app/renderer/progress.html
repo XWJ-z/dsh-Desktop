@@ -3,17 +3,28 @@
 <head>
   <meta charset="UTF-8" />
   <title>备份数据</title>
+  <link rel="stylesheet" href="shared.css" />
   <style>
-    /* 极简原生风格（老大要求：不美化，Windows 原生即可） */
+    /* v0.8.23（老大要求：弹窗窗口统一外观）：接入 shared.css 深色主题，
+       与其他弹窗（更新/联系/关于/公告/提示词库）保持一致；保持极简布局 */
     body {
-      margin: 0; padding: 14px 16px;
-      font: 13px/1.5 "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
-      color: #1a1a1a;
-      background: #f5f5f5;
-      user-select: none;
+      justify-content: flex-start;
+      padding: 14px 16px;
     }
-    #text { margin-bottom: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    progress { width: 100%; height: 16px; }
+    #text {
+      width: 100%;
+      margin-bottom: 10px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+    progress {
+      width: 100%;
+      height: 16px;
+      accent-color: var(--brand);
+    }
   </style>
 </head>
 <body>

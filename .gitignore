@@ -4,6 +4,15 @@ windows/app/node_modules/
 dist/
 windows/app/dist/
 
+# 开发文档与审查记录（v0.8.13 起统一归集到根目录 Dev-log/，不发布到 GitHub）
+/Dev-log/
+# 根级 dev-log 别名防再建（统一走 Dev-log/win-dev-log/dev-log）
+/dev-log/
+
+# 调试残留（优化方案 2026-08-16：已清理，防再混入）
+/download-test/
+/ready.txt
+
 # npm / electron 缓存
 .npm-cache/
 windows/app/.npm-cache/
@@ -22,13 +31,6 @@ windows/app/resources/node/
 
 # 本地打包/安装测试产物
 .review-test/
-
-# 不上传的内部文档与审查记录（本地保留）
-windows/docs/
-windows/代码审查/
-
-# fnOS 代码审查（不发布，本地保留）
-fnos/代码审查/
 
 # fnOS 打包临时产物
 refapp.fpk

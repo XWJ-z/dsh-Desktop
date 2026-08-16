@@ -1,12 +1,26 @@
 {
-  "version": "0.8.9",
+  "version": "0.8.30",
   "minVersion": "0.7.4",
   "author": "zx(xwj)",
-  "release_notes": "1. 新增：全局快捷键 —— 默认 Ctrl+Alt+D 呼出/隐藏主窗口（未开托盘常驻时只呼出不隐藏）；设置菜单可修改或禁用\n2. 新增：内置提示词库 —— 61 条提示词（46 条通用优化 + 15 条 DSH 任务适配 agent 能力），学习/工作等分类，支持搜索、复制、一键注入 DSH 输入框\n3. 新增：更新日志窗口 —— 帮助菜单查看应用内 CHANGELOG（本地离线可用，含 v0.4.2 起全量历史）\n4. 优化：主进程模块化重构 —— settings/tray/hotkey 拆为独立模块（modules/），main.js 减负，结构更清晰\n5. 规范：团队署名统一 zx(身份标识) —— LICENSE（MIT · 2026 zx(xwj)）、README、飞牛 manifest、关于窗口、版本信息一致\n6. 优化：工具箱图标（toolbox.svg）与界面细节\n7. 修复：更新下载「SHA256 校验未通过」—— 校验失败时删除损坏的续传缓存（.part）并自动回退下一个镜像从头重下，不再因残留断点数据导致反复失败\n8. 优化：校验失败提示显示期望/实际哈希，便于定位（日志可查）",
+  "release_notes": "1. 新增：桌面宠物 —— DeepSeek 官方 logo 鲸鱼轮廓，悬停抬头/眨眼/单击互动/深夜犯困/连点喷水彩蛋，可拖拽并记忆位置；隐藏宠物自动变工具箱图标（网页打开/提示词库入口不丢失）\n2. 新增：公告菜单（帮助菜单右侧）；DSH 外观与壳外观双向同步（切换即时生效）\n3. 优化：设置菜单分组（开关项/外观+快捷键/清除记忆）；弹窗窗口统一深色外观\n4. 修复：宠物被页面清除后自动重建（页面内自愈）、移动位置后重开恢复原位、窗口尺寸变化位置越界自动回退\n5. 修复：切换外观后 DSH 设置面板不再残留；启动不再自动打开 DSH 设置面板\n6. 优化：主进程模块化重构（18 个模块）+ 安全基线统一（modules/security.js）—— 代码审查 v24.0 通过（无 P0/P1）\n7. 新增：更新日志窗口补齐 0.8.11~0.8.30 历史条目（离线可用）\n8. 含 v0.8.9 全部功能：全局快捷键（Ctrl+Alt+D 呼出/隐藏）、内置提示词库 61 条一键注入、更新下载 SHA256 校验与镜像回退",
   "force": false,
-  "hash": "f5866405a42bae4c43371523818cf4eed1fa4c4b490a2da8753acaaddd357b41",
+  "hash": "478abf4d9a3a82a55c24ab3f7d76c6d4a1845a61e29bbb664712c112aaa29c2c",
   "download_urls": [
-    "https://ghfast.top/https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.8.9/DSH-Desktop-Setup-0.8.9.exe",
-    "https://gh-proxy.com/https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.8.9/DSH-Desktop-Setup-0.8.9.exe"
+    "https://ghfast.top/https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.8.30/DSH-Desktop-Setup-0.8.30.exe",
+    "https://gh-proxy.com/https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.8.30/DSH-Desktop-Setup-0.8.30.exe"
+  ],
+  "notices": [
+    {
+      "id": "20260816-1",
+      "title": "v0.8.30 已发布",
+      "date": "2026-08-16",
+      "content": "本次更新（自 v0.8.9 发布以来）：桌面宠物（DeepSeek 鲸鱼）、外观双向同步、宠物自愈修复、设置菜单分组等。打开「检查更新」即可升级～"
+    },
+    {
+      "id": "20260816-2",
+      "title": "加入交流群",
+      "date": "2026-08-16",
+      "content": "遇到问题欢迎加入 QQ 群 916607090 交流，群里还有更多使用技巧～"
+    }
   ]
 }
