@@ -73,7 +73,7 @@ DSH 本身是运行在浏览器中的 Web 界面（`http://127.0.0.1:3080`）。
 - 🖥️ **平台要求**：飞牛 OS（fnOS）v1.1.3100+，全平台
 - ⚙️ **运行依赖**：`nodejs_v22`（安装时自动关联）
 - 🚀 **桌面入口**：`dsh.main`，支持停止应用（ctl_stop）
-- 🏷️ **应用信息**：开发者 zx · 发布者 zx · 来源 thirdparty
+- 🏷️ **应用信息**：开发者 zx(xwj) · 发布者 zx(xwj) · 来源 thirdparty
 - 🔗 **Win-飞牛联动**：版本号/配置/更新检查的共享协议见《[Win-飞牛联动协议草案](windows/docs/decisions/0003-win-fnos-protocol.md)》（跨端联动立项时复用）
 
 **安装方式**：下载 [dsh-0.2.5.fpk](https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.5.9/dsh-0.2.5.fpk) → 在飞牛 OS 应用中心手动安装。

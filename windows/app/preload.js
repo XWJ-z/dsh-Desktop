@@ -53,6 +53,15 @@ contextBridge.exposeInMainWorld('dshDesktop', {
   getContactInfo: () => ipcRenderer.invoke('contact:info'),
   /** 获取关于信息（版本/DSH/服务地址/图标） */
   getAboutInfo: () => ipcRenderer.invoke('about:info'),
+  /** 获取更新日志数据（本地 CHANGELOG.json，离线可用；v0.8.1 T3） */
+  getChangelog: () => ipcRenderer.invoke('changelog:data'),
+  // ── v0.8.3（T1/T3/T4）：提示词库 ──
+  /** 获取内置提示词库数据（prompts.json） */
+  getPrompts: () => ipcRenderer.invoke('promptlib:data'),
+  /** 把提示词直接注入主窗口 DSH 输入框（失败返回 { ok:false, reason }） */
+  injectPrompt: (text) => ipcRenderer.invoke('promptlib:inject', text),
+  /** 打开提示词库面板（工具箱菜单入口） */
+  openPromptLib: () => ipcRenderer.invoke('toolbox:open-promptlib'),
   /** 关于窗口：关闭并打开更新窗口 */
   openUpdateWindow: () => ipcRenderer.invoke('about:open-update'),
   /** 打开外部链接（仅 http/https） */

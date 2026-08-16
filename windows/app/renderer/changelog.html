@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' file: data:; style-src 'self' file: 'unsafe-inline'; script-src 'self' file:; img-src 'self' file: data:" />
+  <title>更新日志</title>
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    body {
+      /* 页面特有：顶部标题 + 滚动列表（shared.css 提供主题 token 与基础布局） */
+      /* v0.8.8（T5）：body 固定高度 flex 列，让 .list 的 flex:1 生效（列表独立滚动） */
+      align-items: stretch;
+      padding: 20px;
+      height: 100vh;
+      overflow: hidden;      /* 滚动交给内部容器 */
+    }
+    h1 { font-size: 18px; font-weight: 590; margin-bottom: 4px; }
+    .subtitle { font-size: 12px; color: var(--text-quaternary); margin-bottom: 16px; }
+    .list { display: flex; flex-direction: column; gap: 12px; overflow-y: auto; flex: 1; }
+    .ver-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-standard);
+      border-radius: var(--radius-card);
+      padding: 14px 16px;
+    }
+    .ver-card.current {
+      border-color: rgba(94,106,210,0.5);
+      box-shadow: 0 0 0 1px rgba(94,106,210,0.25);
+    }
+    .ver-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .ver-title { font-size: 14px; font-weight: 590; color: var(--text-primary); }
+    .ver-date { font-size: 12px; color: var(--text-quaternary); }
+    .badge { margin-left: auto; }
+    .ver-notes { list-style: none; }
+    .ver-notes li {
+      font-size: 12.5px; line-height: 1.65; color: var(--text-secondary);
+      padding-left: 14px; position: relative; margin-bottom: 4px;
+    }
+    .ver-notes li::before { content: '·'; position: absolute; left: 2px; color: var(--brand); }
+    .empty { color: var(--text-quaternary); text-align: center; padding: 40px 0; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <h1>📋 更新日志</h1>
+  <div class="subtitle">DSH-Desktop 各版本更新内容（本地内置，离线可用）</div>
+  <div class="list" id="list"><!-- JS 渲染 --></div>
+
+  <script src="changelog.js"></script>
+</body>
+</html>

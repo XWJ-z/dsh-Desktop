@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 48 48">
+  <!-- DSH-Desktop 工具箱图标（v0.8.3 T2）：工具箱（提手+箱体+锁扣），品牌蓝渐变，与网页打开按钮同色系 -->
+  <defs>
+    <linearGradient id="tb-g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4d6bfe"/>
+      <stop offset="1" stop-color="#7c5cff"/>
+    </linearGradient>
+  </defs>
+  <path d="M17 13.5V9.8a7 7 0 0 1 14 0v3.7" fill="none" stroke="url(#tb-g)" stroke-width="5.5" stroke-linecap="round"/>
+  <rect x="5" y="13.5" width="38" height="28.5" rx="7.5" fill="url(#tb-g)"/>
+  <rect x="5" y="24.5" width="38" height="5" fill="rgba(0,0,0,0.18)"/>
+  <rect x="19.5" y="18" width="9" height="12" rx="2.8" fill="#fff" opacity="0.96"/>
+  <rect x="21.8" y="20.5" width="4.4" height="3.6" rx="1.2" fill="#4d6bfe"/>
+</svg>

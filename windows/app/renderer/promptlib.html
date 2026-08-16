@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' file: data:; style-src 'self' file: 'unsafe-inline'; script-src 'self' file:; img-src 'self' file: data:" />
+  <title>提示词库</title>
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    body {
+      /* v0.8.7：搜索框 + 卡片展开 + 操作按钮 + 计数徽章 + 反馈横幅 */
+      /* v0.8.8（T5）：body 固定高度 flex 列，让 .layout 的 flex:1 生效（左分类固定/右独立滚动） */
+      align-items: stretch;
+      padding: 18px 20px 20px;
+      height: 100vh;
+      overflow: hidden;      /* 滚动交给内部容器 */
+    }
+    h1 { font-size: 18px; font-weight: 590; margin-bottom: 2px; }
+    .subtitle { font-size: 12px; color: var(--text-quaternary); margin-bottom: 12px; }
+    /* 搜索框 */
+    .search {
+      width: 100%; padding: 9px 14px; margin-bottom: 12px;
+      background: var(--bg-surface); border: 1px solid var(--border-standard);
+      border-radius: var(--radius-btn); color: var(--text-primary);
+      font-size: 13px; outline: none;
+    }
+    .search:focus { border-color: rgba(94,106,210,.55); }
+    .search::placeholder { color: var(--text-quaternary); }
+    /* 反馈横幅（面板级） */
+    .banner {
+      display: none; padding: 9px 14px; margin-bottom: 12px;
+      border-radius: var(--radius-btn); font-size: 13px; font-weight: 590;
+    }
+    .banner.show { display: block; }
+    .banner.ok { color: var(--success); background: rgba(16,185,129,.1); border: 1px solid rgba(16,185,129,.3); }
+    .banner.fail { color: var(--warn); background: rgba(245,166,35,.1); border: 1px solid rgba(245,166,35,.3); }
+    .layout { display: flex; gap: 16px; flex: 1; min-height: 0; }
+    /* 左侧分类 */
+    .cats { width: 140px; flex-shrink: 0; display: flex; flex-direction: column; gap: 6px; overflow-y: auto; align-content: flex-start; }
+    .cat {
+      padding: 10px 12px; border-radius: var(--radius-btn); cursor: pointer;
+      font-size: 13px; color: var(--text-secondary);
+      background: transparent; border: 1px solid transparent;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .cat:hover { background: var(--bg-hover); }
+    .cat.active { background: var(--bg-surface); border-color: rgba(94,106,210,.4); color: var(--text-primary); }
+    .cat .count {
+      margin-left: auto; font-size: 11px; color: var(--text-quaternary);
+      background: rgba(255,255,255,.05); border-radius: 999px; padding: 1px 7px;
+    }
+    /* 右侧提示词卡片 */
+    .items { flex: 1; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; min-width: 0; align-content: flex-start; }
+    .item {
+      background: var(--bg-surface); border: 1px solid var(--border-standard);
+      border-radius: var(--radius-card); padding: 11px 14px; cursor: pointer;
+    }
+    .item:hover { border-color: rgba(94,106,210,.45); }
+    .item-title { font-size: 13px; font-weight: 590; color: var(--text-primary); margin-bottom: 6px; }
+    .item-text {
+      font-size: 12px; line-height: 1.6; color: var(--text-tertiary);
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    /* 展开：显示完整内容 */
+    .item.expanded .item-text { display: block; -webkit-line-clamp: unset; }
+    .item-hint { display: none; margin-top: 8px; font-size: 11.5px; color: var(--text-quaternary); line-height: 1.5; }
+    .item.expanded .item-hint { display: block; }
+    .item-hint::before { content: '📝 '; }
+    /* 操作按钮行 */
+    .item-actions { display: none; margin-top: 10px; gap: 8px; }
+    .item.expanded .item-actions { display: flex; }
+    .act {
+      flex: 1; padding: 7px 0; border-radius: var(--radius-btn); border: none;
+      font-size: 12.5px; font-weight: 590; cursor: pointer; text-align: center;
+    }
+    .act.use { background: var(--brand); color: #fff; }
+    .act.use:hover { background: var(--accent-hover); }
+    .act.copy {
+      background: rgba(255,255,255,.03); color: var(--text-tertiary);
+      border: 1px solid var(--border-standard);
+    }
+    .act.copy:hover { color: var(--text-primary); border-color: rgba(255,255,255,.16); }
+    .empty { color: var(--text-quaternary); text-align: center; padding: 40px 0; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <h1>💡 提示词库</h1>
+  <div class="subtitle">点「使用」填入输入框，点卡片看完整内容和替换说明</div>
+  <input class="search" id="search" type="text" placeholder="🔍 搜索提示词…" autocomplete="off" />
+  <div class="banner" id="banner"></div>
+  <div class="layout">
+    <div class="cats" id="cats"><!-- 分类（JS 渲染） --></div>
+    <div class="items" id="items"><!-- 提示词卡片（JS 渲染） --></div>
+  </div>
+
+  <script src="promptlib.js"></script>
+</body>
+</html>

@@ -18,7 +18,7 @@
  *     壳代码不受 DSH 版本影响。
  */
 
-const { app, BrowserWindow, clipboard, dialog, Menu, screen, shell, ipcMain, Tray } = require('electron');
+const { app, BrowserWindow, clipboard, dialog, Menu, screen, shell, ipcMain, Tray, globalShortcut } = require('electron');
 const { spawn, execFileSync } = require('node:child_process');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
@@ -61,6 +61,8 @@ let loadingWindow = null;       // 启动加载窗口
 let updateWin = null;           // 更新窗口（v0.5.3 现代化）
 let contactWin = null;          // 联系我们窗口（v0.5.3 现代化）
 let aboutWin = null;            // 关于窗口（v0.5.3 现代化）
+let changelogWin = null;        // 更新日志窗口（v0.8.1 T3）
+let promptLibWin = null;        // 提示词库窗口（v0.8.3 T4）
 let serverChild = null;         // dsh web 服务子进程
 let resolvedPort = DEFAULT_PORT;
 let logLines = [];
@@ -69,10 +71,8 @@ let dshHasUpdate = false;       // 启动后静默检查发现 DSH 新版（菜�
 let shellHasUpdate = false;     // 启动后静默检查发现壳（DSH-Desktop）新版（菜单提示后缀）
 let lastCheckAt = 0;            // 手动检查更新冷却（10 秒防抖）
 const CHECK_UPDATE_COOLDOWN_MS = 10_000;
-// v0.6.0（T-025）：系统托盘
-let tray = null;                // 托盘图标
+// v0.6.0（T-025）：系统托盘（v0.8.1 T5：tray 状态收敛到 modules/tray.js，见 trayApi）
 let isQuitting = false;         // 真正退出标志（区分"关窗隐藏"与"退出"）
-let trayExitConfirmed = false;  // 本会话首次托盘「退出」弹确认；取消后重置
 let serverStopRequested = false; // v0.7.10：主动停止 DSH 服务（恢复数据前释放占用），
                                   // 避免触发「服务意外退出」误报弹窗
 
@@ -767,7 +767,7 @@ function createMainWindow() {
   });
   win.webContents.on('did-finish-load', () => {
     appendLog('info', `[gui] 加载完成：${win.webContents.getURL()}`);
-    injectWebOpenButton(win);
+    injectToolbox(win); // v0.8.3（T2）：网页打开按钮 → 工具箱（hover 菜单）
   });
   attachWebDiagnostics(win, 'gui');
 
@@ -785,7 +785,7 @@ function createMainWindow() {
       settings.winBounds = win.getBounds();
     }
     settings.winMaximized = !!(win.isMaximized());
-    saveSettings();
+    settingsApi.saveSettings();
     if (isQuitting) return;                       // 真正退出（托盘退出/菜单退出/系统关机）不拦截
     if (!settings.minimizeToTray) return;         // 未启用托盘常驻：关闭即退出（window-all-closed 处理）
     if (settings.rememberCloseChoice) {
@@ -804,29 +804,62 @@ function createMainWindow() {
 }
 
 /**
- * v0.7.1（T-032）/ v0.7.5（T-036）/ v0.7.6（T-037）：主窗口「网页打开」醒目按钮注入。
- *  - 默认位置：顶部居中（v0.7.6 起，原右上角）；可拖拽到任意位置（避开 Session log 等界面元素）
- *  - 位置持久化：settings.webOpenBtnPos（退出时经 saveSettings 落盘，重启恢复）；null = 默认布局
- *  - 点击走 preload 暴露的 openExternal（IPC → 系统浏览器）；位移 <4px 视为点击
+ * v0.8.3（T2）：主窗口「工具箱」悬浮图标 —— 由原「网页打开」按钮（v0.7.1/0.7.5/0.7.6）升级合并。
+ *  - 图标：assets/toolbox.svg（品牌蓝渐变工具箱，矢量高清，内联注入避免跨源/CSP 拦截）
+ *  - 交互：hover → 选项菜单（纯前端悬浮层，不走 Electron Menu）：💡 提示词库 / 🌐 网页打开
+ *  - 位置：顶部居中可拖（复用 settings.webOpenBtnPos 记忆；null = 默认布局）；
+ *    菜单项动作经 preload 暴露的 IPC 通知主进程（不在 DSH 页面内直接开窗）
  */
-function injectWebOpenButton(win) {
+function injectToolbox(win) {
   if (!win || win.isDestroyed()) return;
   const saved = settings.webOpenBtnPos;
+  const svgText = toolboxSvgText();
   win.webContents.executeJavaScript(`
     (() => {
       const overlay = document.getElementById('dsh-loading-overlay');
       if (overlay) overlay.remove();
-      if (document.getElementById('dsh-web-open-btn')) return;
+      if (document.getElementById('dsh-toolbox-btn')) return;
       const url = '${webUrl()}';
       const saved = ${JSON.stringify(saved || null)};
+      const svg = ${JSON.stringify(svgText)};
       const btn = document.createElement('button');
-      btn.id = 'dsh-web-open-btn';
+      btn.id = 'dsh-toolbox-btn';
       btn.type = 'button';
-      btn.title = '在系统浏览器中打开 DSH 网页界面（可拖拽调整位置）';
-      btn.innerHTML = '<span style="font-size:13px;line-height:1;">🌐</span><span>网页打开</span>';
-      btn.style.cssText = 'position:fixed;' + (saved ? 'left:' + saved.x + 'px;top:' + saved.y + 'px;right:auto;transform:none;' : 'top:14px;left:50%;right:auto;transform:translateX(-50%);') + 'z-index:2147483646;display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border:none;border-radius:20px;cursor:pointer;background:linear-gradient(135deg,#4d6bfe,#7c5cff);color:#fff;font:600 13px/1 "Segoe UI","Microsoft YaHei",sans-serif;box-shadow:0 3px 12px rgba(77,107,254,.5);user-select:none;';
+      btn.title = '工具箱（悬停选择功能，可拖拽调整位置）';
+      btn.innerHTML = svg || '🧰';
+      btn.style.cssText = 'position:fixed;' + (saved ? 'left:' + saved.x + 'px;top:' + saved.y + 'px;right:auto;transform:none;' : 'top:14px;left:50%;right:auto;transform:translateX(-50%);') + 'z-index:2147483646;display:flex;align-items:center;justify-content:center;width:38px;height:38px;padding:0;border:none;border-radius:12px;cursor:pointer;background:linear-gradient(135deg,#4d6bfe,#7c5cff);box-shadow:0 3px 12px rgba(77,107,254,.5);user-select:none;';
       btn.addEventListener('mouseenter', () => { btn.style.filter = 'brightness(1.12)'; });
       btn.addEventListener('mouseleave', () => { btn.style.filter = ''; });
+      // ── hover 选项菜单（纯前端悬浮层；样式全用内联属性，兼容 DSH 页面 CSP）──
+      const menu = document.createElement('div');
+      menu.id = 'dsh-toolbox-menu';
+      menu.style.cssText = 'position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:6px;min-width:140px;background:#171a21;border:1px solid #2a2f3a;border-radius:10px;padding:4px;display:none;z-index:2147483646;box-shadow:0 8px 24px rgba(0,0,0,.5);font:600 13px/1 "Segoe UI","Microsoft YaHei",sans-serif;';
+      const makeItem = (label, action) => {
+        const it = document.createElement('div');
+        it.textContent = label;
+        it.style.cssText = 'padding:8px 12px;border-radius:6px;cursor:pointer;color:#dbe2f0;white-space:nowrap;';
+        it.addEventListener('mouseenter', () => { it.style.background = '#2a2f3a'; });
+        it.addEventListener('mouseleave', () => { it.style.background = ''; });
+        // 修复（老大反馈）：菜单项是 btn 的子元素，pointerdown 冒泡到按钮会触发
+        // 拖拽逻辑（preventDefault/setPointerCapture/transform 固化），干扰菜单项点击
+        it.addEventListener('pointerdown', (e) => e.stopPropagation());
+        it.addEventListener('click', (e) => {
+          e.stopPropagation();
+          menu.style.display = 'none';
+          if (action === 'promptlib') {
+            if (window.dshDesktop && window.dshDesktop.openPromptLib) window.dshDesktop.openPromptLib();
+          } else if (action === 'webopen') {
+            if (window.dshDesktop && window.dshDesktop.openExternal) window.dshDesktop.openExternal(url);
+          }
+        });
+        return it;
+      };
+      menu.appendChild(makeItem('💡 提示词库', 'promptlib'));
+      menu.appendChild(makeItem('🌐 网页打开', 'webopen'));
+      btn.appendChild(menu);
+      btn.addEventListener('mouseenter', () => { menu.style.display = 'block'; });
+      btn.addEventListener('mouseleave', () => { setTimeout(() => { if (!menu.matches(':hover')) menu.style.display = 'none'; }, 150); });
+      menu.addEventListener('mouseleave', () => { menu.style.display = 'none'; });
       // v0.7.5（T-036）/ v0.7.6（T-037）：拖拽移动 —— pointer 事件 + 捕获；
       // 起始若为居中模式（transform），先固化为绝对 left 再拖，避免 transform 干扰
       let dragging = false;
@@ -867,32 +900,38 @@ function injectWebOpenButton(win) {
       };
       btn.addEventListener('pointerup', endDrag);
       btn.addEventListener('pointercancel', endDrag);
+      // v0.8.3（T2）：图标本身点击无动作（功能全部收敛到 hover 菜单），仅重置拖拽标记
       btn.addEventListener('click', (e) => {
-        if (moved) { e.preventDefault(); e.stopPropagation(); moved = false; return; }
-        if (window.dshDesktop && window.dshDesktop.openExternal) {
-          window.dshDesktop.openExternal(url);
-        } else {
-          window.open(url, '_blank');
-        }
+        if (moved) { e.preventDefault(); e.stopPropagation(); moved = false; }
       });
       document.body.appendChild(btn);
     })();
   `).catch(() => { /* ignore */ });
 }
 
-/** v0.7.6（T-037）：恢复默认布局 —— 清除按钮位置记忆，回到顶部居中 */
+/** v0.8.3（T2）：读取工具箱图标 SVG（内联注入用；失败返回空串，前端兜底 emoji） */
+let toolboxSvgCache = null;
+function toolboxSvgText() {
+  if (toolboxSvgCache === null) {
+    try { toolboxSvgCache = fs.readFileSync(path.join(__dirname, 'assets', 'toolbox.svg'), 'utf8'); }
+    catch { toolboxSvgCache = ''; }
+  }
+  return toolboxSvgCache;
+}
+
+/** v0.7.6（T-037）/ v0.8.3（T2）：恢复默认布局 —— 清除工具箱位置记忆，回到顶部居中 */
 function resetWebOpenBtnLayout() {
   settings.webOpenBtnPos = null;
-  saveSettings();
+  settingsApi.saveSettings();
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.executeJavaScript(`
-      const btn = document.getElementById('dsh-web-open-btn');
+      const btn = document.getElementById('dsh-toolbox-btn');
       if (btn) btn.remove();
     `).catch(() => { /* ignore */ }).then(() => {
-      injectWebOpenButton(mainWindow); // 重新注入（默认顶部居中）
+      injectToolbox(mainWindow); // 重新注入（默认顶部居中）
     });
   }
-  appendLog('info', '已恢复默认布局（网页打开按钮回顶部居中）');
+  appendLog('info', '已恢复默认布局（工具箱回顶部居中）');
 }
 
 // ---------------------------------------------------------------------------
@@ -907,6 +946,9 @@ function fetchJson(url, timeoutMs = 8000, headers = {}, maxBytes = 5 * 1024 * 10
       req = https.get(url, { timeout: timeoutMs, headers }, (res) => {
         let body = '';
         let aborted = false;
+        // v0.8.1（T2 修复）：声明 utf8 后 data 回调直接收 string，StringDecoder 跨 chunk
+        // 正确拼接多字节字符（此前每 chunk 单独解码，中文/emoji 跨 chunk 边界会乱码）
+        res.setEncoding('utf8');
         res.on('data', (c) => {
           if (aborted) return;
           body += c;
@@ -1105,10 +1147,14 @@ async function downloadShellUpdate(win, onProgress) {
 
 // ---------------------------------------------------------------------------
 // 诊断 / 数据备份 / 数据恢复（v0.7.0 起；v0.7.10 拆为独立模块，29 改进意见 1）
+// 设置 / 托盘 / 快捷键（v0.8.1 T5 延续拆分，29 意见 3.2-1）
 // 自包含函数已抽到 modules/，main.js 只负责组装依赖注入（deps）并调用。
 // ---------------------------------------------------------------------------
 const { createDiagnostics } = require('./modules/diagnostics');
 const { createBackup } = require('./modules/backup');
+const { createSettings } = require('./modules/settings');
+const { createTrayModule } = require('./modules/tray');
+const { createHotkey } = require('./modules/hotkey');
 
 const generateDiagnostics = createDiagnostics({
   appName: APP_NAME,
@@ -1122,11 +1168,46 @@ const generateDiagnostics = createDiagnostics({
   getOwnerWindow: () => (mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined),
 });
 
+// v0.8.1（T5）：设置模块 —— settings 对象本体仍在本文件（大量代码直接读 settings.xxx），
+// 本模块经 getSettings/setSettings 读写，函数实现全部收敛到 modules/settings.js
+const settingsApi = createSettings({
+  app, fs, path,
+  appendLog,
+  getSettings: () => settings,
+  setSettings: (s) => { settings = s; },
+  refreshMenus,
+});
+
+// v0.8.1（T5）：托盘模块 —— tray / trayExitConfirmed 状态收敛到模块内部
+const trayApi = createTrayModule({
+  app, dialog, Menu, Tray, fs, path,
+  appendLog, APP_NAME,
+  getSettings: () => settings,
+  setAutostart: settingsApi.setAutostart,
+  showMainWindow,
+  openUpdateWindow,
+  readShellConfig, installedDshVersion,
+  getMainWindow: () => mainWindow,
+  getIsQuitting: () => isQuitting,
+  setIsQuitting: (v) => { isQuitting = v; },
+});
+
+// v0.8.1（T4/T5）：全局快捷键模块
+const hotkeyApi = createHotkey({
+  globalShortcut, Menu,
+  appendLog,
+  getSettings: () => settings,
+  saveSettings: settingsApi.saveSettings,
+  getMainWindow: () => mainWindow,
+  showMainWindow,
+  getBuildMenu: buildMenu,
+});
+
 const { backupUserData, restoreUserData } = createBackup({
   appName: APP_NAME,
   app, dialog, shell, fs, os, path, tar,
   appendLog, localTimestamp, localDate,
-  readShellConfig, installedDshVersion, settingsFile,
+  readShellConfig, installedDshVersion, settingsFile: settingsApi.settingsFile,
   getOwnerWindow: () => (mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined),
   isServerRunning: () => !!(serverChild && serverChild.exitCode === null),
   // v0.7.10（老大反馈）：恢复数据前可只停 DSH 服务（不退出应用），而非要求整体退出
@@ -1395,6 +1476,32 @@ function openAboutWindow() {
   aboutWin.on('closed', () => { aboutWin = null; });
 }
 
+/** 更新日志窗口（v0.8.1 T3）：本地内置 CHANGELOG.json 渲染各版本，离线可用 */
+function openChangelogWindow() {
+  if (changelogWin && !changelogWin.isDestroyed()) { changelogWin.focus(); return; }
+  changelogWin = new BrowserWindow({
+    width: 520, height: 560, resizable: false, minimizable: false,
+    parent: mainWindow, modal: true, title: '更新日志',
+    backgroundColor: '#0f1115',
+    webPreferences: secureWebPreferences(),
+  });
+  changelogWin.loadFile(path.join(__dirname, 'renderer', 'changelog.html'));
+  changelogWin.on('closed', () => { changelogWin = null; });
+}
+
+/** 提示词库窗口（v0.8.3 T4 → v0.8.7）：左侧分类 + 右侧提示词卡片，点击直接注入 DSH 输入框（失败降级复制） */
+function openPromptLibWindow() {
+  if (promptLibWin && !promptLibWin.isDestroyed()) { promptLibWin.focus(); return; }
+  promptLibWin = new BrowserWindow({
+    width: 720, height: 560, resizable: true, minimizable: false, // v0.8.7：内容更多，窗口加大
+    parent: mainWindow, modal: false, title: '提示词库', // modal:false —— 面板随时可点主窗口连续注入
+    backgroundColor: '#0f1115',
+    webPreferences: secureWebPreferences(),
+  });
+  promptLibWin.loadFile(path.join(__dirname, 'renderer', 'promptlib.html'));
+  promptLibWin.on('closed', () => { promptLibWin = null; });
+}
+
 /** 关闭行为询问弹窗（v0.6.1 T-027 → v0.7.10 改原生）：退出 / 关闭到托盘 + 记住我的选择。
  *  老大要求：和恢复数据弹窗一样用 Windows 原生对话框，不做深色美化。 */
 function openCloseChoiceWindow(parentWin) {
@@ -1410,12 +1517,12 @@ function openCloseChoiceWindow(parentWin) {
   }).then(({ response, checkboxChecked }) => {
     if (response === 0) {
       // 关闭到托盘
-      if (checkboxChecked) setCloseChoice('tray', true);
+      if (checkboxChecked) settingsApi.setCloseChoice('tray', true);
       appendLog('info', '用户选择关闭到托盘');
       if (mainWindow && !mainWindow.isDestroyed()) mainWindow.hide();
     } else {
       // 退出
-      if (checkboxChecked) setCloseChoice('quit', true);
+      if (checkboxChecked) settingsApi.setCloseChoice('quit', true);
       appendLog('info', '用户选择退出（关闭窗口）');
       isQuitting = true;
       app.quit();
@@ -1487,170 +1594,57 @@ let settings = {
   winBounds: null,            // T5（v0.6.6）：主窗口位置/大小 {x,y,width,height}
   winMaximized: false,        // T5：最大化状态
   webOpenBtnPos: null,        // v0.7.6（T-037）：网页打开按钮拖拽位置（退出保存，重启恢复；null=默认顶部居中）
+  hotkey: 'Ctrl+Alt+D',       // v0.8.1（T4）：全局快捷键（呼出/隐藏主窗口；null = 禁用）
+  promptInjectChoice: null,   // v0.8.7（P0-3）：提示词注入已有内容时的记住选择：'overwrite' | 'append' | null（null = 每次询问）
 };
 
-function settingsFile() {
-  return path.join(app.getPath('userData'), 'settings.json');
-}
-
-function loadSettings() {
-  try {
-    const disk = JSON.parse(fs.readFileSync(settingsFile(), 'utf8'));
-    settings = { ...settings, ...disk };
-  } catch { /* 首次运行/损坏：用默认值 */ }
-}
-
-function saveSettings() {
-  try {
-    fs.mkdirSync(path.dirname(settingsFile()), { recursive: true });
-    fs.writeFileSync(settingsFile(), JSON.stringify(settings, null, 2), 'utf8');
-  } catch (err) {
-    appendLog('error', `保存设置失败：${err.message}`);
-  }
-}
-
-/** 开机自启（设置菜单与托盘菜单统一入口；开发模式 setLoginItemSettings 无效属正常） */
-function setAutostart(enabled) {
-  try {
-    app.setLoginItemSettings({ openAtLogin: !!enabled });
-    settings.autostart = !!enabled;
-    saveSettings();
-    appendLog('info', `开机自启已${enabled ? '开启' : '关闭'}`);
-  } catch (err) {
-    appendLog('error', `设置开机自启失败：${err.message}`);
-  }
-  refreshMenus();
-}
-
-/** 最小化到托盘总开关 */
-function setMinimizeToTray(enabled) {
-  settings.minimizeToTray = !!enabled;
-  saveSettings();
-  appendLog('info', `最小化到托盘已${enabled ? '开启' : '关闭'}（关闭窗口${enabled ? '将询问/驻留托盘' : '将直接退出'}）`);
-  refreshMenus();
-}
-
-/** 记住关闭选择（action: 'quit' | 'tray'） */
-function setCloseChoice(action, remember) {
-  settings.closeChoice = action;
-  settings.rememberCloseChoice = !!remember;
-  saveSettings();
-  refreshMenus();
-}
-
-/** 清除记忆：关闭窗口时恢复询问 */
-function clearCloseChoice() {
-  settings.closeChoice = null;
-  settings.rememberCloseChoice = false;
-  saveSettings();
-  appendLog('info', '已清除关闭行为记忆，关闭窗口时将再次询问');
-  refreshMenus();
-}
-
-/** 启动时检查更新开关 */
-function setCheckUpdateOnStart(enabled) {
-  settings.checkUpdateOnStart = !!enabled;
-  saveSettings();
-  appendLog('info', `启动时检查更新已${enabled ? '开启' : '关闭'}`);
-  refreshMenus();
-}
+// v0.8.1（T5）：settingsFile/loadSettings/saveSettings/setAutostart/setMinimizeToTray/
+// setCloseChoice/clearCloseChoice/setCheckUpdateOnStart 已移至 modules/settings.js（settingsApi）
 
 /** 重建托盘菜单 + 应用菜单（设置变化后同步显示状态） */
 function refreshMenus() {
-  if (tray) updateTrayMenu();
+  if (trayApi.isTrayCreated()) trayApi.updateTrayMenu();
   Menu.setApplicationMenu(buildMenu());
 }
 
-// ---------------------------------------------------------------------------
+// v0.8.1（T5）：createTray/updateTrayMenu 已移至 modules/tray.js（trayApi）
 // 系统托盘（v0.6.0 T-025）：关闭窗口 ≠ 退出，托盘常驻；仅托盘「退出」真正退出
-// ---------------------------------------------------------------------------
-function createTray() {
-  if (tray) return;
-  // T1（v0.6.6）：托盘用多尺寸 ICO（16-256 内置，v0.5.5 产物），高 DPI 清晰；PNG 兜底
-  const candidates = [
-    path.join(app.getAppPath(), 'assets', 'icon.ico'),
-    path.join(app.getAppPath(), 'assets', 'icon.png'),
-  ];
-  const iconPath = candidates.find((p) => fs.existsSync(p));
-  if (!iconPath) {
-    appendLog('warn', '托盘图标缺失（icon.ico/icon.png 均不存在），托盘不创建');
-    return;
-  }
-  tray = new Tray(iconPath);
-  tray.setToolTip('DSH-Desktop');
-  updateTrayMenu();
-  // 单击/双击恢复主窗口（Windows 下已设右键菜单，左键单击仍触发 click）
-  tray.on('click', () => showMainWindow());
-  tray.on('double-click', () => showMainWindow());
-  appendLog('info', '系统托盘已就绪（关闭窗口 = 最小化到托盘，托盘菜单可退出）');
+
+/**
+ * 等待 DSH 服务就绪（轮询 currentStage；timeoutMs 超时 reject）。
+ * v0.8.1（T1）：静默启动后托盘点击可能早于服务就绪，等待就绪再建窗口避免加载失败/白屏。
+ */
+function waitForServerReady(timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const t0 = Date.now();
+    const timer = setInterval(() => {
+      if (currentStage === 'ready') { clearInterval(timer); resolve(); }
+      else if (Date.now() - t0 > timeoutMs) { clearInterval(timer); reject(new Error('timeout')); }
+    }, 500);
+  });
 }
 
-function updateTrayMenu() {
-  if (!tray) return;
-  // v0.7.10（29 建议 C）：托盘菜单显示 DSH 运行时版本（只读，用户一眼看到版本）
-  const dshVer = installedDshVersion() ?? readShellConfig().dshVersion;
-  const ctx = Menu.buildFromTemplate([
-    { label: '打开主界面', click: () => showMainWindow() },
-    { label: '远程连接（即将推出）', enabled: false }, // 占位（v0.6.0 暂未实现）
-    { type: 'separator' },
-    {
-      label: `DSH ${dshVer}`,
-      enabled: false,
-    },
-    {
-      label: '开机自启',
-      type: 'checkbox',
-      checked: settings.autostart,
-      click: (item) => setAutostart(item.checked),
-    },
-    { type: 'separator' },
-    { label: '检查更新…', click: () => openUpdateWindow() },
-    { type: 'separator' },
-    {
-      label: '退出',
-      click: () => {
-        // 首次托盘退出弹确认；确认过（或取消过）后按状态处理
-        if (!trayExitConfirmed) {
-          trayExitConfirmed = true;
-          // T3（v0.6.6）：带 owner 弹窗 —— 托盘场景主窗口常隐藏，无 owner 可能不置顶
-          dialog.showMessageBox(mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined, {
-            type: 'question',
-            title: APP_NAME,
-            message: '确定退出？',
-            detail: 'DSH 服务将停止。如需后台运行，请直接关闭窗口（最小化到托盘）。',
-            buttons: ['退出', '取消'],
-            defaultId: 1,
-            cancelId: 1,
-          }).then(({ response }) => {
-            if (response === 0) {
-              isQuitting = true;
-              app.quit();
-            } else {
-              trayExitConfirmed = false; // 取消：下次再退出时重新确认
-            }
-          }).catch(() => { isQuitting = true; app.quit(); });
-        } else {
-          isQuitting = true;
-          app.quit();
-        }
-      },
-    },
-  ]);
-  tray.setContextMenu(ctx);
-}
-
-/** 恢复主窗口：存在则显示/还原/聚焦；已被关闭（托盘模式）则按需重建 */
+/** 恢复主窗口：存在则显示/还原/聚焦；已被关闭（托盘模式）则按需重建（服务就绪后才建） */
 function showMainWindow() {
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.show();
     if (mainWindow.isMinimized()) mainWindow.restore();
     mainWindow.focus();
-  } else if (serverChild) {
+  } else if (serverChild && currentStage === 'ready') {
     createMainWindow();
+  } else if (serverChild) {
+    // 服务还在启动：等待就绪（最多 10s）再建窗口，避免加载失败/白屏
+    appendLog('info', 'DSH 服务未就绪，等待就绪后打开主窗口…');
+    waitForServerReady(10000).then(() => {
+      if (!mainWindow || mainWindow.isDestroyed()) createMainWindow();
+    }).catch(() => appendLog('warn', '等待 DSH 服务就绪超时，请稍后从托盘重试'));
   } else {
-    appendLog('warn', '主窗口恢复请求被忽略：DSH 服务未就绪');
+    appendLog('warn', '主窗口恢复请求被忽略：DSH 服务未启动');
   }
 }
+
+// v0.8.1（T4/T5）：registerHotkey/toggleMainWindowByHotkey/setHotkey 已移至
+// modules/hotkey.js（hotkeyApi）；启动注册与退出清理见 app ready / will-quit
 
 // ---------------------------------------------------------------------------
 // 菜单
@@ -1688,7 +1682,7 @@ function buildMenu() {
         { role: 'zoomOut', label: '缩小' },
         { type: 'separator' },
         { role: 'togglefullscreen', label: '全屏' },
-        // v0.7.7（T-038）：布局/显示控制归位视图菜单（Windows 惯例），网页打开按钮回顶部居中
+        // v0.7.7（T-038）：布局/显示控制归位视图菜单（Windows 惯例），工具箱回顶部居中
         { label: '恢复默认布局', click: () => resetWebOpenBtnLayout() },
         { type: 'separator' },
         { label: '开发者工具', accelerator: 'F12', click: () => { if (mainWindow) mainWindow.webContents.toggleDevTools(); } },
@@ -1702,27 +1696,55 @@ function buildMenu() {
           label: '开机自启',
           type: 'checkbox',
           checked: settings.autostart,
-          click: (item) => setAutostart(item.checked),
+          click: (item) => settingsApi.setAutostart(item.checked),
         },
         {
           label: '最小化到托盘',
           type: 'checkbox',
           checked: settings.minimizeToTray,
-          click: (item) => setMinimizeToTray(item.checked),
+          click: (item) => settingsApi.setMinimizeToTray(item.checked),
         },
         {
           // v0.6.5（T-030）：启动时检查更新（默认开启）
           label: '启动时检查更新',
           type: 'checkbox',
           checked: settings.checkUpdateOnStart,
-          click: (item) => setCheckUpdateOnStart(item.checked),
+          click: (item) => settingsApi.setCheckUpdateOnStart(item.checked),
         },
         { type: 'separator' },
         {
           // 清除「记住我的选择」，关闭窗口时恢复询问
           label: '关闭时总是询问',
           enabled: settings.rememberCloseChoice,
-          click: () => clearCloseChoice(),
+          click: () => settingsApi.clearCloseChoice(),
+        },
+        { type: 'separator' },
+        // v0.8.1（T4）：快捷键子菜单 —— 呼出/隐藏主窗口（全局生效，默认 Ctrl+Alt+D）
+        // 注意：radio 项必须连续（中间不能有 separator）—— Electron 按「同一父菜单下
+        // 连续 radio 项」分组，separator 会打断分组导致「禁用」独立成组而永远显示选中。
+        {
+          label: '快捷键（呼出/隐藏主窗口）',
+          submenu: [
+            { label: 'Ctrl+Alt+D', type: 'radio', checked: settings.hotkey === 'Ctrl+Alt+D',
+              click: () => hotkeyApi.setHotkey('Ctrl+Alt+D') },
+            { label: 'Ctrl+Shift+D', type: 'radio', checked: settings.hotkey === 'Ctrl+Shift+D',
+              click: () => hotkeyApi.setHotkey('Ctrl+Shift+D') },
+            { label: 'Alt+Space', type: 'radio', checked: settings.hotkey === 'Alt+Space',
+              click: () => hotkeyApi.setHotkey('Alt+Space') },
+            { label: '禁用快捷键', type: 'radio', checked: !settings.hotkey,
+              click: () => hotkeyApi.setHotkey(null) },
+          ],
+        },
+        { type: 'separator' },
+        {
+          // v0.8.7（P0-3）：清除「提示词注入」的记忆选择，注入已有内容时恢复询问
+          label: '提示词注入总是询问',
+          enabled: !!settings.promptInjectChoice,
+          click: () => {
+            settings.promptInjectChoice = null;
+            settingsApi.saveSettings();
+            refreshMenus();
+          },
         },
       ],
     },
@@ -1734,6 +1756,9 @@ function buildMenu() {
           label: `检查更新${shellHasUpdate || dshHasUpdate ? '（有新版本）' : ''}`,
           click: () => { openUpdateWindow(); },
         },
+        { type: 'separator' },
+        // v0.8.1（T3）：内置更新日志 —— 帮助菜单查看各版本更新内容（离线可用）
+        { label: '更新日志…', click: () => openChangelogWindow() },
         { type: 'separator' },
         // v0.7.0（T1）：一键诊断报告 —— 环境信息 + 最近日志 + 配置（脱敏）→ 剪贴板 + 落盘
         { label: '生成诊断报告', click: () => generateDiagnostics() },
@@ -1864,23 +1889,27 @@ if (!gotLock) {
   app.quit();
 } else {
   app.on('second-instance', () => {
-    // P2-5：优先聚焦顶层 modal 窗口（更新/联系我们/关于），避免被主窗口遮挡
-    const modal = [updateWin, contactWin, aboutWin].find((w) => w && !w.isDestroyed());
-    const target = modal || mainWindow;
-    if (target) {
-      if (target.isMinimized()) target.restore();
-      target.focus();
+    // P2-5 + v0.8.8（T4）：优先聚焦顶层 modal 窗口；无 modal 时走 showMainWindow()
+    // 修复：主窗口隐藏（托盘）时双击快捷方式/图标，必须真正恢复显示（show+restore+focus），不能只 focus
+    const modal = [updateWin, contactWin, aboutWin, changelogWin, promptLibWin].find((w) => w && !w.isDestroyed());
+    if (modal) {
+      if (modal.isMinimized()) modal.restore();
+      modal.focus();
+    } else {
+      showMainWindow();
     }
   });
 
   app.whenReady().then(async () => {
     // v0.6.1（T-027）：加载设置；开机自启以注册表实际状态为准（用户可能在系统设置里改过）
-    loadSettings();
+    settingsApi.loadSettings();
     try { settings.autostart = app.getLoginItemSettings().openAtLogin; } catch { /* ignore */ }
-    saveSettings();
+    settingsApi.saveSettings();
 
     Menu.setApplicationMenu(buildMenu());
-    createTray(); // v0.6.0（T-025）：启动即创建托盘图标
+    trayApi.createTray(); // v0.6.0（T-025）：启动即创建托盘图标
+    // v0.8.1（T4）：注册全局快捷键（呼出/隐藏主窗口；默认 Ctrl+Alt+D，注册失败仅告警不阻塞启动）
+    hotkeyApi.registerHotkey(settings.hotkey);
     ipcMain.handle('dsh:version', () => app.getVersion());
     ipcMain.handle('dsh:installed-dsh-version', () => installedDshVersion());
     ipcMain.handle('dsh:port', () => resolvedPort);
@@ -1889,13 +1918,105 @@ if (!gotLock) {
     ipcMain.handle('web-open-btn:pos', (_e, pos) => {
       if (pos && typeof pos.x === 'number' && typeof pos.y === 'number') {
         settings.webOpenBtnPos = { x: pos.x, y: pos.y };
-        saveSettings();
+        settingsApi.saveSettings();
       }
       return true;
     });
 
     // v0.5.3：更新窗口 / 联系我们 IPC
     ipcMain.handle('update:query', () => queryUpdateInfo());
+    // v0.8.1（T3）：更新日志窗口 —— 本地内置 CHANGELOG.json（离线可用）+ 当前版本
+    ipcMain.handle('changelog:data', () => {
+      try {
+        const changelogData = require(path.join(app.getAppPath(), 'CHANGELOG.json'));
+        return { versions: changelogData.versions || [], current: app.getVersion() };
+      } catch {
+        return { versions: [], current: app.getVersion() };
+      }
+    });
+    // v0.8.3（T1/T4）：提示词库 —— 数据（内置 prompts.json）/ 注入输入框 / 工具箱入口
+    ipcMain.handle('promptlib:data', () => {
+      try {
+        return require(path.join(app.getAppPath(), 'prompts.json')) || { categories: [] };
+      } catch {
+        return { categories: [] };
+      }
+    });
+    ipcMain.handle('promptlib:inject', async (_e, text) => {
+      if (!mainWindow || mainWindow.isDestroyed()) return { ok: false, reason: 'no-window' };
+      const payload = String(text ?? '');
+      // v0.8.6（P0-2 修复）：注入两段式 —— ①聚焦输入框 ②主进程 insertText 模拟真实键盘输入。
+      // 真机实测（2026-08-16，DSH web 0.1.0-rc.6）：
+      //  - DSH 聊天输入框 = 透明辅助 TEXTAREA（color rgba(0,0,0,0)）+ 框架渲染层
+      //    （overlay slot / mirror），非 CodeMirror/ProseMirror；
+      //  - 直接赋 value + input 事件：value 虽保留但 React 状态不更新（发送按钮禁用、文字不可见）；
+      //  - webContents.insertText：走真实输入路径，React 必然接收 → 文字注入 + 发送按钮变可点。
+      // v0.8.7（P0-3）：输入框已有内容时弹原生对话框（覆盖/追加/取消 + 记住选择）。
+      const focusRes = await mainWindow.webContents.executeJavaScript(`
+        (() => {
+          // 多选择器探测输入框（可见的才用）；'textarea' 放最前（DSH 实测主输入框即 textarea）
+          const selectors = ['textarea', '[contenteditable="true"]', 'div[role="textbox"]',
+                             'input[type="text"]', '[data-testid*="input"]'];
+          let el = null;
+          for (const sel of selectors) {
+            const found = document.querySelector(sel);
+            if (found && found.offsetParent !== null) { el = found; break; }
+          }
+          if (!el) return { ok: false, reason: 'not-found' };
+          el.focus();
+          // 聚焦可能被模态弹窗（内测声明/API Key 对话框）拦截：必须确认焦点到位，
+          // 否则 insertText 会插入到错误位置。失败由前端降级为复制。
+          if (document.activeElement !== el) return { ok: false, reason: 'focus-failed' };
+          const current = (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT')
+            ? (el.value || '') : (el.textContent || '');
+          return { ok: true, current };
+        })()
+      `).catch(() => ({ ok: false, reason: 'exec-error' }));
+      if (!focusRes || !focusRes.ok) return focusRes;
+      const current = focusRes.current || '';
+      // P0-3：输入框已有内容 → 询问覆盖/追加/取消（记住选择后不再询问；设置菜单可清除记忆）
+      let mode = null;
+      if (current.trim()) {
+        if (settings.promptInjectChoice === 'overwrite') mode = 'overwrite';
+        else if (settings.promptInjectChoice === 'append') mode = 'append';
+        else {
+          const choice = await dialog.showMessageBox(mainWindow, {
+            type: 'question', title: APP_NAME,
+            message: '输入框已有内容，怎么处理？',
+            detail: '覆盖 —— 用提示词替换输入框现有内容\n追加 —— 接在现有内容后面继续输入\n取消 —— 不做任何修改',
+            buttons: ['覆盖', '追加', '取消'], defaultId: 0, cancelId: 2, noLink: true,
+            checkboxLabel: '记住我的选择，下次不再询问', checkboxChecked: false,
+          }).catch(() => null);
+          if (!choice || choice.response === 2) return { ok: false, reason: 'cancelled' };
+          mode = choice.response === 0 ? 'overwrite' : 'append';
+          if (choice.checkboxChecked) {
+            settings.promptInjectChoice = mode;
+            settingsApi.saveSettings();
+            refreshMenus();
+          }
+        }
+      } else {
+        mode = 'overwrite'; // 空输入框：直接注入，不询问
+      }
+      // 第三步：按模式设置光标/选区（覆盖=全选待替换，追加=光标末尾），再 insertText
+      await mainWindow.webContents.executeJavaScript(`
+        (() => {
+          const el = document.activeElement;
+          if (!el) return;
+          const isInput = el.tagName === 'TEXTAREA' || el.tagName === 'INPUT';
+          if (${mode === 'overwrite'}) {
+            if (isInput) el.setSelectionRange(0, el.value.length);
+            else { const r = document.createRange(); r.selectNodeContents(el); const s = window.getSelection(); s.removeAllRanges(); s.addRange(r); }
+          } else if (isInput) {
+            el.setSelectionRange(el.value.length, el.value.length);
+          }
+        })()
+      `).catch(() => { /* ignore */ });
+      // 主进程原生模拟输入（等同真实键盘输入，任何框架都必然接收；替换当前选区）
+      mainWindow.webContents.insertText(payload);
+      return { ok: true, mode };
+    });
+    ipcMain.handle('toolbox:open-promptlib', () => { openPromptLibWindow(); return true; });
     ipcMain.handle('update:dsh-upgrade', () => upgradeDshVersion());
     ipcMain.handle('update:shell-download', () => {
       return downloadShellUpdate(updateWin || mainWindow, (percent) => {
@@ -1959,8 +2080,13 @@ if (!gotLock) {
     appendLog('info', `DSH 运行器策略：${resolveRunner().label}`);
 
     // T4（v0.6.6）：自启静默启动 —— 开机自启时不弹窗口，后台运行 + 托盘常驻
-    const silentStart = settings.autostart && settings.minimizeToTray;
-    appendLog('info', `启动模式：${silentStart ? '静默（自启，托盘常驻）' : '正常（显示窗口）'}`);
+    // v0.8.1（T1 修复）：用系统级 API 判断「本次启动确实由系统登录自启触发」，
+    // 而非「用户是否勾选过自启」的持久化配置（双击快捷方式/更新后重启会误判为静默）
+    const openedAtLogin = (() => {
+      try { return app.getLoginItemSettings().wasOpenedAtLogin; } catch { return false; }
+    })();
+    const silentStart = openedAtLogin && settings.minimizeToTray;
+    appendLog('info', `启动模式：${silentStart ? '静默（系统自启触发，托盘常驻）' : '正常（显示窗口）'}（wasOpenedAtLogin=${openedAtLogin}）`);
 
     if (!silentStart) {
       createLoadingWindow();
@@ -2010,6 +2136,8 @@ if (!gotLock) {
   app.on('before-quit', () => { isQuitting = true; stopServer(); });
   app.on('will-quit', (event) => {
     appendLog('info', '应用退出中…');
+    // v0.8.1（T4）：退出释放全局快捷键（防残留占用）
+    hotkeyApi.unregisterAll();
     // 审查 v12 P1-2：SIGTERM 宽限期定时器可能随主进程退出被终止，导致残留子进程
     // 未被强制清理；这里在真正退出前同步兜底 SIGKILL 一次（幂等，安全）。
     for (const child of trackedChildren) {
