@@ -1121,6 +1121,19 @@ async function downloadShellUpdate(win, onProgress) {
         if (onProgress) onProgress(ratio > 0 ? Math.round(ratio * 100) : -ratio);
         if (ratio > 0) appendLog('info', `下载进度：${Math.round(ratio * 100)}%`);
       });
+      // v0.8.9：SHA256 校验放在循环内 —— 校验失败 = .part 续传基础已损坏，
+      // 删除 dest+.part（强制下次从头下载）并回退下一个镜像，不再"一直校验失败"
+      if (info.hash) {
+        const actual = await sha256File(dest);
+        if (actual !== info.hash) {
+          rmQuiet(dest);
+          rmQuiet(`${dest}.part`);
+          lastErr = new Error(`SHA256 校验失败（期望 ${info.hash}，实际 ${actual}）`);
+          appendLog('warn', `安装包 SHA256 校验失败：期望 ${info.hash}，实际 ${actual}；已删除续传缓存，尝试下一个镜像…`);
+          continue;
+        }
+        appendLog('info', '安装包 SHA256 校验通过');
+      }
       lastErr = null;
       break;
     } catch (err) {
@@ -1128,7 +1141,13 @@ async function downloadShellUpdate(win, onProgress) {
       appendLog('warn', `下载失败（${url}）：${err.message}，尝试下一个镜像…`);
     }
   }
-  if (lastErr) return { ok: false, reason: 'download-failed', message: lastErr.message };
+  if (lastErr) {
+    return {
+      ok: false,
+      reason: String(lastErr.message || '').includes('SHA256') ? 'hash-mismatch' : 'download-failed',
+      message: lastErr.message,
+    };
+  }
 
   // SHA256 校验（hash 缺失时跳过）
   if (info.hash) {
