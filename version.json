@@ -4,9 +4,9 @@
   "author": "zx(xwj)",
   "release_notes": "1. 新增：全局快捷键 —— 默认 Ctrl+Alt+D 呼出/隐藏主窗口（未开托盘常驻时只呼出不隐藏）；设置菜单可修改或禁用\n2. 新增：内置提示词库 —— 61 条提示词（46 条通用优化 + 15 条 DSH 任务适配 agent 能力），学习/工作等分类，支持搜索、复制、一键注入 DSH 输入框\n3. 新增：更新日志窗口 —— 帮助菜单查看应用内 CHANGELOG（本地离线可用，含 v0.4.2 起全量历史）\n4. 优化：主进程模块化重构 —— settings/tray/hotkey 拆为独立模块（modules/），main.js 减负，结构更清晰\n5. 规范：团队署名统一 zx(身份标识) —— LICENSE（MIT · 2026 zx(xwj)）、README、飞牛 manifest、关于窗口、版本信息一致\n6. 优化：工具箱图标（toolbox.svg）与界面细节\n7. 修复：更新下载「SHA256 校验未通过」—— 校验失败时删除损坏的续传缓存（.part）并自动回退下一个镜像从头重下，不再因残留断点数据导致反复失败\n8. 优化：校验失败提示显示期望/实际哈希，便于定位（日志可查）",
   "force": false,
-  "hash": "20cbd59d9032a8ffbecab4fac84157a5230ddc5fa679ce8c90d21760d447017f",
+  "hash": "f5866405a42bae4c43371523818cf4eed1fa4c4b490a2da8753acaaddd357b41",
   "download_urls": [
-    "https://ghfast.top/https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.7.10/DSH-Desktop-Setup-0.7.10.exe",
-    "https://gh-proxy.com/https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.7.10/DSH-Desktop-Setup-0.7.10.exe"
+    "https://ghfast.top/https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.8.9/DSH-Desktop-Setup-0.8.9.exe",
+    "https://gh-proxy.com/https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.8.9/DSH-Desktop-Setup-0.8.9.exe"
   ]
 }
