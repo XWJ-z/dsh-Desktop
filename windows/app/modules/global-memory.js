@@ -349,8 +349,16 @@ function createGlobalMemory(deps) {
    */
   function save(payload) {
     const p = payload || {};
+    // N1（外审 zx(9) 复核）：payload 大小上限 1MB（对齐 custom-prompts P3-2，防被攻破的渲染进程写任意大文件到 ~/.dsh/AGENTS.md）
+    let payloadSize;
+    try { payloadSize = JSON.stringify(p).length; } catch { payloadSize = Number.MAX_SAFE_INTEGER; }
+    if (payloadSize > 1024 * 1024) {
+      appendLog('warn', `保存全局记忆拒绝：内容过大（${Math.round(payloadSize / 1024)}KB > 1MB）`);
+      return { ok: false, file: file(), message: '内容过大（>1MB），请精简后再保存' };
+    }
     const clean = (arr) => (Array.isArray(arr) ? arr : [])
-      .map((it) => ({ name: String((it && it.name) || '').trim(), value: String((it && it.value) || '').trim() }))
+      // N2（外审 zx(9) 复核）：字段值内换行替换为空格，防止把「- 字段：值」撕成多行破坏 markdown 字段解析
+      .map((it) => ({ name: String((it && it.name) || '').trim(), value: String((it && it.value) || '').trim().replace(/\r?\n/g, ' ') }))
       .filter((it) => it.name !== '' && it.name !== GUIDE_FIELD);
     // 兼容旧 payload 字段名（fields/roles → users/dsh）
     const users = clean(p.users !== undefined ? p.users : p.fields);

@@ -117,6 +117,11 @@
       background: rgba(229,72,77,.08); border: 1px solid rgba(229,72,77,.35);
       border-radius: var(--radius-btn); padding: 8px 12px; margin-bottom: 10px;
     }
+    /* v0.9.16（老大指令）：标题后红色标注（DSH 视角），提醒配置角色别搞成用户视角 */
+    .dsh-view {
+      color: #e5484d; font-size: 13px; font-weight: 590;
+      margin-left: 2px;
+    }
     /* 保存后整理记忆确认条 */
     .tidy-bar {
       display: none; align-items: center; gap: 10px; margin-top: 10px;
@@ -172,8 +177,10 @@
   </style>
 </head>
 <body>
-  <h1>🧠 全局记忆</h1>
+  <h1>🧠 全局记忆 <span class="dsh-view">(DSH 视角)</span></h1>
   <div class="subtitle">写入 <code>~/.dsh/AGENTS.md</code>（DSH 的视角）：「用户设定」记用户是谁、「我的设定」记 DSH 自己（含默认角色下拉）、「DSH 角色」可切换角色，其他记忆区块自动识别。覆盖已有内容保存时需二次确认。</div>
+  <!-- v0.9.16（老大指令）：红色提示移到全局记忆介绍下面（默认角色可改：在 DSH 角色中修改） -->
+  <div class="tip-red">⚠️ 双击对话框选择角色，默认角色请在[DSH角色中修改]</div>
   <div id="banner" class="banner"></div>
   <div class="layout">
     <div class="left" id="cats"></div>

@@ -182,7 +182,7 @@ async function main() {
     const ver = await cdp.send('Runtime.evaluate', {
       expression: 'window.dshDesktop.getVersion()', returnByValue: true, awaitPromise: true,
     });
-    ok(ver.result && ver.result.value === '0.9.15', `壳版本 = 0.9.15（实际 ${ver.result && ver.result.value}）`);
+    ok(ver.result && ver.result.value === '0.9.16', `壳版本 = 0.9.16（实际 ${ver.result && ver.result.value}）`);
 
     // ①.5 宠物注入正常（v0.9.10 间歇提示改动不破坏注入）+ 气泡元素存在
     // 注：injectPet 在 did-finish-load 后执行，需轮询等待注入完成
@@ -369,17 +369,25 @@ async function main() {
         ok(!!rv && rv.hasRoleFields && rv.roleCount >= 1, `DSH 角色独立区块视图（${rv && rv.roleCount} 个角色）`);
         ok(!!rv && rv.roleNames.includes('角色 1') && rv.roleNames.includes('角色 3'), '默认角色 1/2/3');
         ok(!!rv && rv.hasAddRole, '有「＋ 添加角色」按钮');
-        // v0.9.15（老大指令）：DSH 角色页红色提示「双击对话框选择角色，默认角色 1」
+        // v0.9.16（老大指令）：标题红色标注（DSH 视角）+ 红色提示移到窗口介绍下方、文案更新
         const tip = await memCdp.send('Runtime.evaluate', {
           expression: `(() => {
-            const el0 = document.querySelector('#right-body .tip-red');
-            return { has: !!el0, text: el0 ? (el0.textContent || '').trim() : '' };
+            const h1 = document.querySelector('h1');
+            const tipEl = document.querySelector('.tip-red');
+            return {
+              hasTip: !!tipEl,
+              tipText: tipEl ? (tipEl.textContent || '').trim() : '',
+              title: h1 ? (h1.textContent || '').trim() : '',
+              bodyHasTip: !!document.querySelector('#right-body .tip-red'),
+            };
           })()`,
           returnByValue: true,
         });
         const tipV = tip.result && tip.result.value;
-        ok(!!tipV && tipV.has && tipV.text.includes('双击对话框选择角色') && tipV.text.includes('默认角色 1'),
-          `角色页红色提示：双击对话框选择角色，默认角色 1（v0.9.15，实际 ${tipV && tipV.text}）`);
+        ok(!!tipV && tipV.hasTip && tipV.tipText.includes('双击对话框选择角色') && tipV.tipText.includes('默认角色请在[DSH角色中修改]'),
+          `全局红色提示（介绍下方）：双击对话框选择角色，默认角色请在[DSH角色中修改]（v0.9.16，实际 ${tipV && tipV.tipText}）`);
+        ok(!!tipV && tipV.title.includes('(DSH 视角)'), `标题红色标注（DSH 视角）（v0.9.16，实际 ${tipV && tipV.title}）`);
+        ok(!!tipV && !tipV.bodyHasTip, 'DSH 角色页不再内嵌红色提示（已移到窗口介绍下方全局显示）');
         // 点击左侧区块 → 右侧显示标题输入框（可改）+ 长文本
         const sec = await memCdp.send('Runtime.evaluate', {
           expression: `(() => {
@@ -461,7 +469,7 @@ async function main() {
     ok(!!cv && cv.r096 === true, 'changelog:data 0.9.6 released=true');
     ok(!!cv && cv.r098 === false, 'changelog:data 0.9.8（内部）released=false');
     ok(!!cv && cv.releasedCount === 12, `released=true 共 12 个（实际 ${cv && cv.releasedCount}）`);
-    ok(!!cv && cv.sortedFirst === '0.9.15', `changelog:data 降序首条 = 0.9.15（P3-3 共享比较，实际 ${cv && cv.sortedFirst}）`);
+    ok(!!cv && cv.sortedFirst === '0.9.16', `changelog:data 降序首条 = 0.9.16（P3-3 共享比较，实际 ${cv && cv.sortedFirst}）`);
 
     // ④ 日志：公告自动刷新已启动 + fetchLatest 已执行
     await sleep(1500); // 等 checkUpdatesOnStart 的 fetchLatest 落日志

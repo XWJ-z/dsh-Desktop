@@ -116,8 +116,7 @@ function renderRight() {
   if (activeKey === ROLES_KEY) {
     head.innerHTML = 'DSH 角色 <span class="tag">角色 1/2/3 · 双击对话框切换 · 可增删</span>';
     body.innerHTML = `
-      <div class="tip-red">⚠️ 双击对话框选择角色，默认角色 1</div>
-      <div class="guide-tip">💡 每个角色保存后会自动建立角色文件（~/.dsh/roles/），详细记忆写入角色文件避免 AGENTS.md 过大；想切换角色随时双击 DSH 输入框重选。</div>
+      <div class="guide-tip">💡 每个角色保存后会自动建立角色文件（~/.dsh/roles/），详细记忆写入角色文件避免 AGENTS.md 过大；想切换角色随时双击 DSH 输入框重选。默认角色请在下方「我的设定 → 默认角色」中选择（或修改本区块角色）。</div>
       <div class="fields" id="role-fields"></div>
       <button id="btn-add-role" class="add-field">＋ 添加角色</button>`;
     renderRoleFields();

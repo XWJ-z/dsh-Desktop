@@ -299,7 +299,7 @@ function startDshThemeWatch() {
   dshThemeWatchTimer = setInterval(() => {
     const mw = mainWindow;
     // P2-1：仅窗口可见时轮询（隐藏/最小化/销毁 → 空转跳过，不打扰且省资源）
-    if (!mw || mw.isDestroyed() || !mw.isVisible()) return;
+    if (!mw || mw.isDestroyed() || !mw.isVisible() || mw.isMinimized()) return; // v0.9.16（zx(9) 复核 P2-1）：最小化时 isVisible 仍为 true，需同时跳过
     mw.webContents.executeJavaScript(`
       (() => {
         const sel = Array.from(document.querySelectorAll('button'))
@@ -890,11 +890,16 @@ if (!gotLock) {
         roleSelectorApi.injectDblclick(mainWindow);
         // v0.9.13（老大指令）：记忆格式不符标准 → 主窗口加载完成后注入整理提示词
         // （让 DSH 按标准格式整理现有记忆，不改变原意）
-        if (memoryFormatMismatch) {
+        // v0.9.16（外审 zx(9) 复核 N3）：仅首次启动注入 —— 标记文件防每次启动重复覆盖输入框
+        const tidyMarker = path.join(os.homedir(), '.dsh', '.format-tidy-injected');
+        if (memoryFormatMismatch && !fs.existsSync(tidyMarker)) {
           setTimeout(() => {
             const mw = mainWindow;
             if (mw && !mw.isDestroyed()) {
               promptInject.injectTextIntoInput(mw, globalMemoryApi.FORMAT_TIDY_PROMPT, { celebrate: false })
+                .then(() => {
+                  try { fs.writeFileSync(tidyMarker, '1', 'utf8'); } catch { /* ignore */ }
+                })
                 .catch(() => { /* ignore */ });
             }
           }, 3500);

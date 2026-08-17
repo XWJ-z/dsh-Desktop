@@ -88,7 +88,8 @@ contextBridge.exposeInMainWorld('dshDesktop', {
    * ⚠ 必须在 drop 事件同步调用（异步会丢 File 引用，返回空）。
    */
   getPathForFile: (file) => {
-    try { return webUtils.getPathForFile(file); } catch { return ''; }
+    // v0.9.16（外审 zx(29) S13）：异常时 console.warn 辅助排查（渲染进程无 appendLog）
+    try { return webUtils.getPathForFile(file); } catch (err) { console.warn('[dshDesktop] getPathForFile 失败：', (err && err.message) || err); return ''; }
   },
   /** 拖拽文件 → 主进程处理（复制进工作区 + 注入提示词） */
   dropFiles: (paths) => ipcRenderer.invoke('drop:files', paths),

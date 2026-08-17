@@ -400,7 +400,11 @@ function testGlobalMemory() {
   ok(rjs0.includes('btn-add-field'), '窗口有「＋ 添加字段」按钮逻辑');
   ok(rjs0.includes('btn-add-dsh'), '窗口有「＋ 添加 DSH 设定」按钮逻辑');
   ok(rjs0.includes('btn-add-role') && rjs0.includes('role-fields'), '窗口有 DSH 角色列表 + 添加角色按钮');
-  ok(rjs0.includes('tip-red') && rjs0.includes('双击对话框选择角色') && rjs0.includes('默认角色 1'), '窗口红色提示：双击对话框选择角色，默认角色 1（v0.9.15）');
+  const ghtml = read('renderer/global-memory.html');
+  ok(ghtml.includes('dsh-view') && ghtml.includes('(DSH 视角)'), '标题红色标注（DSH 视角）（v0.9.16 老大指令）');
+  ok(ghtml.includes('tip-red') && ghtml.includes('双击对话框选择角色') && ghtml.includes('默认角色请在[DSH角色中修改]'),
+    '红色提示在全局记忆介绍下方、文案完整：双击对话框选择角色，默认角色请在[DSH角色中修改]（v0.9.16）');
+  ok(!rjs0.includes('tip-red'), 'DSH 角色页不再内嵌红色提示（已移到窗口介绍下方全局显示）');
   ok(!rjs0.includes('新对话时会弹窗选择角色'), '窗口不再说明新对话弹窗选角色（v0.9.15：新建对话不提示）');
   const rsel = read('modules/role-selector.js');
   ok(!rsel.includes('dsh.sessions.current') && !rsel.includes('setInterval'), '不再轮询 DSH 会话切换（v0.9.15：新建对话不弹窗）');
@@ -410,6 +414,10 @@ function testGlobalMemory() {
   const mainSrc1 = read('main.js');
   ok(!mainSrc1.includes('roleSelectorApi.start()') && !mainSrc1.includes('roleSelectorApi.stop()'), '主进程不再启动/停止会话轮询（新建对话不弹窗）');
   ok(mainSrc1.includes('roleSelectorApi.injectDblclick(mainWindow)'), '主窗口就绪后注入双击重选角色监听');
+  ok(mainSrc1.includes('.format-tidy-injected') && mainSrc1.includes('tidyMarker'), 'N3：整理提示仅首次注入（标记文件防重复覆盖，外审 zx9）');
+  ok(mainSrc1.includes('mw.isMinimized()'), 'P2-1：外观轮询最小化时跳过（isMinimized，外审 zx9）');
+  const preloadSrc = read('preload.js');
+  ok(preloadSrc.includes('getPathForFile 失败') && preloadSrc.includes('console.warn'), 'S13：getPathForFile 异常记录 warn（外审 zx29）');
   ok(rjs0.includes('guide-tip'), '窗口显示未配置引导提示条');
   ok(rjs0.includes('TIDY_PROMPT') && rjs0.includes('整理你的全局记忆，不要改变原意'), '保存后整理记忆提示词');
   ok(rjs0.includes('tidy-bar') && rjs0.includes('showTidyBar'), '保存后询问是否让 DSH 整理记忆');
@@ -612,6 +620,21 @@ $env:PATH = "..."
   ok(raw3f.includes('- 用户的称呼：老大') && raw3f.includes('- 我的名字：小鲸鱼') && raw3f.includes('- 当前项目：DSH-Desktop'),
     '保存后文件为 DSH 视角字段');
   ok(!raw3f.includes('你的称呼') && !raw3f.includes('DSH 的名字') && !raw3f.includes('## DSH 设定'), '保存后无旧视角残留');
+  // 4.10) v0.9.16（外审 zx(9) 复核 N1/N2）：payload 上限 1MB + 字段值内换行过滤
+  const bigPayload = { users: [{ name: '用户的称呼', value: 'x'.repeat(2 * 1024 * 1024) }], dsh: [], sections: [] };
+  const rBig = api.save(bigPayload);
+  ok(rBig.ok === false && /1MB/.test(rBig.message || ''), 'N1：超 1MB payload 拒绝（返回 message，外审 zx9）');
+  fs.rmSync(target, { force: true });
+  const rNl = api.save({
+    users: [{ name: '用户的称呼', value: '老大\n第二行' }],
+    dsh: [{ name: '我的名字', value: '小鲸鱼\r\n尾巴' }],
+    sections: [],
+  });
+  ok(rNl.ok === true, 'N2：多行字段值保存成功');
+  const rawNl = fs.readFileSync(target, 'utf8');
+  ok(rawNl.includes('- 用户的称呼：老大 第二行') && rawNl.includes('- 我的名字：小鲸鱼 尾巴'),
+    'N2：字段值内换行替换为空格（不撕行，外审 zx9）');
+  ok((rawNl.match(/\n- 我的名字：/g) || []).length === 1, 'N2：字段行未被多行值拆散');
   // 5) 空字段名行过滤
   const r4 = api.save({ users: [{ name: '', value: '空名行' }, { name: '用户的称呼', value: '李四' }], dsh: [], sections: [] });
   ok(r4.ok === true && !fs.readFileSync(target, 'utf8').includes('- ：空名行'), '空字段名行被过滤');
@@ -672,7 +695,7 @@ $env:PATH = "..."
 function testVersion() {
   console.log('[7] package.json 版本');
   const pkg = JSON.parse(fs.readFileSync(path.join(APP, 'package.json'), 'utf8'));
-  ok(pkg.version === '0.9.15', `version = 0.9.15（实际 ${pkg.version}）`);
+  ok(pkg.version === '0.9.16', `version = 0.9.16（实际 ${pkg.version}）`);
 }
 
 // ---------------------------------------------------------------------------
