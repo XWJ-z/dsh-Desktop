@@ -225,7 +225,7 @@ async function main() {
     const memWin = await waitTarget(SIM_DEBUG_PORT, (t) => /global-memory\.html/.test(t.url), 15_000);
     ok(!!memWin, '「🧠 全局记忆」点击打开编辑窗口（global-memory.html）');
     if (memWin && memWin.webSocketDebuggerUrl) {
-      // 窗口内：基础设定字段列表 + 其他 ## 区块自动识别（长文本）—— 页面加载异步，轮询等待就绪
+      // 窗口内：左右分栏 —— 左类别列表 / 右内容区（页面加载异步，轮询等待就绪）
       const memCdp = cdpConnect(memWin.webSocketDebuggerUrl);
       try {
         let fv = null;
@@ -233,31 +233,60 @@ async function main() {
         while (Date.now() - t1 < 10_000) {
           const f = await memCdp.send('Runtime.evaluate', {
             expression: `(() => {
+              const cats = Array.from(document.querySelectorAll('#cats .cat[data-key]'));
               const rows = Array.from(document.querySelectorAll('#fields .row'));
-              const secs = Array.from(document.querySelectorAll('#sections .sec'));
               return {
-                hasFields: !!document.getElementById('fields'),
+                hasCats: !!document.getElementById('cats'),
+                hasRight: !!document.getElementById('right-body'),
+                catCount: cats.length,
+                catTexts: cats.map((c) => (c.textContent || '').trim()),
                 rowCount: rows.length,
                 names: rows.map((r) => (r.querySelector('.f-name') || {}).value || '').filter(Boolean),
-                hasAddField: !!document.getElementById('btn-add'),
+                hasAddField: !!document.getElementById('btn-add-field'),
                 hasAddSec: !!document.getElementById('btn-add-sec'),
-                secCount: secs.length,
-                secTitles: secs.map((s) => (s.querySelector('.sec-head') || {}).textContent || ''),
-                hasSecBody: secs.length > 0 && !!secs[0].querySelector('.sec-body'),
                 path: (document.getElementById('path') || {}).textContent || '',
               };
             })()`,
             returnByValue: true,
           });
           fv = f.result && f.result.value;
-          if (fv && fv.hasFields && fv.rowCount >= 6) break;
+          if (fv && fv.hasCats && fv.rowCount >= 6) break;
           await sleep(500);
         }
-        ok(!!fv && fv.hasFields && fv.rowCount >= 6, `全局记忆窗口基础设定字段列表（${fv && fv.rowCount} 行）`);
-        ok(!!fv && fv.names.includes('你的称呼') && fv.names.includes('项目背景'), '默认字段含你的称呼/项目背景');
-        ok(!!fv && fv.hasAddField && fv.hasAddSec, '窗口有「＋ 添加字段」和「＋ 添加区块」按钮');
-        ok(!!fv && fv.secCount >= 1 && fv.hasSecBody, `自动识别 ## 区块（${fv && fv.secCount} 个，长文本可编辑）`);
-        ok(!!fv && fv.secTitles.some((t) => t.includes('身份与称呼')), `识别出 身份与称呼 区块（${fv && fv.secTitles.join(' | ')}）`);
+        ok(!!fv && fv.hasCats && fv.hasRight, '窗口左右分栏（左类别 / 右内容）');
+        ok(!!fv && fv.catCount >= 2, `左侧类别列表（${fv && fv.catCount} 项：基础设定 + 区块）`);
+        ok(!!fv && fv.catTexts.some((t) => t.includes('身份与称呼')), `自动识别出 身份与称呼 区块（${fv && fv.catTexts.join(' | ')}）`);
+        ok(!!fv && fv.rowCount >= 6 && fv.names.includes('你的称呼'), '基础设定字段列表默认显示（含你的称呼）');
+        ok(!!fv && fv.hasAddField && fv.hasAddSec, '有「＋ 添加字段」和「＋ 添加区块」按钮');
+        // 点击左侧区块 → 右侧显示标题输入框（可改）+ 长文本
+        const sec = await memCdp.send('Runtime.evaluate', {
+          expression: `(() => {
+            const cat = Array.from(document.querySelectorAll('#cats .cat[data-key]'))
+              .find((c) => (c.textContent || '').includes('身份与称呼'));
+            if (!cat) return { ok: false };
+            cat.click();
+            return { ok: true };
+          })()`,
+          returnByValue: true,
+        });
+        ok(!!(sec.result && sec.result.value && sec.result.value.ok), '点击「身份与称呼」类别');
+        let sv = null;
+        const t2 = Date.now();
+        while (Date.now() - t2 < 5000) {
+          const s = await memCdp.send('Runtime.evaluate', {
+            expression: `(() => {
+              const t = document.getElementById('sec-title');
+              const b = document.getElementById('sec-body');
+              return { hasTitle: !!t, title: t ? t.value : '', hasBody: !!b };
+            })()`,
+            returnByValue: true,
+          });
+          sv = s.result && s.result.value;
+          if (sv && sv.hasTitle && sv.hasBody) break;
+          await sleep(400);
+        }
+        ok(!!sv && sv.hasTitle && sv.hasBody, '右侧显示区块标题输入框（可修改）+ 长文本内容');
+        ok(!!sv && sv.title === '身份与称呼', `标题可编辑且已回填（${sv && sv.title}）`);
         ok(!!fv && /AGENTS\.md$/.test(fv.path), `窗口显示记忆文件路径（${fv && fv.path}）`);
       } catch (err) {
         ok(false, '全局记忆窗口内容断言异常：' + err.message);

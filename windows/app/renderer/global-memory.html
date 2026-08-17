@@ -7,13 +7,15 @@
   <link rel="stylesheet" href="shared.css" />
   <style>
     body {
+      align-items: stretch;
       padding: 18px 20px 20px;
       height: 100vh;
+      overflow: hidden; /* 滚动交给内部容器 */
       display: flex;
       flex-direction: column;
     }
     h1 { font-size: 18px; font-weight: 590; margin-bottom: 2px; }
-    .subtitle { font-size: 12px; color: var(--text-quaternary); margin-bottom: 14px; line-height: 1.7; }
+    .subtitle { font-size: 12px; color: var(--text-quaternary); margin-bottom: 12px; line-height: 1.7; }
     .subtitle code { background: var(--bg-hover); padding: 1px 5px; border-radius: 4px; font-size: 11px; }
     /* 反馈横幅 */
     .banner {
@@ -23,20 +25,46 @@
     .banner.show { display: block; }
     .banner.ok { color: var(--success); background: rgba(16,185,129,.1); border: 1px solid rgba(16,185,129,.3); }
     .banner.fail { color: var(--warn); background: rgba(245,166,35,.1); border: 1px solid rgba(245,166,35,.3); }
-    .scroll { flex: 1; overflow-y: auto; min-height: 0; display: flex; flex-direction: column; gap: 16px; }
-    /* 区块卡 */
-    .card {
-      background: var(--bg-surface); border: 1px solid var(--border-standard);
-      border-radius: var(--radius-card); padding: 12px 14px;
+    /* 左右分栏（参考提示词库） */
+    .layout { display: flex; gap: 16px; flex: 1; min-height: 0; }
+    .left {
+      width: 220px; flex-shrink: 0; display: flex; flex-direction: column; gap: 6px;
+      overflow-y: auto; align-content: flex-start;
     }
-    .card-title { font-size: 13px; font-weight: 590; color: var(--text-primary); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
-    .card-title .tag {
+    .cat {
+      padding: 10px 12px; border-radius: var(--radius-btn); cursor: pointer;
+      font-size: 13px; color: var(--text-secondary);
+      background: transparent; border: 1px solid transparent;
+      display: flex; align-items: center; gap: 6px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .cat:hover { background: var(--bg-hover); }
+    .cat.active { background: var(--bg-surface); border-color: rgba(94,106,210,.4); color: var(--text-primary); }
+    .cat .tag {
+      font-size: 10.5px; color: var(--text-quaternary); flex-shrink: 0;
+      background: var(--bg-hover); border-radius: 999px; padding: 1px 7px;
+    }
+    .cat .sec-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+    .cat-add {
+      margin-top: 6px; padding: 9px 12px; border: 1px dashed var(--border-standard);
+      border-radius: var(--radius-btn); background: transparent; color: var(--text-secondary);
+      cursor: pointer; font-size: 13px; font-weight: 590; text-align: center;
+    }
+    .cat-add:hover { color: var(--brand); border-color: rgba(94,106,210,.55); background: var(--bg-hover); }
+    .right {
+      flex: 1; min-width: 0; display: flex; flex-direction: column;
+      background: var(--bg-surface); border: 1px solid var(--border-standard);
+      border-radius: var(--radius-card); padding: 14px 16px;
+    }
+    .right-head { font-size: 14px; font-weight: 590; color: var(--text-primary); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+    .right-head .tag {
       font-size: 10.5px; font-weight: 400; color: var(--text-quaternary);
       background: var(--bg-hover); border-radius: 999px; padding: 1px 8px;
     }
     /* 基础设定字段列表 */
+    .fields { overflow-y: auto; display: flex; flex-direction: column; gap: 8px; flex: 1; min-height: 0; }
     .row {
-      display: flex; gap: 10px; align-items: stretch; margin-bottom: 8px;
+      display: flex; gap: 10px; align-items: stretch;
       background: var(--bg-input); border: 1px solid var(--border-standard);
       border-radius: var(--radius-btn); padding: 8px 10px;
     }
@@ -59,23 +87,34 @@
       color: var(--text-quaternary); font-size: 15px; border-radius: 8px;
     }
     .row .del:hover { color: #ff6b6b; background: rgba(255,107,107,.12); }
-    .add {
+    .add-field {
       padding: 8px 14px; border: 1px dashed var(--border-standard); border-radius: var(--radius-btn);
       background: transparent; color: var(--text-secondary); cursor: pointer;
-      font-size: 13px; font-weight: 590;
+      font-size: 13px; font-weight: 590; align-self: flex-start;
     }
-    .add:hover { color: var(--brand); border-color: rgba(94,106,210,.55); background: var(--bg-hover); }
-    /* 其他 ## 区块（长文本） */
-    .sec-head { font-size: 12.5px; font-weight: 590; color: var(--brand); margin: 10px 0 6px; font-family: Consolas, "Courier New", monospace; }
+    .add-field:hover { color: var(--brand); border-color: rgba(94,106,210,.55); background: var(--bg-hover); }
+    /* 其他区块：标题可改 + 长文本 */
+    .sec-title-input {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+    }
+    .sec-title-input .hash { font: 600 15px Consolas, monospace; color: var(--brand); }
+    .sec-title-input input {
+      flex: 1; padding: 7px 11px; font-size: 14px; font-weight: 590;
+      background: var(--bg-input); border: 1px solid var(--border-standard);
+      border-radius: 8px; color: var(--text-primary); outline: none;
+      font-family: Consolas, "Courier New", "Microsoft YaHei", sans-serif;
+    }
+    .sec-title-input input:focus { border-color: rgba(94,106,210,.55); }
     .sec-body {
-      width: 100%; padding: 10px 12px; min-height: 120px; resize: vertical;
+      flex: 1; min-height: 120px; resize: none; width: 100%; box-sizing: border-box;
+      padding: 10px 12px;
       background: var(--bg-input); border: 1px solid var(--border-standard);
       border-radius: var(--radius-btn); color: var(--text-primary);
       font: 12.5px/1.7 Consolas, "Courier New", "Microsoft YaHei", monospace; outline: none;
-      white-space: pre; box-sizing: border-box;
+      white-space: pre;
     }
     .sec-body:focus { border-color: rgba(94,106,210,.55); }
-    .sec-empty { font-size: 12px; color: var(--text-quaternary); padding: 6px 2px; }
+    .sec-empty { font-size: 12.5px; color: var(--text-quaternary); padding: 20px 4px; text-align: center; }
     .foot { display: flex; align-items: center; gap: 12px; margin-top: 14px; }
     .path { font-size: 11px; color: var(--text-quaternary); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .btn {
@@ -93,9 +132,15 @@
 </head>
 <body>
   <h1>🧠 全局记忆</h1>
-  <div class="subtitle">写入 <code>~/.dsh/AGENTS.md</code>，DSH 启动时自动读取（无需手动发送）。「基础设定」按字段填写；下方自动识别记忆里的各个 <code>##</code> 区块，可直接修改长内容。覆盖已有内容保存时会弹窗确认。</div>
+  <div class="subtitle">写入 <code>~/.dsh/AGENTS.md</code>，DSH 启动时自动读取。左边选类别（自动识别基础设定 / 各记忆区块），右边编辑内容；区块标题可直接修改。覆盖已有内容保存时会弹窗确认。</div>
   <div id="banner" class="banner"></div>
-  <div class="scroll" id="scroll"></div>
+  <div class="layout">
+    <div class="left" id="cats"></div>
+    <div class="right">
+      <div class="right-head" id="right-head"></div>
+      <div id="right-body" style="flex:1;min-height:0;display:flex;flex-direction:column;"></div>
+    </div>
+  </div>
   <div class="foot">
     <span id="path" class="path"></span>
     <button id="btn-open-folder" class="btn ghost">打开文件位置</button>

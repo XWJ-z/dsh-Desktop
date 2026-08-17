@@ -364,10 +364,15 @@ function testGlobalMemory() {
   ok(gms.includes('renderLong'), '长文本区块渲染');
   ok(gms.includes('你的称呼'), '默认字段含你的称呼（用户视角）');
   const rjs0 = read('renderer/global-memory.js');
-  ok(rjs0.includes('btn-add'), '窗口有「＋ 添加字段」按钮逻辑');
-  ok(rjs0.includes('btn-add-sec'), '窗口有「＋ 添加区块」按钮逻辑');
-  ok(rjs0.includes('sec-body'), '其他 ## 区块以长文本 textarea 编辑');
+  ok(rjs0.includes('renderCats'), '窗口左侧类别列表（renderCats）');
+  ok(rjs0.includes('renderRight'), '窗口右侧内容区（renderRight）');
+  ok(rjs0.includes('btn-add-field'), '窗口有「＋ 添加字段」按钮逻辑');
+  ok(rjs0.includes('btn-add-sec') || rjs0.includes('addSection'), '窗口有「＋ 添加区块」逻辑（界面内新建）');
+  ok(!/window\.prompt\(/.test(rjs0), '不使用 window.prompt（沙箱渲染进程禁用，改界面内输入）');
+  ok(rjs0.includes('sec-title'), '区块标题可修改（标题输入框）');
+  ok(rjs0.includes('sec-body'), '区块内容长文本 textarea');
   ok(rjs0.includes('sections'), '窗口维护区块列表（自动识别）');
+  ok(rjs0.includes('collectPayload'), '保存收集字段+区块');
   ok(rjs0.includes('saveGlobalMemory'), '保存调 saveGlobalMemory');
   ok(rjs0.includes('getGlobalMemory'), '读取调 getGlobalMemory');
   const ipcSrc2 = read('modules/ipc.js');
@@ -376,9 +381,14 @@ function testGlobalMemory() {
   const mw = read('modules/windows/misc-windows.js');
   ok(mw.includes('openGlobalMemoryWindow'), 'misc-windows 有全局记忆窗口');
   ok(mw.includes('\'global-memory.html\''), '窗口加载 global-memory.html');
-  ok(read('renderer/global-memory.html').includes('id="scroll"'), '窗口有区块滚动容器');
-  ok(read('renderer/global-memory.html').includes('自动识别'), '窗口说明自动识别 ## 区块');
-  ok(!read('modules/backup.js').includes('global-memory.md'), 'backup 不再单独处理 global-memory.md（AGENTS.md 在 ~/.dsh 整目录备份内）');
+  const html0 = read('renderer/global-memory.html');
+  ok(html0.includes('id="cats"') && html0.includes('id="right-body"'), '左右分栏布局（左类别 / 右内容）');
+  ok(html0.includes('参考提示词库') || html0.includes('左边'), '布局说明');
+  ok(html0.includes('自动识别'), '窗口说明自动识别 ## 区块');
+  const bkSrc = read('modules/backup.js');
+  ok(bkSrc.includes('AGENTS.md'), 'backup 显式记录全局记忆 AGENTS.md');
+  ok(bkSrc.includes('fs.promises.cp(dshHome'), 'backup 整目录复制 ~/.dsh（含 AGENTS.md）');
+  ok(!bkSrc.includes('global-memory.md'), 'backup 不单独处理 global-memory.md（AGENTS.md 在 ~/.dsh 整目录内）');
 }
 
 // ---------------------------------------------------------------------------

@@ -67,6 +67,8 @@ function createBackup(deps) {
     const settings = settingsFile();
     const hasDsh = fs.existsSync(dshHome);
     const hasSettings = fs.existsSync(settings);
+    // v0.9.12：全局记忆 ~/.dsh/AGENTS.md 随 ~/.dsh 整目录备份（日志显式记录，便于核对）
+    const hasAgents = hasDsh && fs.existsSync(path.join(dshHome, 'AGENTS.md'));
 
     if (!hasDsh && !hasSettings) {
       dialog.showMessageBox(owner, {
@@ -78,7 +80,7 @@ function createBackup(deps) {
       return;
     }
 
-    appendLog('info', `开始备份：~/.dsh=${hasDsh} settings=${hasSettings} → ${filePath}`);
+    appendLog('info', `开始备份：~/.dsh=${hasDsh}（全局记忆 AGENTS.md=${hasAgents}）settings=${hasSettings} → ${filePath}`);
 
     // v0.7.10：进度条（替代原「正在备份…」info 弹窗）
     openBackupProgress();
