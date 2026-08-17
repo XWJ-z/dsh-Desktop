@@ -178,11 +178,11 @@ async function main() {
     ok(dshReady, 'preload dshDesktop 已注入');
     if (!dshReady) throw new Error('dshDesktop 注入超时');
 
-    // ① 版本 0.9.12
+    // ① 版本 0.9.13
     const ver = await cdp.send('Runtime.evaluate', {
       expression: 'window.dshDesktop.getVersion()', returnByValue: true, awaitPromise: true,
     });
-    ok(ver.result && ver.result.value === '0.9.12', `壳版本 = 0.9.12（实际 ${ver.result && ver.result.value}）`);
+    ok(ver.result && ver.result.value === '0.9.13', `壳版本 = 0.9.13（实际 ${ver.result && ver.result.value}）`);
 
     // ①.5 宠物注入正常（v0.9.10 间歇提示改动不破坏注入）+ 气泡元素存在
     // 注：injectPet 在 did-finish-load 后执行，需轮询等待注入完成
@@ -205,6 +205,20 @@ async function main() {
     ok(!!pv && pv.hasPet, '桌面宠物已注入（#dsh-pet）');
     ok(!!pv && pv.hasBubble, '宠物气泡元素存在');
     ok(!!pv && pv.hasMenu, '宠物菜单元素存在');
+
+    // ①.6 v0.9.13（老大反馈：眼睛跑到头顶眨眼）：眨眼改几何闭眼 ——
+    // 右眼瞳孔 ellipse（第 2 个）存在且初始 ry=24（几何属性，无 transform 位移风险）
+    const wink = await cdp.send('Runtime.evaluate', {
+      expression: `(() => {
+        const g = document.querySelector('#dsh-pet .eye-r');
+        const pupil = g && g.querySelectorAll('ellipse')[1];
+        return { hasPupil: !!pupil, ry: pupil ? pupil.getAttribute('ry') : null };
+      })()`,
+      returnByValue: true,
+    });
+    const wv = wink.result && wink.result.value;
+    ok(!!wv && wv.hasPupil, '眨眼几何目标（右眼瞳孔 ellipse）存在');
+    ok(!!wv && wv.ry === '24', `瞳孔初始 ry=24（实际 ${wv && wv.ry}）`);
 
     // ①.7 v0.9.12：宠物菜单含「🧠 全局记忆」（排在提示词库前）+ preload API 存在
     const mem = await cdp.send('Runtime.evaluate', {
@@ -346,7 +360,7 @@ async function main() {
       ok(fs.existsSync(simAgents), '仿真 ~/.dsh/AGENTS.md 已自动创建（USERPROFILE 隔离）');
       if (fs.existsSync(simAgents)) {
         const simText = fs.readFileSync(simAgents, 'utf8');
-        ok(simText.includes('请在对话中引导用户配置全局记忆'), '引导句已插入（DSH 第一次对话会引导配置）');
+        ok(simText.includes('请在对话中引导用户点击宠物/工具箱图标'), '引导句已插入（v0.9.13 文案：引导点击宠物/工具箱配置）');
         ok(simText.includes('## 用户设定') && simText.includes('## DSH 设定'), '用户设定 / DSH 设定 两个独立顶层区块');
         ok(!simText.includes('基础设定（DSH-Desktop 图形化编辑）'), '无旧「基础设定」容器');
       }
@@ -386,7 +400,7 @@ async function main() {
     ok(!!cv && cv.r096 === true, 'changelog:data 0.9.6 released=true');
     ok(!!cv && cv.r098 === false, 'changelog:data 0.9.8（内部）released=false');
     ok(!!cv && cv.releasedCount === 12, `released=true 共 12 个（实际 ${cv && cv.releasedCount}）`);
-    ok(!!cv && cv.sortedFirst === '0.9.12', `changelog:data 降序首条 = 0.9.12（P3-3 共享比较，实际 ${cv && cv.sortedFirst}）`);
+    ok(!!cv && cv.sortedFirst === '0.9.13', `changelog:data 降序首条 = 0.9.13（P3-3 共享比较，实际 ${cv && cv.sortedFirst}）`);
 
     // ④ 日志：公告自动刷新已启动 + fetchLatest 已执行
     await sleep(1500); // 等 checkUpdatesOnStart 的 fetchLatest 落日志

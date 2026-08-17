@@ -201,6 +201,14 @@ function testPet() {
   ok(src.includes('const say = (arr, ms) =>'), 'say 支持自定义时长参数');
   ok(src.includes('ms || 2200'), 'say 默认时长 2200ms');
   ok(src.includes('把文件拖进来，我帮你放进工作区～'), '点击文案库扩充功能引导');
+  // v0.9.13（老大反馈：实机点击宠物眼睛跑到头顶眨眼）：眨眼改几何闭眼 + 时序防护
+  ok(src.includes('const setWink = (on) =>'), '眨眼改几何闭眼（setWink，瞳孔 ry 缩小）');
+  ok(src.includes('pupil.setAttribute(\'ry\''), '几何闭眼改 SVG 属性（圆心固定，无 transform 位移）');
+  ok(src.includes('pet.classList.contains(\'happy\')'), 'happy（点击/彩蛋）期间不眨眼（防表情竞争）');
+  ok(src.includes('pet.matches(\':hover\')'), '表情结束后鼠标悬停恢复抬头（防眼睛突兀）');
+  // v0.9.13（老大反馈：句子太长）：气泡自动换行
+  ok(src.includes('white-space:normal') && src.includes('word-break:break-all'), '气泡文字自动换行（不再 nowrap 溢出）');
+  ok(src.includes('max-width:240px'), '气泡最大宽度 240px（长句折行）');
 }
 
 // ---------------------------------------------------------------------------
@@ -361,6 +369,7 @@ function testGlobalMemory() {
   ok(gms.includes('LEGACY_ROLE_TITLE'), '兼容旧「角色设定」子组（归入 DSH 设定）');
   ok(gms.includes('kind: \'users\'') && gms.includes('kind: \'dsh\''), '用户/DSH 设定各自独立 kind');
   ok(gms.includes('GUIDE_FIELD') && gms.includes('GUIDE_TEXT'), '未配置引导句定义（引导用户配置全局记忆）');
+  ok(gms.includes('点击宠物/工具箱图标'), '引导句文案：点击宠物/工具箱图标 进行配置（v0.9.13 老大指令）');
   ok(gms.includes('function ensureGuide()'), 'ensureGuide 引导检查（首次对话引导）');
   ok(gms.includes('DEFAULT_DSH_FIELDS'), '内置默认 DSH 设定字段（DSH 的名字/语气/角色）');
   ok(gms.includes('DEFAULT_FIELDS'), '内置默认用户设定字段');
@@ -547,7 +556,7 @@ $env:PATH = "..."
   fs.rmSync(target, { force: true });
   const g1 = api.ensureGuide();
   ok(g1.ok === true && g1.guided === true, '无文件 ensureGuide 创建模板并插入引导句');
-  ok(fs.readFileSync(target, 'utf8').includes('引导提示') && fs.readFileSync(target, 'utf8').includes('请在对话中引导用户配置全局记忆'),
+  ok(fs.readFileSync(target, 'utf8').includes('引导提示') && fs.readFileSync(target, 'utf8').includes('请在对话中引导用户点击宠物/工具箱图标'),
     '引导句写入文件');
   const g2 = api.ensureGuide();
   ok(g2.guided === false, '重复 ensureGuide 幂等（不重复插入）');
@@ -565,7 +574,7 @@ $env:PATH = "..."
 function testVersion() {
   console.log('[7] package.json 版本');
   const pkg = JSON.parse(fs.readFileSync(path.join(APP, 'package.json'), 'utf8'));
-  ok(pkg.version === '0.9.12', `version = 0.9.12（实际 ${pkg.version}）`);
+  ok(pkg.version === '0.9.13', `version = 0.9.13（实际 ${pkg.version}）`);
 }
 
 // ---------------------------------------------------------------------------

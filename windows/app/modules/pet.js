@@ -167,10 +167,12 @@ function createPet(deps) {
         // 气泡 / 菜单容器样式（全部内联，兼容 DSH 页面 CSP）
         // v0.8.18（老大指令）：气泡移到宠物下方（top:100%）—— 上方会遮挡 DSH 选项/输入框
         const bubble = pet.querySelector('.pet-bubble');
+        // v0.9.13（老大反馈：句子太长）：气泡自动换行 —— nowrap → normal + word-break
         bubble.style.cssText = 'position:absolute;top:100%;left:50%;transform:translateX(-50%);'
-          + 'margin-top:8px;max-width:180px;padding:6px 10px;background:#171a21;color:#dbe2f0;'
+          + 'margin-top:8px;max-width:240px;padding:6px 10px;background:#171a21;color:#dbe2f0;'
           + 'border:1px solid #2a2f3a;border-radius:10px;font:12.5px/1.5 "Segoe UI","Microsoft YaHei",sans-serif;'
-          + 'white-space:nowrap;display:none;box-shadow:0 4px 16px rgba(0,0,0,.4);pointer-events:none;';
+          + 'white-space:normal;word-break:break-all;text-align:center;display:none;'
+          + 'box-shadow:0 4px 16px rgba(0,0,0,.4);pointer-events:none;';
         const menu = pet.querySelector('.pet-menu');
         menu.style.cssText = 'position:absolute;bottom:100%;left:50%;transform:translateX(-50%);'
           + 'margin-bottom:30px;min-width:130px;background:#171a21;border:1px solid #2a2f3a;'
@@ -187,12 +189,32 @@ function createPet(deps) {
         const prep = (el) => { if (el) { el.style.transformBox = 'fill-box'; el.style.transformOrigin = 'center'; el.style.transition = 'transform .2s ease'; } };
         eyes().forEach(prep); prep(mouth()); prep(tail());
 
+        // v0.9.13（老大反馈：实机点击宠物眼睛跑到头顶眨眼）：眨眼改为**几何闭眼** ——
+        // 直接改右眼瞳孔 ellipse 的 ry（半径），圆心/位置固定，不依赖 transform-box
+        // origin 计算（实机 GPU 合成下 fill-box scaleY 可能以错误原点收缩 → 眼睛位移；
+        // 虚拟机软件渲染不触发，故无法复现）。几何属性在任何渲染环境都不会位移。
+        let pupilRy = null;
+        const setWink = (on) => {
+          const g = pet.querySelector('.eye-r');
+          if (!g) return;
+          const pupil = g.querySelectorAll('ellipse')[1]; // 第 2 个 ellipse = 深色瞳孔
+          if (!pupil) return;
+          if (pupilRy === null) pupilRy = pupil.getAttribute('ry');
+          pupil.setAttribute('ry', on ? '1' : String(pupilRy));
+        };
+
         const setCls = (cls) => {
           pet.classList.remove('happy', 'sleepy', 'wink', 'hover');
           eyes().forEach((e) => { e.style.transform = ''; });
           if (mouth()) mouth().style.transform = '';
           if (tail()) tail().style.transform = '';
-          if (!cls) return;
+          setWink(false); // v0.9.13：眨眼几何恢复（瞳孔 ry 还原）
+          if (!cls) {
+            // v0.9.13（老大反馈：点击宠物眼睛乱跑）：表情结束后鼠标仍悬停 → 恢复抬头，
+            // 避免"点击→弯眼→复位"瞬间眼睛位置突兀
+            if (pet.matches(':hover') && !isToolbox) { setCls('hover'); }
+            return;
+          }
           pet.classList.add(cls);
           if (cls === 'happy') {
             eyes().forEach((e) => { e.style.transform = 'scaleY(.4)'; });   // 弯眼笑
@@ -201,7 +223,7 @@ function createPet(deps) {
             eyes().forEach((e) => { e.style.transform = 'scaleY(.25)'; });  // 半闭眼
             if (mouth()) mouth().style.transform = 'scaleY(1.7)';           // 打哈欠
           } else if (cls === 'wink') {
-            const r = pet.querySelector('.eye-r'); if (r) r.style.transform = 'scaleY(.12)'; // 单眼闭
+            setWink(true); // v0.9.13：眨眼改几何闭眼（瞳孔 ry→1，圆心固定不位移）
           } else if (cls === 'hover') {
             eyes().forEach((e) => { e.style.transform = 'translateY(-3px)'; }); // 抬头看
             if (tail()) tail().style.transform = 'rotate(-14deg)';              // 尾巴翘起
@@ -378,9 +400,11 @@ function createPet(deps) {
         });
 
         // ── 空闲眨眼（8s 一次，250ms；v0.8.16：工具箱形态无眨眼）──
+        // v0.9.13：happy（点击/彩蛋）期间不眨眼 —— 防表情竞争（点击后眼睛乱跳）
         const idleTimer = setInterval(() => {
           if (document.getElementById('dsh-pet') !== pet) { clearInterval(idleTimer); return; }
           if (isToolbox) return;
+          if (pet.classList.contains('happy')) return;
           setCls('wink');
           setTimeout(() => setCls(''), 250);
         }, 8000);
