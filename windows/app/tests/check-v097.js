@@ -19,6 +19,7 @@
  * 13. custom-prompts.js / promptlib.js 长度上限（P3-2）
  * 14. changelog.js 版本比较收敛共享模块（P3-3）
  * 15. menu.js F12 生产禁用 / installer.js 签名配置就绪（P3-4 / P2-3）
+ * 16. 全局记忆（v0.9.12 老大指令）：宠物菜单入口 / preload IPC / 首次自动建立行为
  *
  * 用法：node tests/check-v097.js
  */
@@ -334,12 +335,69 @@ function testDevtoolsAndSigning() {
 }
 
 // ---------------------------------------------------------------------------
+// 16. global-memory.js / pet.js / preload.js / ipc.js / backup.js —— v0.9.12 全局记忆
+// ---------------------------------------------------------------------------
+function testGlobalMemory() {
+  console.log('[16] 全局记忆（v0.9.12）');
+  const petSrc = read('modules/pet.js');
+  ok(petSrc.includes('data-action="memory"'), '宠物菜单含 memory 菜单项');
+  ok(petSrc.includes('🧠 全局记忆'), '菜单文案「🧠 全局记忆」');
+  ok(petSrc.indexOf('🧠 全局记忆') < petSrc.indexOf('💡 提示词库'), '全局记忆排在提示词库前面');
+  ok(petSrc.includes('openGlobalMemory'), '宠物点击调用 openGlobalMemory');
+  const pre = read('preload.js');
+  ok(pre.includes('openGlobalMemory'), 'preload 暴露 openGlobalMemory');
+  const ipcSrc = read('modules/ipc.js');
+  ok(ipcSrc.includes('\'memory:open\''), 'ipc 注册 memory:open');
+  ok(ipcSrc.includes('globalMemory.open()'), 'memory:open 调 globalMemory.open');
+  const gms = read('modules/global-memory.js');
+  ok(gms.includes('global-memory.md'), '记忆文件名 global-memory.md');
+  ok(gms.includes('# 全局记忆'), '默认模板含标题');
+  ok(gms.includes('首次没有'), '注释说明首次自动建立');
+  const bk = read('modules/backup.js');
+  ok(bk.includes('globalMemoryFile'), 'backup 注入 globalMemoryFile');
+  ok(bk.includes('\'global-memory.md\''), 'backup 备份/恢复含 global-memory.md');
+}
+
+// ---------------------------------------------------------------------------
+// 16.5 global-memory 行为测试（首次创建 / 幂等 / open）
+// ---------------------------------------------------------------------------
+async function testGlobalMemoryBehavior() {
+  console.log('[16.5] global-memory 行为');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-v0912-mem-'));
+  const logs = [];
+  const { createGlobalMemory } = require('../modules/global-memory');
+  let openedPath = null;
+  const api = createGlobalMemory({
+    app: { getPath: () => tmp },
+    fs, path,
+    shell: { openPath: (p) => { openedPath = p; return Promise.resolve(''); } },
+    appendLog: (lvl, msg) => logs.push(`${lvl}:${msg}`),
+  });
+  // 首次：自动创建
+  const r1 = api.ensureFile();
+  ok(r1.ok === true && r1.created === true, '首次 ensureFile 自动创建');
+  ok(fs.existsSync(path.join(tmp, 'global-memory.md')), '记忆文件已落盘');
+  ok(fs.readFileSync(path.join(tmp, 'global-memory.md'), 'utf8').includes('# 全局记忆'), '模板内容正确');
+  ok(logs.some((l) => l.includes('已自动创建')), '创建日志记录');
+  // 二次：幂等不重复创建
+  const r2 = api.ensureFile();
+  ok(r2.ok === true && r2.created === false, '二次 ensureFile 幂等（不重复创建）');
+  // open：返回文件路径 + 调 openPath
+  const r3 = await api.open();
+  ok(r3.ok === true && r3.file === path.join(tmp, 'global-memory.md'), 'open 返回记忆文件路径');
+  ok(openedPath === path.join(tmp, 'global-memory.md'), 'openPath 打开记忆文件');
+  // 备份语义：文件在 userData 下与 settings.json 同级
+  ok(path.dirname(api.file()) === tmp, '记忆文件在 userData 根（与 settings.json 同级）');
+  fs.rmSync(tmp, { recursive: true, force: true });
+}
+
+// ---------------------------------------------------------------------------
 // 7. package.json 版本
 // ---------------------------------------------------------------------------
 function testVersion() {
   console.log('[7] package.json 版本');
   const pkg = JSON.parse(fs.readFileSync(path.join(APP, 'package.json'), 'utf8'));
-  ok(pkg.version === '0.9.11', `version = 0.9.11（实际 ${pkg.version}）`);
+  ok(pkg.version === '0.9.12', `version = 0.9.12（实际 ${pkg.version}）`);
 }
 
 // ---------------------------------------------------------------------------
@@ -361,6 +419,8 @@ async function main() {
   testPromptLength();
   testSemverUnify();
   testDevtoolsAndSigning();
+  testGlobalMemory();
+  await testGlobalMemoryBehavior();
   console.log(`\n结果：${passed} 通过 / ${failed} 失败`);
   process.exit(failed === 0 ? 0 : 1);
 }

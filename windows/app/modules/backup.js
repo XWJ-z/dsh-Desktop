@@ -14,6 +14,7 @@
  *   - readShellConfig   读取壳配置
  *   - installedDshVersion   已安装 DSH 版本（未安装返回 null）
  *   - settingsFile      设置文件路径（userData/settings.json）
+ *   - globalMemoryFile  全局记忆文件路径（userData/global-memory.md，v0.9.12 随备份）
  *   - getOwnerWindow    弹窗宿主窗口（getter；无主窗口返回 undefined）
  *   - isServerRunning   DSH 服务是否在运行（getter）
  *   - stopServerOnly    仅停止 DSH 服务（不退出应用），恢复数据前释放 ~/.dsh 占用
@@ -25,6 +26,7 @@ function createBackup(deps) {
     appName, app, dialog, shell, fs, os, path, tar,
     appendLog, localTimestamp, localDate,
     readShellConfig, installedDshVersion, settingsFile,
+    globalMemoryFile, // v0.9.12：全局记忆文件（随备份/恢复）
     getOwnerWindow, isServerRunning, stopServerOnly, setQuitting,
     openBackupProgress, updateBackupProgress, closeBackupProgress,
   } = deps;
@@ -65,20 +67,22 @@ function createBackup(deps) {
 
     const dshHome = path.join(os.homedir(), '.dsh');
     const settings = settingsFile();
+    const memory = globalMemoryFile(); // v0.9.12：全局记忆文件
     const hasDsh = fs.existsSync(dshHome);
     const hasSettings = fs.existsSync(settings);
+    const hasMemory = fs.existsSync(memory);
 
-    if (!hasDsh && !hasSettings) {
+    if (!hasDsh && !hasSettings && !hasMemory) {
       dialog.showMessageBox(owner, {
         type: 'warning', title: appName,
         message: '没有可备份的数据',
-        detail: '未找到 DSH 用户数据（~/.dsh）和设置文件。首次使用后再备份。',
+        detail: '未找到 DSH 用户数据（~/.dsh）、设置文件与全局记忆。首次使用后再备份。',
         buttons: ['确定'], noLink: true,
       });
       return;
     }
 
-    appendLog('info', `开始备份：~/.dsh=${hasDsh} settings=${hasSettings} → ${filePath}`);
+    appendLog('info', `开始备份：~/.dsh=${hasDsh} settings=${hasSettings} memory=${hasMemory} → ${filePath}`);
 
     // v0.7.10：进度条（替代原「正在备份…」info 弹窗）
     openBackupProgress();
@@ -132,6 +136,11 @@ function createBackup(deps) {
       if (hasSettings) {
         fs.copyFileSync(settings, path.join(staging, 'settings.json'));
         entries.push('settings.json');
+      }
+      if (hasMemory) {
+        // v0.9.12：全局记忆文件随备份（首次未建立则不备份）
+        fs.copyFileSync(memory, path.join(staging, 'global-memory.md'));
+        entries.push('global-memory.md');
       }
       // manifest 记录（恢复时校验格式用）
       const manifest = {
@@ -288,6 +297,13 @@ function createBackup(deps) {
         moveOld(settings);
         fs.mkdirSync(path.dirname(settings), { recursive: true });
         fs.renameSync(path.join(tmp, 'settings.json'), settings);
+      }
+      if (entries.includes('global-memory.md') && fs.existsSync(path.join(tmp, 'global-memory.md'))) {
+        // v0.9.12：全局记忆文件随恢复（旧文件 .bak 保留）
+        const memory = globalMemoryFile();
+        moveOld(memory);
+        fs.mkdirSync(path.dirname(memory), { recursive: true });
+        fs.renameSync(path.join(tmp, 'global-memory.md'), memory);
       }
 
       appendLog('info', `数据恢复完成（来源：${backupFile}）`);

@@ -42,6 +42,7 @@ const { createWorkspaceLocator } = require('./modules/workspace');  // v0.9（T1
 const { createDragDrop } = require('./modules/drag-drop');          // v0.9（T3）：拖拽监听注入
 const { createDropFiles } = require('./modules/drop-files');        // v0.9（T4/T5）：拖文件处理
 const { createCustomPrompts } = require('./modules/custom-prompts'); // v0.9.5（T2）：自定义提示词
+const { createGlobalMemory } = require('./modules/global-memory');   // v0.9.12：全局记忆（宠物菜单）
 const { createNoticeModule } = require('./modules/notice');          // v0.9.5（T3）：公告条/公告源
 const { createMenu } = require('./modules/menu');
 const { registerIpc } = require('./modules/ipc');
@@ -366,6 +367,11 @@ const { handleDropFiles } = dropFilesApi;
 // v0.9.5（T2.1）：自定义提示词存储（userData/custom-prompts.json）
 const customPromptsApi = createCustomPrompts({ fs, path, app, appendLog });
 
+// v0.9.12（老大指令）：全局记忆 —— 记忆文件 userData/global-memory.md
+// （首次自动建立；宠物菜单打开；随数据备份/恢复）
+const globalMemoryApi = createGlobalMemory({ app, fs, path, shell, appendLog });
+const { file: globalMemoryFile } = globalMemoryApi;
+
 // ----
 // 更新检查/下载（v0.8.12：逻辑已移入 modules/updater.js）
 // ---------------------------------------------------------------------------
@@ -525,6 +531,8 @@ const { backupUserData, restoreUserData } = createBackup({
   app, dialog, shell, fs, os, path, tar,
   appendLog, localTimestamp, localDate,
   readShellConfig, installedDshVersion, settingsFile: settingsApi.settingsFile,
+  // v0.9.12：全局记忆文件随数据备份/恢复（与 settings.json 同级）
+  globalMemoryFile,
   getOwnerWindow: () => (mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined),
   isServerRunning: () => !!(serverChild && serverChild.exitCode === null),
   // v0.7.10（老大反馈）：恢复数据前可只停 DSH 服务（不退出应用），而非要求整体退出
@@ -830,6 +838,8 @@ if (!gotLock) {
       // v0.9.5：自定义提示词（T2）+ 公告模块（T3，notice:data 唯一源）
       customPrompts: customPromptsApi,
       noticeApi,
+      // v0.9.12：全局记忆（宠物菜单 memory:open）
+      globalMemory: globalMemoryApi,
     });
 
     resolvedPort = parsePortArg() ?? await pickPort(DEFAULT_PORT);

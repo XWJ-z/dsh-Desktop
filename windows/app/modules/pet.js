@@ -145,6 +145,8 @@ function createPet(deps) {
         pet.innerHTML = (petHidden ? toolboxSvg : petSvg)
           + '<div class="pet-bubble"></div>'
           + '<div class="pet-menu">'
+          // v0.9.12（老大指令）：全局记忆入口放提示词库前面（点击打开记忆文件，首次自动建立）
+          +   '<div class="pet-item" data-action="memory">🧠 全局记忆</div>'
           +   '<div class="pet-item" data-action="promptlib">💡 提示词库</div>'
           +   '<div class="pet-item" data-action="webopen">🌐 网页打开</div>'
           +   (petHidden
@@ -323,7 +325,10 @@ function createPet(deps) {
           it.addEventListener('click', (e) => {
             e.stopPropagation();
             showMenu(false);
-            if (it.dataset.action === 'promptlib') {
+            if (it.dataset.action === 'memory') {
+              // v0.9.12（老大指令）：打开全局记忆文件（首次自动建立）
+              if (window.dshDesktop && window.dshDesktop.openGlobalMemory) window.dshDesktop.openGlobalMemory();
+            } else if (it.dataset.action === 'promptlib') {
               if (window.dshDesktop && window.dshDesktop.openPromptLib) window.dshDesktop.openPromptLib();
             } else if (it.dataset.action === 'webopen') {
               if (window.dshDesktop && window.dshDesktop.openExternal) window.dshDesktop.openExternal(url);

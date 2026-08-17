@@ -22,6 +22,8 @@ function registerIpc(deps) {
     promptInject, handleDropFiles,
     // v0.9.5（T2）：自定义提示词 + （T3）公告条
     customPrompts, noticeApi,
+    // v0.9.12（老大指令）：全局记忆（宠物菜单打开记忆文件）
+    globalMemory,
   } = deps;
   // P2-2（外审 zx(9)）：外部链接域名白名单 —— 渲染进程可达的 openExternal 一律过白名单
   const { isAllowedExternalUrl } = require('./external-links');
@@ -143,6 +145,9 @@ function registerIpc(deps) {
     clipboard.writeText(String(text ?? ''));
     return true;
   });
+  // v0.9.12（老大指令）：全局记忆 —— 宠物菜单「🧠 全局记忆」点击打开记忆文件
+  // （首次没有自动建立模板文件；文件与 settings.json 同级，随数据备份/恢复）
+  ipcMain.handle('memory:open', () => globalMemory.open());
   // 联系我们窗口：向渲染进程提供二维码路径与群号（文件路径经 IPC 传递最稳）
   ipcMain.handle('contact:info', () => {
     const group = readShellConfig().qqGroup;

@@ -92,4 +92,7 @@ contextBridge.exposeInMainWorld('dshDesktop', {
   },
   /** 拖拽文件 → 主进程处理（复制进工作区 + 注入提示词） */
   dropFiles: (paths) => ipcRenderer.invoke('drop:files', paths),
+  // ── v0.9.12：全局记忆（宠物菜单入口）──
+  /** 打开全局记忆文件（首次自动建立；返回 { ok, file, created? }） */
+  openGlobalMemory: () => ipcRenderer.invoke('memory:open'),
 });
