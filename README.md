@@ -23,8 +23,8 @@
 - ⬆️ 双侧检查更新（DSH + 壳）：三源并发 + 多镜像下载 + SHA256 校验 + 断点续传
 - 💾 数据备份/恢复、一键诊断报告、系统托盘、开机自启、全局快捷键
 
-<a href="https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.9.6/DSH-Desktop-Setup-0.9.6.exe">
-<img src="https://img.shields.io/badge/下载安装包-DSH--Desktop--Setup--0.9.6.exe%20%E7%BA%A6114MB-2ea44f?style=for-the-badge&logo=windows&logoColor=white" alt="下载 DSH-Desktop 安装包"/>
+<a href="https://github.com/XWJ-z/dsh-Desktop/releases/download/v1.0.1/DSH-Desktop-Setup-1.0.1.exe">
+<img src="https://img.shields.io/badge/下载安装包-DSH--Desktop--Setup--1.0.1.exe%20%E7%BA%A6114MB-2ea44f?style=for-the-badge&logo=windows&logoColor=white" alt="下载 DSH-Desktop 安装包"/>
 </a>
 
 📖 详细说明（特性 / 打包 / 安装 / 升级 / 目录结构 / 运行原理）→ **[windows/README.md](windows/README.md)**
@@ -57,6 +57,7 @@
 | v0.7.10 | Z 末尾 0 = v0.7 功能线的最终版本（稳定里程碑）|
 | v0.8.30 | v0.8 稳定版|
 | v0.9.6 | v0.9功能尝鲜|
+| v1.0.1 | v1正式版本,此后按例周更|
 
 > 本项目（Windows 版 & 飞牛版）版本号统一遵循 `vX.Y.Z` 三段式规则（Z 从 1 开始，无 0）：
 
