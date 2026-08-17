@@ -23,8 +23,8 @@
 - ⬆️ 双侧检查更新（DSH + 壳）：三源并发 + 多镜像下载 + SHA256 校验 + 断点续传
 - 💾 数据备份/恢复、一键诊断报告、系统托盘、开机自启、全局快捷键
 
-<a href="https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.8.30/DSH-Desktop-Setup-0.8.30.exe">
-<img src="https://img.shields.io/badge/下载安装包-DSH--Desktop--Setup--0.8.30.exe%20%E7%BA%A6114MB-2ea44f?style=for-the-badge&logo=windows&logoColor=white" alt="下载 DSH-Desktop 安装包"/>
+<a href="https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.9.6/DSH-Desktop-Setup-0.9.6.exe">
+<img src="https://img.shields.io/badge/下载安装包-DSH--Desktop--Setup--0.9.6.exe%20%E7%BA%A6114MB-2ea44f?style=for-the-badge&logo=windows&logoColor=white" alt="下载 DSH-Desktop 安装包"/>
 </a>
 
 📖 详细说明（特性 / 打包 / 安装 / 升级 / 目录结构 / 运行原理）→ **[windows/README.md](windows/README.md)**
