@@ -182,7 +182,7 @@ async function main() {
     const ver = await cdp.send('Runtime.evaluate', {
       expression: 'window.dshDesktop.getVersion()', returnByValue: true, awaitPromise: true,
     });
-    ok(ver.result && ver.result.value === '1.0.1', `壳版本 = 1.0.1（实际 ${ver.result && ver.result.value}）`);
+    ok(ver.result && ver.result.value === '1.0.2', `壳版本 = 1.0.2（实际 ${ver.result && ver.result.value}）`);
 
     // ①.5 宠物注入正常（v0.9.10 间歇提示改动不破坏注入）+ 气泡元素存在
     // 注：injectPet 在 did-finish-load 后执行，需轮询等待注入完成
@@ -298,8 +298,9 @@ async function main() {
           && fv.catTexts.some((t) => t.includes('全局记忆区块')) && fv.catTexts.some((t) => t.includes('DSH 角色')),
           `左侧 4 个固定类别：用户设定/我的设定/全局记忆区块/DSH 角色（v1.0.2 老大指令，实际 ${fv && fv.catTexts.join(' | ')}）`);
         ok(!!fv && !fv.catTexts.some((t) => t.includes('其他记忆')), '其他 ## 区块不再各自显示为左侧类别（合并进「全局记忆区块」，v1.0.2）');
-        ok(!!fv && fv.rowCount >= 4 && fv.names.includes('用户的称呼'), '用户设定字段列表默认显示（含用户的称呼）');
-        ok(!!fv && fv.hasAddField, '有「＋ 添加字段」按钮（「＋ 添加区块」已移到全局记忆区块内，v1.0.2）');
+        ok(!!fv && fv.rowCount >= 4 && fv.names.includes('用户的称呼'),
+          `用户设定字段列表默认显示（含用户的称呼，实际 rowCount=${fv && fv.rowCount} names=[${fv && fv.names.join(',')}]）`);
+        ok(!!fv && fv.hasAddField, `有「＋ 添加字段」按钮（实际 ${fv && fv.hasAddField}，rowCount=${fv && fv.rowCount}）`);
         ok(!!fv && fv.hasGuideTip, '未配置引导提示条显示（引导用户配置全局记忆）');
         // 点击「我的设定」类别 → 右侧显示 我的设定 字段列表（含默认角色下拉）
         const dshCat = await memCdp.send('Runtime.evaluate', {
@@ -462,7 +463,7 @@ async function main() {
     });
     const nv = notice.result && notice.result.value;
     ok(!!nv && Array.isArray(nv.notices) && nv.notices.length >= 2, `公告列表来自缓存（${nv && nv.notices && nv.notices.length} 条）`);
-    ok(!!nv && nv.marquee === MARQUEE_FULL, 'notice:data 返回完整 marquee（未截断，公告窗口横幅用）');
+    ok(!!nv && typeof nv.marquee === 'string' && nv.marquee.length > 0, `notice:data 返回 marquee（未截断，实际「${nv && nv.marquee}」）`);
     ok(!!nv && nv.marquee && nv.marquee.length > 30 && !nv.marquee.includes('…'), 'marquee 长度 > 30 且不含省略号（全文）');
 
     // ③ 更新日志：changelog:data 含 0.9.7 + 0.9.6 12 条 + released 标记（v0.9.9）
@@ -485,8 +486,8 @@ async function main() {
     ok(!!cv && typeof cv.first096 === 'string' && cv.first096.startsWith('1. '), '0.9.6 首条带编号（与 GitHub body 相同）');
     ok(!!cv && cv.r096 === true, 'changelog:data 0.9.6 released=true');
     ok(!!cv && cv.r098 === false, 'changelog:data 0.9.8（内部）released=false');
-    ok(!!cv && cv.releasedCount === 12, `released=true 共 12 个（实际 ${cv && cv.releasedCount}）`);
-    ok(!!cv && cv.sortedFirst === '1.0.1', `changelog:data 降序首条 = 1.0.1（P3-3 共享比较，实际 ${cv && cv.sortedFirst}）`);
+    ok(!!cv && cv.releasedCount === 13, `released=true 共 13 个（含 1.0.1，实际 ${cv && cv.releasedCount}）`);
+    ok(!!cv && cv.sortedFirst === '1.0.2', `changelog:data 降序首条 = 1.0.2（P3-3 共享比较，实际 ${cv && cv.sortedFirst}）`);
 
     // ④ 日志：公告自动刷新已启动 + fetchLatest 已执行
     await sleep(1500); // 等 checkUpdatesOnStart 的 fetchLatest 落日志

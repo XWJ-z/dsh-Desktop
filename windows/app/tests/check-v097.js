@@ -170,10 +170,10 @@ function testChangelog() {
   const v096 = cl.versions.find((v) => v.version === '0.9.6');
   ok(!!v096 && Array.isArray(v096.notes) && v096.notes.length === 12,
     `0.9.6 条目 12 条（实际 ${v096 ? v096.notes.length : 0}）`);
-  // v1.0.2（老大反馈 5 项修复）：version.json 三处一致 + CHANGELOG 1.0.2 条目 + 1.0.1 已发布
-  ok(vj.version === '1.0.2', `version.json version = 1.0.2（实际 ${vj.version}）`);
+  // v1.0.2（待发布，version.json 回退 1.0.1 保护老用户更新——老大测试通过后发布时切回 1.0.2 + 实测 hash）
+  ok(vj.version === '1.0.1', `version.json version = 1.0.1（待发布态，实际 ${vj.version}）`);
   ok(vj.hash && /^[0-9a-f]{64}$/.test(vj.hash), 'version.json hash 为 64 位 SHA256');
-  ok(Array.isArray(vj.download_urls) && vj.download_urls.length >= 1 && vj.download_urls.every((u) => u.includes('v1.0.2')), 'version.json download_urls 指向 v1.0.2 资产');
+  ok(Array.isArray(vj.download_urls) && vj.download_urls.length >= 1 && vj.download_urls.every((u) => u.includes('v1.0.1')), 'version.json download_urls 指向 v1.0.1 资产');
   const v102 = cl.versions.find((v) => v.version === '1.0.2');
   ok(!!v102 && Array.isArray(v102.notes) && v102.notes.length >= 1 && v102.released === false,
     'CHANGELOG 1.0.2 条目存在（released:false，待发布）');
