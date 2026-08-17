@@ -13,7 +13,7 @@
       flex-direction: column;
     }
     h1 { font-size: 18px; font-weight: 590; margin-bottom: 2px; }
-    .subtitle { font-size: 12px; color: var(--text-quaternary); margin-bottom: 14px; }
+    .subtitle { font-size: 12px; color: var(--text-quaternary); margin-bottom: 14px; line-height: 1.7; }
     .subtitle code { background: var(--bg-hover); padding: 1px 5px; border-radius: 4px; font-size: 11px; }
     /* 反馈横幅 */
     .banner {
@@ -23,21 +23,40 @@
     .banner.show { display: block; }
     .banner.ok { color: var(--success); background: rgba(16,185,129,.1); border: 1px solid rgba(16,185,129,.3); }
     .banner.fail { color: var(--warn); background: rgba(245,166,35,.1); border: 1px solid rgba(245,166,35,.3); }
-    .form { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; min-height: 0; }
-    .group { display: flex; flex-direction: column; gap: 10px; }
-    .group-title { font-size: 13px; font-weight: 590; color: var(--text-primary); padding-bottom: 4px; border-bottom: 1px solid var(--border-standard); }
-    .group-desc { font-weight: 400; color: var(--text-quaternary); margin-left: 8px; font-size: 11.5px; }
-    .field { display: flex; flex-direction: column; gap: 5px; }
-    .field label { font-size: 12.5px; font-weight: 590; color: var(--text-secondary); }
-    .field label .tip { font-weight: 400; color: var(--text-quaternary); margin-left: 6px; }
-    .field textarea {
-      width: 100%; padding: 8px 12px; min-height: 46px; resize: vertical;
-      background: var(--bg-input); border: 1px solid var(--border-standard);
-      border-radius: var(--radius-btn); color: var(--text-primary);
-      font: 13px/1.6 "Segoe UI", "Microsoft YaHei", sans-serif; outline: none;
+    /* 字段列表 */
+    .list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+    .row {
+      display: flex; gap: 10px; align-items: stretch;
+      background: var(--bg-surface); border: 1px solid var(--border-standard);
+      border-radius: var(--radius-btn); padding: 10px 12px;
     }
-    .field textarea:focus { border-color: rgba(94,106,210,.55); }
-    .field textarea::placeholder { color: var(--text-quaternary); }
+    .row:hover { border-color: rgba(94,106,210,.45); }
+    .row .f-name {
+      width: 148px; flex-shrink: 0; padding: 8px 10px;
+      background: var(--bg-input); border: 1px solid var(--border-standard);
+      border-radius: 8px; color: var(--text-primary);
+      font: 13px/1.5 "Segoe UI", "Microsoft YaHei", sans-serif; outline: none;
+    }
+    .row .f-value {
+      flex: 1; min-width: 0; padding: 8px 10px; min-height: 36px; resize: vertical;
+      background: var(--bg-input); border: 1px solid var(--border-standard);
+      border-radius: 8px; color: var(--text-primary);
+      font: 13px/1.5 "Segoe UI", "Microsoft YaHei", sans-serif; outline: none;
+    }
+    .row .f-name:focus, .row .f-value:focus { border-color: rgba(94,106,210,.55); }
+    .row .f-name::placeholder, .row .f-value::placeholder { color: var(--text-quaternary); }
+    .row .del {
+      width: 30px; flex-shrink: 0; border: none; background: transparent; cursor: pointer;
+      color: var(--text-quaternary); font-size: 15px; border-radius: 8px;
+    }
+    .row .del:hover { color: #ff6b6b; background: rgba(255,107,107,.12); }
+    /* 添加字段 */
+    .add {
+      padding: 9px 14px; border: 1px dashed var(--border-standard); border-radius: var(--radius-btn);
+      background: transparent; color: var(--text-secondary); cursor: pointer;
+      font-size: 13px; font-weight: 590;
+    }
+    .add:hover { color: var(--brand); border-color: rgba(94,106,210,.55); background: var(--bg-hover); }
     .foot { display: flex; align-items: center; gap: 12px; margin-top: 14px; }
     .path { font-size: 11px; color: var(--text-quaternary); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .btn {
@@ -55,9 +74,10 @@
 </head>
 <body>
   <h1>🧠 全局记忆</h1>
-  <div class="subtitle">写入 <code>~/.dsh/AGENTS.md</code>，DSH 启动时自动读取（无需手动发送）。表单只管理「基础设定」区块，你已有的其他记忆内容不受影响；保存后新会话生效。</div>
+  <div class="subtitle">写入 <code>~/.dsh/AGENTS.md</code>，DSH 启动时自动读取（无需手动发送）。每条是「字段名 → 内容」；可点「＋ 添加字段」自定义任意条目（如微信、常用工具）。表单只管理「基础设定」区块，其他记忆内容不受影响。</div>
   <div id="banner" class="banner"></div>
-  <div class="form" id="form"></div>
+  <div class="list" id="list"></div>
+  <button id="btn-add" class="add">＋ 添加字段</button>
   <div class="foot">
     <span id="path" class="path"></span>
     <button id="btn-open-folder" class="btn ghost">打开文件位置</button>

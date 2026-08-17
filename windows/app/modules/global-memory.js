@@ -1,14 +1,16 @@
 'use strict';
 
 /**
- * DSH-Desktop — 全局记忆模块（v0.9.12，老大指令修正版）
+ * DSH-Desktop — 全局记忆模块（v0.9.12，动态字段列表版）
  *
  * 全局记忆 = DSH 原生 `~/.dsh/AGENTS.md`（DSH 启动时自动读取，无需手动发送）。
  * 本模块提供图形化编辑：
  *  - 首次没有 AGENTS.md → 自动创建模板；
- *  - 窗口表单只管理「基础设定」区块（## 基础设定（DSH-Desktop 图形化编辑）），
- *    保存时做区块级替换：文件其余内容（用户手写的其他记忆）原样保留；
- *  - 原子写盘（.tmp → rename），不丢数据。
+ *  - 窗口是**动态字段列表**：内置默认字段 + 用户可「＋ 添加字段」任意增删、
+ *    字段名/内容直接编辑；保存时全部写入「基础设定」区块
+ *    （## 基础设定（DSH-Desktop 图形化编辑）），做区块级替换：文件其余内容
+ *    （用户手写的其他记忆）原样保留；
+ *  - 自定义字段随区块持久化（重开窗口仍在）；原子写盘（.tmp → rename）。
  *
  * 依赖注入（deps）：
  *  - fs / os / path           Node 模块（路径 ~/.dsh/AGENTS.md 经 os.homedir()）
@@ -20,8 +22,8 @@ const FILE_NAME = 'AGENTS.md';
 /** 基础设定区块标题（表单管理的区块；其余内容不动） */
 const SECTION_TITLE = '基础设定（DSH-Desktop 图形化编辑）';
 
-/** 基础设定字段（表单顺序即写入顺序）。v0.9.12 修正：用户视角命名，消除「我的姓名」归属歧义 */
-const FIELDS = ['你的称呼', '你的身份/角色', '项目背景', '语言风格', '输出习惯', '常用约定'];
+/** 内置默认字段（首次/初始行；用户可改名、删除、新增） */
+const DEFAULT_FIELDS = ['你的称呼', '你的身份/角色', '项目背景', '语言风格', '输出习惯', '常用约定'];
 
 /** 首次创建时的模板（含基础设定区块 + 使用引导 + 其他记忆区） */
 const TEMPLATE = `# AGENTS.md（全局记忆）
@@ -31,12 +33,7 @@ const TEMPLATE = `# AGENTS.md（全局记忆）
 
 ## ${SECTION_TITLE}
 
-- 你的称呼：
-- 你的身份/角色：
-- 项目背景：
-- 语言风格：
-- 输出习惯：
-- 常用约定：
+${DEFAULT_FIELDS.map((f) => `- ${f}：`).join('\n')}
 
 ## 其他记忆
 
@@ -62,14 +59,14 @@ function createGlobalMemory(deps) {
 
   /**
    * 解析基础设定区块：找「## 基础设定（DSH-Desktop 图形化编辑）」区块，
-   * 逐行匹配 `- 字段名：值` 回填表单；其余内容不解析（保存时原样保留）。
-   * @returns {{ form: Object, hasSection: boolean }}
+   * 逐行匹配 `- 字段名：值` → 字段行数组 [{ name, value }]（保持文件顺序，
+   * 自定义字段一并回填）；其余内容不解析（保存时原样保留）。
+   * @returns {{ items: Array<{name:string,value:string}>, hasSection: boolean }}
    */
   function parseSections(content) {
-    const form = {};
-    FIELDS.forEach((f) => { form[f] = ''; });
     let hasSection = false;
-    if (!content) return { form, hasSection };
+    const items = [];
+    if (!content) return { items, hasSection };
     const lines = String(content).split(/\r?\n/);
     let inSection = false;
     for (const line of lines) {
@@ -81,42 +78,41 @@ function createGlobalMemory(deps) {
       }
       if (inSection) {
         const m = /^-\s*([^：:]+)[：:]\s*(.*)$/.exec(line);
-        if (m && Object.prototype.hasOwnProperty.call(form, m[1].trim())) {
-          form[m[1].trim()] = m[2].trim();
+        if (m) {
+          items.push({ name: m[1].trim(), value: m[2].trim() });
         }
       }
     }
-    return { form, hasSection };
+    return { items, hasSection };
   }
 
-  /** 渲染基础设定区块文本 */
-  function renderSection(form) {
+  /**
+   * 渲染基础设定区块文本（items 顺序即写入顺序）。
+   * @param {Array<{name:string,value:string}>} items
+   */
+  function renderSection(items) {
     const lines = [`## ${SECTION_TITLE}`, ''];
-    FIELDS.forEach((f) => {
-      lines.push(`- ${f}：${form[f] || ''}`);
+    items.forEach((it) => {
+      const name = String(it.name || '').trim();
+      if (!name) return; // 空字段名行丢弃（防脏数据）
+      lines.push(`- ${name}：${String(it.value || '').trim()}`);
     });
     return lines.join('\n');
   }
 
   /**
-   * 保存：把基础设定区块替换为表单内容；文件不存在 → 建模板；
+   * 保存：把基础设定区块替换为字段列表内容；文件不存在 → 建模板；
    * 已有但无该区块 → 追加到文件末尾；其余内容一字不动。
+   * @param {Array<{name:string,value:string}>} items
    * @returns {{ ok: boolean, file: string, message?: string }}
    */
-  function save(form) {
-    const clean = {};
-    FIELDS.forEach((f) => { clean[f] = String((form && form[f]) || '').trim(); });
+  function save(items) {
+    const clean = Array.isArray(items)
+      ? items.map((it) => ({ name: String((it && it.name) || '').trim(), value: String((it && it.value) || '').trim() }))
+      : [];
     const section = renderSection(clean);
     const raw = readRaw();
-    let content;
-    if (raw === null) {
-      // 首次：模板 + 基础设定区块（模板已含，直接以模板为底再补区块占位即可）
-      content = TEMPLATE;
-      // 模板里已有空的基础设定区块 → 用表单内容替换
-      content = replaceSection(content, section);
-    } else {
-      content = replaceSection(raw, section);
-    }
+    const content = raw === null ? replaceSection(TEMPLATE, section) : replaceSection(raw, section);
     try {
       const f = file();
       fs.mkdirSync(path.dirname(f), { recursive: true });
@@ -154,14 +150,14 @@ function createGlobalMemory(deps) {
     return String(content).replace(/\s*$/, '') + '\n\n' + section + '\n';
   }
 
-  /** 读取窗口数据：文件是否存在 + 基础设定表单 + 文件路径 */
+  /** 读取窗口数据：文件是否存在 + 字段列表 + 默认字段（供窗口初始行）+ 文件路径 */
   function data() {
     const raw = readRaw();
-    const { form, hasSection } = parseSections(raw);
-    return { exists: raw !== null, hasSection, form, file: file() };
+    const { items, hasSection } = parseSections(raw);
+    return { exists: raw !== null, hasSection, items, defaultFields: DEFAULT_FIELDS.slice(), file: file() };
   }
 
-  return { file, data, save, FIELDS, SECTION_TITLE };
+  return { file, data, save, DEFAULT_FIELDS, SECTION_TITLE };
 }
 
-module.exports = { createGlobalMemory, FILE_NAME, SECTION_TITLE, FIELDS, TEMPLATE };
+module.exports = { createGlobalMemory, FILE_NAME, SECTION_TITLE, DEFAULT_FIELDS, TEMPLATE };

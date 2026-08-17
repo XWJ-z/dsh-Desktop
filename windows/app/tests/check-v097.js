@@ -357,72 +357,89 @@ function testGlobalMemory() {
   ok(gms.includes('\'AGENTS.md\''), '记忆文件 = AGENTS.md');
   ok(gms.includes('os.homedir(), \'.dsh\''), '路径 ~/.dsh/AGENTS.md（DSH 自动读取）');
   ok(gms.includes('基础设定（DSH-Desktop 图形化编辑）'), '基础设定区块标题');
-  ok(gms.includes('你的称呼'), '表单字段含你的称呼（用户视角，消除归属歧义）');
-  ok(gms.includes('项目背景'), '表单字段含项目背景');
-  ok(gms.includes('区块级'), '注释说明区块级写回');
+  ok(gms.includes('DEFAULT_FIELDS'), '内置默认字段 DEFAULT_FIELDS');
+  ok(gms.includes('你的称呼'), '默认字段含你的称呼（用户视角）');
+  ok(gms.includes('项目背景'), '默认字段含项目背景');
+  ok(gms.includes('items'), '字段列表 items（动态增删）');
   ok(gms.includes('replaceSection'), '区块替换函数存在');
   const rjs0 = read('renderer/global-memory.js');
-  ok(rjs0.includes('你的信息'), '表单分组「你的信息」（DSH 记住你是谁）');
-  ok(rjs0.includes('你希望 DSH 的方式'), '表单分组「你希望 DSH 的方式」（DSH 怎么配合你）');
+  ok(rjs0.includes('btn-add'), '窗口有「＋ 添加字段」按钮逻辑');
+  ok(rjs0.includes('＋ 添加字段') || rjs0.includes('addField'), '支持添加字段');
+  ok(rjs0.includes('del'), '支持删除字段行');
+  ok(rjs0.includes('saveGlobalMemory'), '保存调 saveGlobalMemory');
+  ok(rjs0.includes('getGlobalMemory'), '读取调 getGlobalMemory');
   const mw = read('modules/windows/misc-windows.js');
   ok(mw.includes('openGlobalMemoryWindow'), 'misc-windows 有全局记忆窗口');
   ok(mw.includes('\'global-memory.html\''), '窗口加载 global-memory.html');
-  ok(read('renderer/global-memory.html').includes('id="form"'), '窗口有表单容器');
-  const rjs = read('renderer/global-memory.js');
-  ok(rjs.includes('saveGlobalMemory'), '窗口脚本保存调 saveGlobalMemory');
-  ok(rjs.includes('getGlobalMemory'), '窗口脚本读取调 getGlobalMemory');
+  ok(read('renderer/global-memory.html').includes('id="list"'), '窗口有字段列表容器');
+  ok(read('renderer/global-memory.html').includes('btn-add'), '窗口有添加字段按钮');
   ok(!read('modules/backup.js').includes('global-memory.md'), 'backup 不再单独处理 global-memory.md（AGENTS.md 在 ~/.dsh 整目录备份内）');
 }
 
 // ---------------------------------------------------------------------------
-// 16.5 global-memory 行为测试（首次创建 / 区块替换保留其他 / 追加 / 解析回填）
+// 16.5 global-memory 行为测试（首次创建 / 动态字段增删持久化 / 区块替换保留 / 追加 / 防误解析）
 // ---------------------------------------------------------------------------
 async function testGlobalMemoryBehavior() {
   console.log('[16.5] global-memory 行为');
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-v0912-mem-'));
-  const logs = [];
   const { createGlobalMemory } = require('../modules/global-memory');
-  // mock os.homedir 指向 tmp（模块内用 os.homedir()）
   const api = createGlobalMemory({
-    app: { getPath: () => tmp },
     fs, path,
     os: { homedir: () => tmp },
-    appendLog: (lvl, msg) => logs.push(`${lvl}:${msg}`),
+    appendLog: () => {},
   });
   const target = path.join(tmp, '.dsh', 'AGENTS.md');
-  // 1) 首次：data 返回 exists=false，save 自动创建
+  // 1) 首次：data 返回 exists=false + 默认字段；save 自动创建
   const d0 = api.data();
   ok(d0.exists === false, '首次 data.exists=false');
-  const r1 = api.save({ '你的称呼': '小六', '你的身份/角色': '开发助手', 语言风格: '简洁', 输出习惯: '', 项目背景: '', 常用约定: '' });
+  ok(Array.isArray(d0.defaultFields) && d0.defaultFields.includes('你的称呼'), 'data 带默认字段（窗口初始行）');
+  const r1 = api.save([
+    { name: '你的称呼', value: '小六' },
+    { name: '你的身份/角色', value: '开发助手' },
+    { name: '语言风格', value: '简洁' },
+    { name: '我的微信号', value: 'wx-12345' }, // 自定义字段
+  ]);
   ok(r1.ok === true && fs.existsSync(target), 'save 自动创建 AGENTS.md');
   const raw1 = fs.readFileSync(target, 'utf8');
-  ok(raw1.includes('# AGENTS.md（全局记忆）'), '模板标题正确');
   ok(raw1.includes('- 你的称呼：小六'), '你的称呼写入区块');
   ok(raw1.includes('- 你的身份/角色：开发助手'), '身份角色写入区块');
+  ok(raw1.includes('- 我的微信号：wx-12345'), '自定义字段（我的微信号）写入区块');
   ok(raw1.includes('## 其他记忆'), '模板含其他记忆区');
-  // 2) 解析回填：data.form 读回
+  // 2) 解析回填：data.items 读回（含自定义字段，顺序保持）
   const d1 = api.data();
   ok(d1.exists === true && d1.hasSection === true, '保存后 data.exists=true / hasSection=true');
-  ok(d1.form['你的称呼'] === '小六' && d1.form['你的身份/角色'] === '开发助手', '解析回填表单正确');
-  // 3) 区块替换：更新一个字段，其他记忆区内容保留
+  ok(Array.isArray(d1.items) && d1.items.length === 4, `字段列表 4 条（实际 ${d1.items.length}）`);
+  ok(d1.items[0].name === '你的称呼' && d1.items[0].value === '小六', '解析回填第一条正确');
+  ok(d1.items[3].name === '我的微信号' && d1.items[3].value === 'wx-12345', '自定义字段重开窗口仍在');
+  // 3) 区块替换：改一个字段 + 删一个 + 加一个，其他记忆区内容保留
   fs.appendFileSync(target, '\n## 我的私有笔记\n\n- 只能我自己看的内容\n');
-  const r2 = api.save({ '你的称呼': '小六', '你的身份/角色': '开发助手', 语言风格: '专业', 输出习惯: '', 项目背景: '', 常用约定: '' });
+  const r2 = api.save([
+    { name: '你的称呼', value: '小六' },
+    { name: '语言风格', value: '专业' },
+    { name: '常用工具', value: 'VS Code / Git' },
+  ]);
   ok(r2.ok === true, '二次保存成功');
   const raw2 = fs.readFileSync(target, 'utf8');
   ok(raw2.includes('- 语言风格：专业'), '字段更新生效');
+  ok(!raw2.includes('我的微信号'), '删除字段后不再写入（你的身份/角色 也未保留）');
+  ok(raw2.includes('- 常用工具：VS Code / Git'), '新增字段写入');
   ok(raw2.includes('## 我的私有笔记') && raw2.includes('只能我自己看的内容'), '其他区块内容原样保留（不破坏）');
   // 4) 追加：文件无基础设定区块时 → 追加末尾
   const custom = '# 用户自定义文件\n\n- 已有内容\n';
   fs.writeFileSync(target, custom, 'utf8');
-  const r3 = api.save({ '你的称呼': '张三', '你的身份/角色': '', 语言风格: '', 输出习惯: '', 项目背景: '', 常用约定: '' });
+  const r3 = api.save([{ name: '你的称呼', value: '张三' }]);
   ok(r3.ok === true, '追加模式保存成功');
   const raw3 = fs.readFileSync(target, 'utf8');
   ok(raw3.startsWith('# 用户自定义文件') && raw3.includes('- 已有内容'), '原文件内容保留在开头');
   ok(raw3.includes('- 你的称呼：张三'), '基础设定区块追加到末尾');
-  // 5) 不存在的区块标题（非本模块管理的 ## 标题）不影响解析
+  // 5) 空字段名行过滤（防脏数据）
+  const r4 = api.save([{ name: '', value: '空名行' }, { name: '你的称呼', value: '李四' }]);
+  ok(r4.ok === true, '含空字段名保存成功');
+  ok(!fs.readFileSync(target, 'utf8').includes('- ：空名行'), '空字段名行被过滤');
+  // 6) 不存在的区块标题（非本模块管理的 ## 标题）不影响解析
   fs.writeFileSync(target, '## 身份与称呼\n\n- 我的姓名：**小六**\n', 'utf8');
   const d2 = api.data();
-  ok(d2.form['你的称呼'] === '', '其他 ## 区块（身份与称呼）不被误解析为基础设定');
+  ok(d2.items.length === 0, '其他 ## 区块（身份与称呼）不被误解析为基础设定');
   fs.rmSync(tmp, { recursive: true, force: true });
 }
 

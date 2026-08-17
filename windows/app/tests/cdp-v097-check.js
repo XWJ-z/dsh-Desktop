@@ -225,26 +225,32 @@ async function main() {
     const memWin = await waitTarget(SIM_DEBUG_PORT, (t) => /global-memory\.html/.test(t.url), 15_000);
     ok(!!memWin, '「🧠 全局记忆」点击打开编辑窗口（global-memory.html）');
     if (memWin && memWin.webSocketDebuggerUrl) {
-      // 窗口内：表单容器存在（图形化输入框而非裸文件）—— 页面加载异步，轮询等待就绪
+      // 窗口内：字段列表 + 添加按钮存在（图形化动态字段，而非裸文件）
       const memCdp = cdpConnect(memWin.webSocketDebuggerUrl);
       try {
         let fv = null;
         const t1 = Date.now();
         while (Date.now() - t1 < 10_000) {
           const f = await memCdp.send('Runtime.evaluate', {
-            expression: `(() => ({
-              hasForm: !!document.getElementById('form'),
-              fields: Array.from(document.querySelectorAll('textarea[data-field]')).map((t) => t.dataset.field),
-              path: (document.getElementById('path') || {}).textContent || '',
-            }))()`,
+            expression: `(() => {
+              const rows = Array.from(document.querySelectorAll('#list .row'));
+              return {
+                hasList: !!document.getElementById('list'),
+                rowCount: rows.length,
+                names: rows.map((r) => (r.querySelector('.f-name') || {}).value || '').filter(Boolean),
+                hasAdd: !!document.getElementById('btn-add'),
+                path: (document.getElementById('path') || {}).textContent || '',
+              };
+            })()`,
             returnByValue: true,
           });
           fv = f.result && f.result.value;
-          if (fv && fv.hasForm && fv.fields.length >= 6) break;
+          if (fv && fv.hasList && fv.rowCount >= 6) break;
           await sleep(500);
         }
-        ok(!!fv && fv.hasForm && fv.fields.length >= 6, `全局记忆窗口含表单输入框（${fv && fv.fields && fv.fields.length} 个）`);
-        ok(!!fv && fv.fields.includes('你的称呼') && fv.fields.includes('项目背景'), '表单字段含你的称呼/项目背景');
+        ok(!!fv && fv.hasList && fv.rowCount >= 6, `全局记忆窗口字段列表（${fv && fv.rowCount} 行）`);
+        ok(!!fv && fv.names.includes('你的称呼') && fv.names.includes('项目背景'), '默认字段含你的称呼/项目背景');
+        ok(!!fv && fv.hasAdd, '窗口有「＋ 添加字段」按钮');
         ok(!!fv && /AGENTS\.md$/.test(fv.path), `窗口显示记忆文件路径（${fv && fv.path}）`);
       } catch (err) {
         ok(false, '全局记忆窗口内容断言异常：' + err.message);
