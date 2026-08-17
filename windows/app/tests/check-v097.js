@@ -409,7 +409,7 @@ function testGlobalMemory() {
     'DSH 角色页：卡片列表式（每角色 = 角色名 + 文件全文大输入框，v1.0.2 老大指令 3）');
   ok(!rjs0.includes('role-tabs') && !rjs0.includes('renderRoleTabs') && !rjs0.includes('activeRole'),
     '角色页不再用顶部 tab / activeRole 状态（v1.0.2 改卡片列表）');
-  ok(rjs0.includes('addEventListener(\'focus\'') && rjs0.includes('mtime'), '窗口聚焦时按 mtime 自动刷新（外部修改文件立即同步，v1.0.2 老大反馈 5②）');
+  ok(rjs0.includes('addEventListener(\'focus\'') && rjs0.includes('signature'), '窗口聚焦时按 变更指纹（signature：AGENTS.md+角色文件）自动刷新（v1.0.2b 老大反馈）');
   ok(!rjs0.includes('path-memory') && !rjs0.includes('path-roles'), '去掉左下角双路径显示（v1.0.1 老大反馈）');
   ok(rjs0.includes('btn-open-memory') && rjs0.includes('btn-open-roles') && rjs0.includes('openGlobalMemoryRoles'),
     '两个按钮：记忆文件位置(AGENTS) / 角色文件位置（v1.0.1 老大指令）');
@@ -457,7 +457,7 @@ function testGlobalMemory() {
   ok(mw.includes('openGlobalMemoryWindow'), 'misc-windows 有全局记忆窗口');
   ok(mw.includes('\'global-memory.html\''), '窗口加载 global-memory.html');
   ok(mw.includes('autoHideMenuBar: true'), '弹窗不显示菜单栏（autoHideMenuBar）');
-  ok(mw.includes('width: 760'), '全局记忆窗口默认加宽（760）');
+  ok(mw.includes('width: 960'), '全局记忆窗口默认加宽（960，v1.0.2b 老大反馈）');
   const aw = read('modules/windows/about-window.js');
   ok(aw.includes('autoHideMenuBar: true'), '更新/联系/关于窗口不显示菜单栏');
   const lw = read('modules/windows/loading-window.js');
@@ -707,7 +707,8 @@ $env:PATH = "..."
   ok(!!rolesSec9 && rolesSec9.fields.length === 2 && rolesSec9.fields[1].name === '角色 2', 'DSH 角色解析回填（重开窗口仍在）');
   ok(!!rolesSec9 && rolesSec9.fields[0].value === full1 && rolesSec9.fields[0].desc === '工作编程助手（文件：~/.dsh/roles/角色 1.md）',
     'v1.0.2：data() 角色 value = 文件全文、desc = 定位（UI 编辑框与文件一致，老大反馈 5②）');
-  ok(typeof d9.mtime === 'number' && d9.mtime > 0, 'v1.0.2：data() 返回 mtime（窗口聚焦自动刷新依据）');
+  ok(typeof d9.mtime === 'number' && d9.mtime > 0, 'v1.0.2：data() 返回 mtime（AGENTS.md 修改时间）');
+  ok(typeof d9.signature === 'string' && d9.signature.length > 0 && d9.signature.includes('角色'), 'v1.0.2b：data() 返回 signature（AGENTS.md+角色文件 变更指纹）');
   // 10) v1.0.2（老大反馈 5①）：角色改名 → 旧文件删除 + 新文件建立（内容保留、标题更新）；删除角色 → 文件同步删除
   const r10a = api.save({
     users: [{ name: '用户的称呼', value: '小六' }], dsh: [],
@@ -730,6 +731,12 @@ $env:PATH = "..."
   // 角色文件安全名：非法字符（空格/斜杠）替换为 -（防路径穿越）
   const r10 = api.save({ users: [{ name: '用户的称呼', value: '小六' }], dsh: [], roles: [{ name: '角色 A/B', value: '测试' }], sections: [] });
   ok(r10.ok === true && fs.existsSync(path.join(tmp, '.dsh', 'roles', '角色-A-B.md')), '角色文件名非法字符安全化（空格/斜杠 → -）');
+  // 11) v1.0.2b（老大反馈：改角色 .md 后需重开窗口才刷新）：角色文件外部修改 → signature 变化
+  const sig1 = api.data().signature;
+  fs.writeFileSync(path.join(tmp, '.dsh', 'roles', '角色-A-B.md'), '# 角色：角色 A/B\n\n## 定位\n\n测试\n\n## 详细记忆\n\n外部修改内容', 'utf8');
+  const sig2 = api.data().signature;
+  ok(typeof sig1 === 'string' && sig1 !== sig2 && sig2.includes('角色 A/B'),
+    'v1.0.2b：角色文件被外部修改 → signature 变化（聚焦刷新能检测到，无需重开窗口）');
   fs.rmSync(tmp, { recursive: true, force: true });
 }
 

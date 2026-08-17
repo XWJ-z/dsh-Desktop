@@ -552,7 +552,9 @@ function createGlobalMemory(deps) {
 
   /**
    * 读取窗口数据：头部 + 全部区块 + 默认字段 + 文件路径 + 角色目录。
-   * v1.0.2（老大反馈 5②）：DSH 角色 fields 的 value = 角色 .md 文件全文，desc = 定位；返回 mtime 供聚焦刷新。
+   * v1.0.2（老大反馈 5②）：DSH 角色 fields 的 value = 角色 .md 文件全文，desc = 定位。
+   * v1.0.2b（老大反馈 2026-08-18：外部改角色 .md 后需重开窗口才刷新）：返回 signature =
+   * AGENTS.md mtime + 各角色文件 mtime/size —— 聚焦刷新对比 signature，角色文件变更也能检测到。
    */
   function data() {
     const raw = readRaw();
@@ -568,6 +570,15 @@ function createGlobalMemory(deps) {
         const content = readRoleFile(name);
         return { name, value: content, desc: extractRoleDesc(content) };
       });
+    const mtime = (() => { try { return raw === null ? null : fs.statSync(file()).mtimeMs; } catch { return null; } })();
+    const rolesStamp = rolesFields.map((r) => {
+      try {
+        const st = fs.statSync(roleFile(r.name));
+        return `${r.name}:${st.mtimeMs}:${st.size}`;
+      } catch {
+        return `${r.name}:missing`;
+      }
+    }).join('|');
     return {
       exists: raw !== null,
       head: parsed.head,
@@ -577,7 +588,8 @@ function createGlobalMemory(deps) {
       defaultRoles: DEFAULT_ROLES.slice(),
       file: file(),
       rolesDir: path.join(os.homedir(), '.dsh', ROLES_DIR), // v1.0.1（老大指令）：窗口左下角显示角色文件目录
-      mtime: (() => { try { return raw === null ? null : fs.statSync(file()).mtimeMs; } catch { return null; } })(),
+      mtime,
+      signature: `${String(mtime)}|${rolesStamp}`, // v1.0.2b：AGENTS.md + 角色文件 变更指纹
     };
   }
 

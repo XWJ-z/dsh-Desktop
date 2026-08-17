@@ -93,7 +93,7 @@ function createMiscWindowsModule(deps) {
   function openGlobalMemoryWindow() {
     if (getGlobalMemoryWin() && !getGlobalMemoryWin().isDestroyed()) { getGlobalMemoryWin().focus(); return; }
     const win = new BrowserWindow({
-      width: 760, height: 640, resizable: true, minimizable: false, // v0.9.12（老大反馈）：默认加宽（左右分栏）
+      width: 960, height: 660, resizable: true, minimizable: false, // v1.0.2b（老大反馈）：默认再宽一些（左右分栏更好用）
       minWidth: 640, minHeight: 480, // v1.0.2（老大反馈）：可自由拖动但加最小尺寸约束
       parent: getMainWindow(), modal: false, title: '全局记忆',
       autoHideMenuBar: true, // v0.9.12（老大反馈）：弹窗不显示菜单栏

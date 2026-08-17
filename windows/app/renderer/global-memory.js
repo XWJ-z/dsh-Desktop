@@ -8,7 +8,7 @@
  *  - 全局记忆区块：合并展示所有 `## xxxx` 其他区块（卡片列表，标题可改 + 长文本可折叠）；
  *  - DSH 角色：卡片列表式 —— 每个角色一张卡（角色名 + 角色 .md 文件全文大输入框），
  *    与 ~/.dsh/roles/ 文件双向同步（v1.0.2 老大反馈 5②）；
- *  - 窗口聚焦时若 AGENTS.md mtime 变化 → 自动重新加载（外部修改立即同步）；
+ *  - 窗口聚焦时对比 AGENTS.md + 角色文件 变更指纹（signature）→ 自动重新加载（外部修改立即同步，v1.0.2b）；
  *  - 覆盖确认在前端（二次确认）+ 8s 超时兜底；保存后可选让 DSH 整理记忆。
  */
 
@@ -46,7 +46,7 @@ let sections = [];     // 其他 ## 区块 [{title, body}]（全局记忆区块�
 let activeKey = USERS_KEY;
 let fileExists = false;
 let filePath = '';
-let fileMtime = null;  // v1.0.2：聚焦时对比 mtime 自动刷新（外部修改立即同步）
+let fileSignature = ''; // v1.0.2b：AGENTS.md + 角色文件 变更指纹（聚焦自动刷新依据）
 let guidePending = false; // 未配置引导标记（文件用户设定区有引导句）
 let bannerTimer = null;
 let confirmTimer = null; // 保存二次确认计时
@@ -386,7 +386,7 @@ async function loadData() {
   const data = await dsh.getGlobalMemory();
   filePath = (data && data.file) || '';
   fileExists = !!(data && data.exists);
-  fileMtime = (data && data.mtime) || null; // v1.0.2：聚焦自动刷新依据
+  fileSignature = (data && data.signature) || ''; // v1.0.2b：AGENTS.md + 角色文件 变更指纹
   const list = (data && Array.isArray(data.sections)) ? data.sections : [];
   // 用户设定 / DSH 设定 / DSH 角色 三个独立顶层区块
   const usersSec = list.find((s) => s.kind === 'users');
@@ -438,13 +438,14 @@ async function init() {
   el('btn-open-roles').addEventListener('click', () => {
     if (dsh && dsh.openGlobalMemoryRoles) dsh.openGlobalMemoryRoles();
   });
-  // v1.0.2（老大反馈 5②）：窗口聚焦时 AGENTS.md/角色文件被外部修改 → 自动同步最新内容
+  // v1.0.2b（老大反馈 2026-08-18：改角色 .md 后需重开窗口才刷新）：聚焦时对比
+  // AGENTS.md + 角色文件 变更指纹（signature），任何一处被外部修改都自动同步最新内容
   window.addEventListener('focus', async () => {
     try {
       const data = await dsh.getGlobalMemory();
-      const m = (data && data.mtime) || null;
-      if (m != null && m !== fileMtime) {
-        fileMtime = m;
+      const s = (data && data.signature) || '';
+      if (s && s !== fileSignature) {
+        fileSignature = s;
         await loadData();
         renderAll();
         showBanner('检测到记忆文件已变更，已同步最新内容', true);
