@@ -489,7 +489,7 @@ async function main() {
     ok(!!cv && typeof cv.first096 === 'string' && cv.first096.startsWith('1. '), '0.9.6 首条带编号（与 GitHub body 相同）');
     ok(!!cv && cv.r096 === true, 'changelog:data 0.9.6 released=true');
     ok(!!cv && cv.r098 === false, 'changelog:data 0.9.8（内部）released=false');
-    ok(!!cv && cv.releasedCount === 13, `released=true 共 13 个（含 1.0.1，实际 ${cv && cv.releasedCount}）`);
+    ok(!!cv && cv.releasedCount === 14, `released=true 共 14 个（含 1.0.1/1.0.2，实际 ${cv && cv.releasedCount}）`);
     ok(!!cv && cv.sortedFirst === '1.0.2', `changelog:data 降序首条 = 1.0.2（P3-3 共享比较，实际 ${cv && cv.sortedFirst}）`);
 
     // ④ 日志：公告自动刷新已启动 + fetchLatest 已执行
