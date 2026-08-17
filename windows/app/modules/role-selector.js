@@ -1,35 +1,29 @@
 'use strict';
 
 /**
- * DSH-Desktop — 角色选择模块（v0.9.13 老大方案）
+ * DSH-Desktop — 角色选择模块（v0.9.15 老大指令）
  *
- * 新对话时引导用户选择 DSH 角色：
- *  - AGENTS.md「DSH 角色」区块记录 角色名 → 定位（文件：~/.dsh/roles/<角色名>.md）；
- *  - 轮询 DSH 页面 localStorage `dsh.sessions.current`（会话 id），检测到**会话切换**
- *    （= 新对话/切到另一个会话）→ 若已配置角色 → 弹窗让用户选择角色；
- *  - 未配置任何角色 → 不弹窗（老大方案 3）；
- *  - 选定角色 → 向输入框注入「本次对话角色为 xxxx，角色定义文件为 xxxx」，
- *    DSH 据此读取角色文件内容扮演（老大方案 4）；详细记忆在角色文件里，AGENTS.md 不膨胀。
+ * v0.9.15（老大：全局记忆加提示「双击对话框选择角色，默认角色 1」+ 新建对话不再提示）：
+ *  - **移除新对话弹窗**：不再轮询 DSH 会话切换、不再在新建对话时弹角色选择
+ *    （老大：新建对话就不提示了）—— 角色切换改由**双击 DSH 输入框**随时触发；
+ *  - **双击重选**：DSH 主页面双击聊天输入框 → 主进程弹角色选择 →
+ *    注入「本次对话角色为 xxxx，角色定义文件为 xxxx」（选错角色不用重开新对话）；
+ *  - 未配置任何角色 → 不弹窗（老大方案 3）。
  *
  * 依赖注入（deps）：
  *  - dialog / appName          Electron 对话框
  *  - appendLog                 日志模块
  *  - getMainWindow             主窗口 getter
  *  - getRoles                  读取已配置角色 [{ name, value }]（global-memory data）
+ *  - roleFilePath              角色文件路径（global-memory roleFile）
  *  - injectText                注入函数（promptInject.injectTextIntoInput）
- *  - currentSessionIdFromPage  读 DSH 当前会话 id（workspace 模块）
- *  - pollMs                    轮询间隔（默认 2500ms）
  */
 
 function createRoleSelector(deps) {
   const {
     dialog, appName, appendLog,
-    getMainWindow, getRoles, injectText, currentSessionIdFromPage,
-    pollMs = 2500,
+    getMainWindow, getRoles, roleFilePath, injectText,
   } = deps;
-
-  let timer = null;
-  let lastSessionId = null;
 
   /** 当前是否有已配置角色（角色名非空） */
   function configuredRoles() {
@@ -54,15 +48,8 @@ function createRoleSelector(deps) {
     return roles[response];
   }
 
-  /** 会话切换处理：弹窗选角色 → 注入提示词 */
-  async function onSessionChanged() {
-    const roles = configuredRoles();
-    if (roles.length === 0) return; // 未配置角色：不弹窗（老大方案 3）
-    await pickAndInject();
-  }
-
   /**
-   * 弹窗选角色 + 注入（v0.9.13 老大反馈：选错角色只能重开新对话 → 双击输入框可重选）。
+   * 弹窗选角色 + 注入（双击 DSH 输入框触发；v0.9.13 老大反馈：选错角色不用重开新对话）。
    * @returns {{ ok: boolean, name?: string, reason?: string }}
    */
   async function pickAndInject() {
@@ -71,18 +58,18 @@ function createRoleSelector(deps) {
     const chosen = await pickRole(roles);
     if (!chosen) return { ok: false, reason: 'cancelled' };
     const name = String(chosen.name).trim();
-    const filePath = deps.roleFilePath ? deps.roleFilePath(name) : null;
+    const filePath = roleFilePath ? roleFilePath(name) : null;
     const text = `本次对话角色为 ${name}${filePath ? `，角色定义文件为 ${filePath}` : ''}`;
     const mw = getMainWindow();
     if (mw && !mw.isDestroyed()) {
       injectText(mw, text, { celebrate: false }).catch(() => { /* ignore */ });
-      appendLog('info', `已为新对话选择角色：${name}（${filePath || '无文件'}）`);
+      appendLog('info', `已选择角色：${name}（${filePath || '无文件'}）`);
     }
     return { ok: true, name };
   }
 
   /**
-   * 注入「双击输入框重选角色」监听（v0.9.13 老大反馈）：
+   * 注入「双击输入框重选角色」监听（v0.9.13 老大反馈；v0.9.15 起为唯一入口）：
    * DSH 主页面双击聊天输入框 → 通知主进程弹角色选择（选错角色不用重开新对话）。
    * 幂等：同一页面生命周期只注入一次。
    */
@@ -102,31 +89,7 @@ function createRoleSelector(deps) {
     `).catch(() => { /* ignore */ });
   }
 
-  /** 开始轮询（幂等）：检测 DSH 会话切换 */
-  function start() {
-    if (timer) return;
-    timer = setInterval(async () => {
-      const mw = getMainWindow();
-      if (!mw || mw.isDestroyed()) return;
-      const sid = await currentSessionIdFromPage(mw).catch(() => null);
-      if (sid == null) return;
-      if (lastSessionId === null) {
-        lastSessionId = sid; // 首次记录基线，不弹窗
-        return;
-      }
-      if (sid !== lastSessionId) {
-        lastSessionId = sid;
-        onSessionChanged();
-      }
-    }, pollMs);
-    appendLog('info', `角色选择轮询已启动（每 ${pollMs / 1000}s 检测会话切换）`);
-  }
-
-  function stop() {
-    if (timer) { clearInterval(timer); timer = null; }
-  }
-
-  return { start, stop, configuredRoles, onSessionChanged, pickAndInject, injectDblclick };
+  return { configuredRoles, pickAndInject, injectDblclick };
 }
 
 module.exports = { createRoleSelector };

@@ -72,7 +72,7 @@ function renderCats() {
   const cats = el('cats');
   let html = `<div class="cat ${activeKey === USERS_KEY ? 'active' : ''}" data-key="${USERS_KEY}">👤 用户设定<span class="tag">字段</span></div>`;
   html += `<div class="cat ${activeKey === DSH_KEY ? 'active' : ''}" data-key="${DSH_KEY}">🤖 我的设定<span class="tag">字段</span></div>`;
-  html += `<div class="cat ${activeKey === ROLES_KEY ? 'active' : ''}" data-key="${ROLES_KEY}">🎭 DSH 角色<span class="tag">新对话选择</span></div>`;
+  html += `<div class="cat ${activeKey === ROLES_KEY ? 'active' : ''}" data-key="${ROLES_KEY}">🎭 DSH 角色<span class="tag">双击切换</span></div>`;
   html += sections.map((s) => {
     const key = secKey(s);
     return `<div class="cat ${activeKey === key ? 'active' : ''}" data-key="${escapeHtml(key)}"><span class="sec-title">## ${escapeHtml(s.title || '未命名')}</span></div>`;
@@ -114,9 +114,10 @@ function renderRight() {
     return;
   }
   if (activeKey === ROLES_KEY) {
-    head.innerHTML = 'DSH 角色 <span class="tag">角色 1/2/3 · 新对话选择 · 可增删</span>';
+    head.innerHTML = 'DSH 角色 <span class="tag">角色 1/2/3 · 双击对话框切换 · 可增删</span>';
     body.innerHTML = `
-      <div class="guide-tip">💡 每个角色保存后会自动建立角色文件（~/.dsh/roles/），详细记忆写入角色文件避免 AGENTS.md 过大；新对话时会弹窗选择角色。</div>
+      <div class="tip-red">⚠️ 双击对话框选择角色，默认角色 1</div>
+      <div class="guide-tip">💡 每个角色保存后会自动建立角色文件（~/.dsh/roles/），详细记忆写入角色文件避免 AGENTS.md 过大；想切换角色随时双击 DSH 输入框重选。</div>
       <div class="fields" id="role-fields"></div>
       <button id="btn-add-role" class="add-field">＋ 添加角色</button>`;
     renderRoleFields();

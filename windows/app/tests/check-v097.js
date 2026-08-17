@@ -400,14 +400,16 @@ function testGlobalMemory() {
   ok(rjs0.includes('btn-add-field'), '窗口有「＋ 添加字段」按钮逻辑');
   ok(rjs0.includes('btn-add-dsh'), '窗口有「＋ 添加 DSH 设定」按钮逻辑');
   ok(rjs0.includes('btn-add-role') && rjs0.includes('role-fields'), '窗口有 DSH 角色列表 + 添加角色按钮');
-  ok(rjs0.includes('新对话时会弹窗选择角色'), '窗口说明新对话选择角色');
+  ok(rjs0.includes('tip-red') && rjs0.includes('双击对话框选择角色') && rjs0.includes('默认角色 1'), '窗口红色提示：双击对话框选择角色，默认角色 1（v0.9.15）');
+  ok(!rjs0.includes('新对话时会弹窗选择角色'), '窗口不再说明新对话弹窗选角色（v0.9.15：新建对话不提示）');
   const rsel = read('modules/role-selector.js');
-  ok(rsel.includes('dsh.sessions.current'), '角色选择轮询 DSH 会话切换（localStorage）');
+  ok(!rsel.includes('dsh.sessions.current') && !rsel.includes('setInterval'), '不再轮询 DSH 会话切换（v0.9.15：新建对话不弹窗）');
   ok(rsel.includes('本次对话角色为'), '选定角色后注入「本次对话角色为 xxxx，角色定义文件为 xxxx」');
   ok(rsel.includes('不选择') || rsel.includes('取消'), '弹窗支持不选择');
+  ok(rsel.includes('injectDblclick') && rsel.includes('chooseRole'), '双击 DSH 输入框重选角色（injectDblclick 唯一入口）');
   const mainSrc1 = read('main.js');
-  ok(mainSrc1.includes('roleSelectorApi.start()'), '主窗口就绪后启动角色选择轮询');
-  ok(mainSrc1.includes('roleSelectorApi.stop()'), '退出时停止轮询');
+  ok(!mainSrc1.includes('roleSelectorApi.start()') && !mainSrc1.includes('roleSelectorApi.stop()'), '主进程不再启动/停止会话轮询（新建对话不弹窗）');
+  ok(mainSrc1.includes('roleSelectorApi.injectDblclick(mainWindow)'), '主窗口就绪后注入双击重选角色监听');
   ok(rjs0.includes('guide-tip'), '窗口显示未配置引导提示条');
   ok(rjs0.includes('TIDY_PROMPT') && rjs0.includes('整理你的全局记忆，不要改变原意'), '保存后整理记忆提示词');
   ok(rjs0.includes('tidy-bar') && rjs0.includes('showTidyBar'), '保存后询问是否让 DSH 整理记忆');
@@ -670,7 +672,7 @@ $env:PATH = "..."
 function testVersion() {
   console.log('[7] package.json 版本');
   const pkg = JSON.parse(fs.readFileSync(path.join(APP, 'package.json'), 'utf8'));
-  ok(pkg.version === '0.9.14', `version = 0.9.14（实际 ${pkg.version}）`);
+  ok(pkg.version === '0.9.15', `version = 0.9.15（实际 ${pkg.version}）`);
 }
 
 // ---------------------------------------------------------------------------

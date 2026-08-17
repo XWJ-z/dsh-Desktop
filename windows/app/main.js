@@ -373,7 +373,7 @@ const customPromptsApi = createCustomPrompts({ fs, path, app, appendLog });
 // 无需手动发送）；图形化表单编辑基础设定（区块级写回，不破坏其他内容）
 const globalMemoryApi = createGlobalMemory({ app, fs, os, path, appendLog });
 
-// v0.9.13（老大方案）：新对话选择角色 —— 轮询 DSH 会话切换，有角色配置则弹窗选角色并注入
+// v0.9.15（老大指令）：新建对话不再弹窗提示角色 —— 角色切换改为双击 DSH 输入框随时重选
 const roleSelectorApi = createRoleSelector({
   dialog, appName: APP_NAME, appendLog,
   getMainWindow: () => mainWindow,
@@ -384,7 +384,6 @@ const roleSelectorApi = createRoleSelector({
   },
   roleFilePath: (name) => globalMemoryApi.roleFile(name),
   injectText: (win, text, opts) => promptInject.injectTextIntoInput(win, text, opts),
-  currentSessionIdFromPage: (win) => workspaceApi.currentSessionIdFromPage(win),
 });
 
 // ----
@@ -886,9 +885,8 @@ if (!gotLock) {
         if (loadingWindow && !loadingWindow.isDestroyed()) loadingWindow.close();
         loadingWindow = null;
         createMainWindow();
-        // v0.9.13：新对话角色选择轮询（有角色配置时，会话切换弹窗选角色并注入）
-        roleSelectorApi.start();
-        // v0.9.13（老大反馈：选错角色只能重开新对话）：双击 DSH 输入框 → 重选角色
+        // v0.9.15（老大指令：新建对话不提示）：不再轮询/弹窗选角色；
+        // 双击 DSH 输入框 → 随时重选角色（v0.9.13 老大反馈：选错角色不用重开新对话）
         roleSelectorApi.injectDblclick(mainWindow);
         // v0.9.13（老大指令）：记忆格式不符标准 → 主窗口加载完成后注入整理提示词
         // （让 DSH 按标准格式整理现有记忆，不改变原意）
@@ -940,8 +938,6 @@ if (!gotLock) {
   app.on('before-quit', () => { isQuitting = true; stopServer(); });
   app.on('will-quit', () => {
     appendLog('info', '应用退出中…');
-    // v0.9.13：停止角色选择轮询
-    roleSelectorApi.stop();
     // v0.9.7：退出清理公告自动刷新定时器
     if (noticeRefreshTimer) { clearInterval(noticeRefreshTimer); noticeRefreshTimer = null; }
     // v0.8.1（T4）：退出释放全局快捷键（防残留占用）

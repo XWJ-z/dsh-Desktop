@@ -109,12 +109,11 @@ async function main() {
   }
 }
 
-// ── 附加段：role-selector 行为（v0.9.13 老大方案 3/4）──
+// ── 附加段：role-selector 行为（v0.9.15 老大指令：新建对话不弹窗，双击输入框随时重选）──
 async function testRoleSelector() {
-  console.log('[4] role-selector：会话切换 → 选角色 → 注入（老大方案）');
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  console.log('[4] role-selector：双击输入框重选角色 → 弹窗 → 注入（v0.9.15）');
   const mkRole = (opts = {}) => {
-    const calls = { dialogs: 0, injects: [] };
+    const calls = { dialogs: 0, injects: [], injectedJs: '' };
     const api = createRoleSelector({
       dialog: { showMessageBox: async () => { calls.dialogs++; return { response: opts.dialogResponse ?? 0 }; } },
       appName: 'DSH-Desktop',
@@ -123,46 +122,38 @@ async function testRoleSelector() {
       getRoles: opts.rolesFn || (() => [{ name: '角色 1', value: '工作' }, { name: '角色 2', value: '闲聊' }]),
       roleFilePath: (name) => `~/.dsh/roles/${name}.md`,
       injectText: async (_w, text, _o) => { calls.injects.push(text); return { ok: true }; },
-      currentSessionIdFromPage: opts.sessionFn || (async () => null),
-      pollMs: 50,
     });
+    api.injectDblclick({ isDestroyed: () => false, webContents: { executeJavaScript: async (js) => { calls.injectedJs = js; } } });
     return { api, calls };
   };
-  // ① 会话从 sid1 → sid2：弹窗选角色 1 → 注入提示词
+  // ① 双击触发 pickAndInject：弹窗选角色 1 → 注入提示词
   {
-    let seq = ['sid-1', 'sid-1', 'sid-2', 'sid-2'];
-    const { api, calls } = mkRole({ sessionFn: async () => seq.shift() || 'sid-2' });
-    api.start();
-    await sleep(220); // 4 次轮询
-    api.stop();
-    ok(calls.dialogs === 1, '会话切换触发 1 次弹窗');
-    ok(calls.injects.length === 1 && calls.injects[0].includes('本次对话角色为 角色 1') && calls.injects[0].includes('角色定义文件为 ~/.dsh/roles/角色 1.md'),
+    const { api, calls } = mkRole();
+    const r = await api.pickAndInject();
+    ok(r.ok === true && r.name === '角色 1', '双击重选：弹窗选中角色 1');
+    ok(calls.dialogs === 1 && calls.injects.length === 1
+      && calls.injects[0].includes('本次对话角色为 角色 1') && calls.injects[0].includes('角色定义文件为 ~/.dsh/roles/角色 1.md'),
       `注入提示词正确（${calls.injects[0]}）`);
   }
-  // ② 会话不变 → 不弹窗
+  // ② 弹窗选「不选择」→ 不注入
   {
-    const { api, calls } = mkRole({ sessionFn: async () => 'same-session' });
-    api.start();
-    await sleep(150);
-    api.stop();
-    ok(calls.dialogs === 0, '会话不变 → 不弹窗');
+    const { api, calls } = mkRole({ dialogResponse: 2 });
+    const r = await api.pickAndInject();
+    ok(r.ok === false && r.reason === 'cancelled' && calls.dialogs === 1 && calls.injects.length === 0, '选「不选择」→ 弹窗但不注入');
   }
   // ③ 未配置角色 → 不弹窗（老大方案 3）
   {
-    const { api, calls } = mkRole({ rolesFn: () => [], sessionFn: async () => { const s = Math.random(); return s > 0.5 ? 'a' : 'b'; } });
-    api.start();
-    await sleep(200);
-    api.stop();
-    ok(calls.dialogs === 0, '未配置角色 → 不弹窗');
+    const { api, calls } = mkRole({ rolesFn: () => [] });
+    const r = await api.pickAndInject();
+    ok(r.ok === false && r.reason === 'no-roles' && calls.dialogs === 0 && calls.injects.length === 0, '未配置角色 → 不弹窗');
   }
-  // ④ 弹窗选「不选择」→ 不注入
+  // ④ 双击监听注入 + v0.9.15 不再轮询
   {
-    let seq = ['s1', 's2'];
-    const { api, calls } = mkRole({ dialogResponse: 2, sessionFn: async () => seq.shift() || 's2' });
-    api.start();
-    await sleep(180);
-    api.stop();
-    ok(calls.dialogs === 1 && calls.injects.length === 0, '选「不选择」→ 弹窗但不注入');
+    const { api, calls } = mkRole();
+    ok(calls.injectedJs.includes('__dshRoleDblclick') && calls.injectedJs.includes('dshDesktop.chooseRole') && calls.injectedJs.includes('dblclick'),
+      '双击输入框监听已注入（chooseRole IPC）');
+    ok(api.start === undefined && api.stop === undefined && api.onSessionChanged === undefined,
+      'v0.9.15：不再提供会话轮询（新建对话不弹窗）');
   }
 }
 
