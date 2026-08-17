@@ -4,8 +4,9 @@
  * DSH-Desktop — 菜单模块（优化方案 2026-08-16 阶段一：从 main.js 拆分）
  *
  * 职责：
- *  - buildMenu：应用菜单（文件/视图/设置/帮助/公告，Windows 惯例）
- *    v0.8.17：公告独立成一级菜单；v0.8.21：公告移到帮助菜单右边
+ *  - buildMenu：应用菜单（文件/视图/设置/帮助/公告条，Windows 惯例）
+ *    v0.8.17：公告独立成一级菜单；v0.8.21：公告移到帮助菜单右边；
+ *    v0.9.8：公告并入帮助菜单（「查看公告」子项），公告条保留最右端
  *  - refreshMenus：重建托盘菜单 + 应用菜单（设置变化后同步显示状态）
  *
  * 依赖注入（deps）：
@@ -166,6 +167,7 @@ function createMenu(deps) {
         ],
       },
       // v0.8.21（老大指令）：公告菜单移到帮助菜单右边（原在设置与帮助之间）
+      // v0.9.8（老大指令）：公告菜单并入帮助菜单（不再独立一级菜单，避免菜单栏拥挤）
       // v0.6.4（T-029）：「帮助」菜单（原「关于我们」）—— 更新检查移入，符合 Windows 帮助区惯例
       {
         label: '帮助',
@@ -177,6 +179,11 @@ function createMenu(deps) {
           { type: 'separator' },
           // v0.8.1（T3）：内置更新日志 —— 帮助菜单查看各版本更新内容（离线可用）
           { label: '更新日志…', click: () => openChangelogWindow() },
+          // v0.8.11（T0.6）/ v0.9.8：公告移入帮助菜单 —— 远程拉取 + 本地已读；有新公告时标「（新）」
+          {
+            label: `查看公告${Array.isArray(getShellNotices()) && hasNewNotices(getShellNotices()) ? '（新）' : ''}`,
+            click: () => openNoticeWindow(),
+          },
           { type: 'separator' },
           // v0.7.0（T1）：一键诊断报告 —— 环境信息 + 最近日志 + 配置（脱敏）→ 剪贴板 + 落盘
           { label: '生成诊断报告', click: () => generateDiagnostics() },
@@ -197,17 +204,6 @@ function createMenu(deps) {
           {
             label: 'DSH-Desktop 项目主页',
             click: () => { shell.openExternal('https://github.com/XWJ-z/dsh-Desktop'); },
-          },
-        ],
-      },
-      // v0.8.17（老大指令）：公告独立成一级菜单（不再挂在帮助菜单下）
-      {
-        label: `公告${Array.isArray(getShellNotices()) && hasNewNotices(getShellNotices()) ? '（新）' : ''}`,
-        submenu: [
-          {
-            // v0.8.11（T0.6）：公告 —— 远程拉取 + 本地已读；有新公告时菜单标「（新）」
-            label: '查看公告',
-            click: () => openNoticeWindow(),
           },
         ],
       },

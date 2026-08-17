@@ -157,11 +157,25 @@ async function main() {
   const cdp = cdpConnect(mainTarget.webSocketDebuggerUrl);
 
   try {
-    // ① 版本 0.9.7
+    // 0. 等 preload 注入完成（主页面 target 就绪 ≠ dshDesktop 已挂上，竞态防护）
+    let dshReady = false;
+    const t0 = Date.now();
+    while (Date.now() - t0 < 30_000) {
+      try {
+        const r = await cdp.send('Runtime.evaluate', { expression: '!!window.dshDesktop', returnByValue: true });
+        dshReady = !!(r.result && r.result.value === true);
+      } catch { /* ignore */ }
+      if (dshReady) break;
+      await sleep(500);
+    }
+    ok(dshReady, 'preload dshDesktop 已注入');
+    if (!dshReady) throw new Error('dshDesktop 注入超时');
+
+    // ① 版本 0.9.8
     const ver = await cdp.send('Runtime.evaluate', {
       expression: 'window.dshDesktop.getVersion()', returnByValue: true, awaitPromise: true,
     });
-    ok(ver.result && ver.result.value === '0.9.7', `壳版本 = 0.9.7（实际 ${ver.result && ver.result.value}）`);
+    ok(ver.result && ver.result.value === '0.9.8', `壳版本 = 0.9.8（实际 ${ver.result && ver.result.value}）`);
 
     // ② 公告：notice:data 附带完整 marquee（v0.9.7 新字段）
     const notice = await cdp.send('Runtime.evaluate', {

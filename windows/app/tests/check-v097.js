@@ -39,6 +39,9 @@ function testMenu() {
   ok(src.includes('label: \'📢 \' + truncateMarquee(getMarquee())'), '公告条 label 保留');
   ok(src.includes('click: () => openNoticeWindow()'), '公告条可点击 → 打开公告窗口');
   ok(!src.includes('enabled: false, // 纯文字展示'), '公告条不再禁用（纯文字态移除）');
+  // v0.9.8（老大指令）：公告菜单并入帮助菜单
+  ok(!src.includes('label: `公告${'), '独立「公告」一级菜单已移除（并入帮助）');
+  ok(src.includes('查看公告${'), '帮助菜单含「查看公告（新）」子项');
 }
 
 // ---------------------------------------------------------------------------
@@ -148,7 +151,7 @@ function testChangelog() {
 function testVersion() {
   console.log('[6] package.json 版本');
   const pkg = JSON.parse(fs.readFileSync(path.join(APP, 'package.json'), 'utf8'));
-  ok(pkg.version === '0.9.7', `version = 0.9.7（实际 ${pkg.version}）`);
+  ok(pkg.version === '0.9.8', `version = 0.9.8（实际 ${pkg.version}）`);
 }
 
 // ---------------------------------------------------------------------------
