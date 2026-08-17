@@ -59,17 +59,17 @@ win:
         - x64
   # ── T-023 代码签名：Azure Trusted Signing ──────────────────────────────
   # 开通步骤见 docs/T023-Azure-Trusted-Signing-指南.md。
-  # 启用方法：填好下面 azureSignOptions 各字段（取消注释），并在构建时提供
-  # Entra ID 认证环境变量（electron-builder 用 Azure.Identity EnvironmentCredential）：
-  #   AZURE_TENANT_ID / AZURE_CLIENT_ID / AZURE_CLIENT_SECRET
-  # 未配置本块 = 不签名（现状，构建不受影响）。
-  #
-  # azureSignOptions:
-  #   publisherName: "zx(xwj)"                   # 必须与证书配置文件中的发行者一致
-  #   endpoint: "https://eastus.trustedsigning.azure.net"  # 账户所在区域端点
-  #   certificateProfileName: "你的证书配置文件名称"
-  #   codeSigningAccountName: "你的 Trusted Signing 账户名"
-  #   # 可选：fileDigest: "SHA256" / timestampRfc3161 / timestampDigest
+  # v0.9.11（外审 zx(9) P2-3）：签名配置就绪（scripts/installer.js 自动注入）——
+  # 构建时若设置了完整凭据环境变量则启用签名，否则不签名（现状，构建不受影响）：
+  #   1) Entra ID 认证（electron-builder 用 Azure.Identity EnvironmentCredential）：
+  #      AZURE_TENANT_ID / AZURE_CLIENT_ID / AZURE_CLIENT_SECRET（三者齐全才触发）
+  #   2) Trusted Signing 账户信息：
+  #      AZURE_TS_ENDPOINT（默认 https://eastus.trustedsigning.azure.net）
+  #      AZURE_TS_CERT_PROFILE（证书配置文件名称，必填）
+  #      AZURE_TS_ACCOUNT（Trusted Signing 账户名，必填）
+  #   publisherName 固定 "zx(xwj)"（必须与证书配置文件中的发行者一致）。
+  # 本文件不再内联 azureSignOptions（避免凭据未开通时构建直接报错），
+  # 见 scripts/installer.js 的签名注入逻辑。
 
 nsis:
   # 向导式安装（非 oneClick），默认安装到 %LOCALAPPDATA%\Programs\DSH-Desktop

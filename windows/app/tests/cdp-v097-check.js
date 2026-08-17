@@ -1,13 +1,15 @@
 'use strict';
 
 /**
- * cdp-v097-check.js — v0.9.7 公告修复 CDP 仿真（真包，团队标准流程）
+ * cdp-v097-check.js — v0.9.7 起公告/更新日志 CDP 仿真（真包，团队标准流程）
+ * 持续演进：版本断言随每版更新（当前 0.9.11）；v0.9.11 追加 P3-3
+ * changelog:data 降序排序断言（共享 compareSemver 运行级验证）。
  *
- * 覆盖（老大反馈三项，运行级）：
+ * 覆盖：
  *  1. 公告窗口数据：notice:data 附带完整 marquee（新字段，非截断）
  *  2. 公告自动刷新：日志含「公告自动刷新已启动（每 10 分钟）」+ fetchLatest 已执行
- *  3. 更新日志：changelog:data 返回 0.9.7 条目 + 0.9.6 12 条（与 GitHub 一致）
- *  4. 版本：dsh:version = 0.9.7；notice-cache.json 落盘（完整 marquee）
+ *  3. 更新日志：changelog:data 返回 0.9.7 条目 + 0.9.6 12 条（与 GitHub 一致）+ 降序
+ *  4. 版本：dsh:version = 当前版本；notice-cache.json 落盘（完整 marquee）
  *
  * 用法：node tests/cdp-v097-check.js
  */
@@ -171,11 +173,11 @@ async function main() {
     ok(dshReady, 'preload dshDesktop 已注入');
     if (!dshReady) throw new Error('dshDesktop 注入超时');
 
-    // ① 版本 0.9.10
+    // ① 版本 0.9.11
     const ver = await cdp.send('Runtime.evaluate', {
       expression: 'window.dshDesktop.getVersion()', returnByValue: true, awaitPromise: true,
     });
-    ok(ver.result && ver.result.value === '0.9.10', `壳版本 = 0.9.10（实际 ${ver.result && ver.result.value}）`);
+    ok(ver.result && ver.result.value === '0.9.11', `壳版本 = 0.9.11（实际 ${ver.result && ver.result.value}）`);
 
     // ①.5 宠物注入正常（v0.9.10 间歇提示改动不破坏注入）+ 气泡元素存在
     // 注：injectPet 在 did-finish-load 后执行，需轮询等待注入完成
@@ -213,6 +215,7 @@ async function main() {
     ok(!!nv && nv.marquee && nv.marquee.length > 30 && !nv.marquee.includes('…'), 'marquee 长度 > 30 且不含省略号（全文）');
 
     // ③ 更新日志：changelog:data 含 0.9.7 + 0.9.6 12 条 + released 标记（v0.9.9）
+    // + P3-3（v0.9.11）：主进程按 compareSemver 降序返回（0.9.11 排第一）
     const cl = await cdp.send('Runtime.evaluate', {
       expression: `(async () => {
         const d = await window.dshDesktop.getChangelog();
@@ -220,7 +223,8 @@ async function main() {
         const v097 = (d && d.versions || []).find((v) => v.version === '0.9.7');
         const v098 = (d && d.versions || []).find((v) => v.version === '0.9.8');
         const releasedCount = (d && d.versions || []).filter((v) => v.released === true).length;
-        return { has097: !!v097, n096: v096 && v096.notes.length, first096: v096 && v096.notes[0], r096: v096 && v096.released, r098: v098 && v098.released, releasedCount };
+        const sortedFirst = (d && d.versions || [])[0] && (d && d.versions || [])[0].version;
+        return { has097: !!v097, n096: v096 && v096.notes.length, first096: v096 && v096.notes[0], r096: v096 && v096.released, r098: v098 && v098.released, releasedCount, sortedFirst };
       })()`,
       returnByValue: true, awaitPromise: true,
     });
@@ -231,6 +235,7 @@ async function main() {
     ok(!!cv && cv.r096 === true, 'changelog:data 0.9.6 released=true');
     ok(!!cv && cv.r098 === false, 'changelog:data 0.9.8（内部）released=false');
     ok(!!cv && cv.releasedCount === 12, `released=true 共 12 个（实际 ${cv && cv.releasedCount}）`);
+    ok(!!cv && cv.sortedFirst === '0.9.11', `changelog:data 降序首条 = 0.9.11（P3-3 共享比较，实际 ${cv && cv.sortedFirst}）`);
 
     // ④ 日志：公告自动刷新已启动 + fetchLatest 已执行
     await sleep(1500); // 等 checkUpdatesOnStart 的 fetchLatest 落日志

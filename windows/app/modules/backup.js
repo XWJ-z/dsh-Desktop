@@ -221,6 +221,18 @@ function createBackup(deps) {
     // 先解压到临时目录校验（不直接解到目标，防恶意包写任意路径）
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-restore-'));
     try {
+      // P3-1（外审 zx(9)）：zip-bomb 防护 —— 压缩包本体 >1GB 直接拒绝；
+      // 解压累计字节 >2GB 或条目数 >20000 立即中止（throw 使 tar.extract reject，
+      // 走下方 catch，不残留超大解压目录）
+      const MAX_BACKUP_FILE_BYTES = 1 * 1024 * 1024 * 1024;    // 压缩包本体上限 1GB
+      const MAX_RESTORE_BYTES = 2 * 1024 * 1024 * 1024;        // 解压总量上限 2GB
+      const MAX_RESTORE_ENTRIES = 20000;                       // 条目数上限
+      const backupSize = fs.statSync(backupFile).size;
+      if (backupSize > MAX_BACKUP_FILE_BYTES) {
+        dialog.showErrorBox(appName, '无效的备份包：文件超过 1GB（疑似非 DSH 备份或恶意构造）');
+        return;
+      }
+      let restoreBytes = 0, restoreEntries = 0;
       // v0.7.10：filter 跳过符号链接条目（SymbolicLink/Link）—— 旧版备份包或
       // 来源包若含 junction/符号链接，解压重建同样会 EPERM；链接指向可重建运行时，
       // 跳过安全（DSH 启动时自愈）
@@ -228,7 +240,17 @@ function createBackup(deps) {
         file: backupFile,
         cwd: tmp,
         portable: true,
-        filter: (_path, entry) => entry && entry.type !== 'SymbolicLink' && entry.type !== 'Link',
+        filter: (_path, entry) => {
+          const isLink = entry && (entry.type === 'SymbolicLink' || entry.type === 'Link');
+          if (!isLink && entry) {
+            restoreEntries++;
+            restoreBytes += entry.size || 0;
+            if (restoreBytes > MAX_RESTORE_BYTES || restoreEntries > MAX_RESTORE_ENTRIES) {
+              throw new Error(`备份包解压超限（已解 ${restoreEntries} 条目 / ${(restoreBytes / (1024 * 1024)).toFixed(1)}MB），已中止（防解压炸弹）`);
+            }
+          }
+          return !isLink;
+        },
       });
 
       // T4：校验 manifest（格式/版本），不存在则拒绝（防随意 tar 包）

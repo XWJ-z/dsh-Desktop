@@ -31,6 +31,11 @@ function createCustomPrompts(deps) {
 
   const DEFAULT_CAT = '我的';
 
+  // P3-2（外审 zx(9)）：长度上限 —— 防恶意/误操作写入超大文件
+  const MAX_NAME_LEN = 100;                 // 名称 ≤ 100 字符
+  const MAX_CONTENT_LEN = 50 * 1024;        // 内容 ≤ 50KB
+  const MAX_HINT_LEN = 500;                 // hint ≤ 500 字符（提示文案）
+
   function file() {
     return path.join(app.getPath('userData'), 'custom-prompts.json');
   }
@@ -92,9 +97,12 @@ function createCustomPrompts(deps) {
     const content = String((item && item.content) || '').trim();
     if (!name) return { ok: false, reason: 'empty-name' };
     if (!content) return { ok: false, reason: 'empty-content' };
+    // P3-2（外审 zx(9)）：长度上限校验（超限拒绝保存，防超大文件写盘）
+    if (name.length > MAX_NAME_LEN) return { ok: false, reason: 'name-too-long', max: MAX_NAME_LEN };
+    if (content.length > MAX_CONTENT_LEN) return { ok: false, reason: 'content-too-long', max: MAX_CONTENT_LEN };
     const lib = read();
     const cat = String((item && item.cat) || '').trim() || DEFAULT_CAT;
-    const hint = String((item && item.hint) || '').trim();
+    const hint = String((item && item.hint) || '').trim().slice(0, MAX_HINT_LEN);
     const today = new Date().toISOString().slice(0, 10);
     let savedItem;
     if (item && item.id && lib.items.some((it) => it.id === item.id)) {

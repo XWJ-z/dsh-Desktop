@@ -337,7 +337,14 @@ async function saveFromModal() {
     await loadCustom();
     showBannerCustom(wasEdit ? '✅ 已更新' : '✅ 已保存', true);
   } else {
-    showBannerCustom('保存失败：' + (res && res.reason ? res.reason : '未知错误'), false);
+    // P3-2（外审 zx(9)）：主进程长度校验的失败原因映射为可读文案
+    const reasonText = {
+      'empty-name': '名称不能为空',
+      'empty-content': '内容不能为空',
+      'name-too-long': `名称不能超过 ${res.max || 100} 字`,
+      'content-too-long': `内容不能超过 ${Math.round((res.max || 51200) / 1024)}KB`,
+    }[res && res.reason] || (res && res.reason ? res.reason : '未知错误');
+    showBannerCustom('保存失败：' + reasonText, false);
   }
 }
 

@@ -139,6 +139,9 @@ const runtimeApi = createDshRuntime({
   appendLog, pushStage, pushProgress, dirSizeMB, logPath,
   resolveRunner, trackChild,
   npmInstallTimeoutMs: NPM_INSTALL_TIMEOUT_MS,
+  // P1-2（外审 zx(9)）：晚绑定 updaterApi —— ensureDshRuntime 在启动时调用，
+  // 彼时 updaterApi 已组装（L390），避免模块组装循环依赖
+  fetchLatestDshInfo: () => updaterApi.fetchLatestDshInfo(),
 });
 const { readShellConfig, installedDshVersion, ensureDshRuntime, updateDshVersion } = runtimeApi;
 
@@ -285,12 +288,15 @@ function syncDshAppearance(mode) {
 // 仅面板打开时能读到选中态，面板关闭时轮询自动空转，开销可忽略。
 // v0.9.9（老大反馈：壳延迟大）：轮询 2500ms → 400ms —— 用户在 DSH 面板直接切外观时，
 // 壳（nativeTheme/菜单）最多 0.4s 内跟上（此前最长等 2.5s）。
+// v0.9.11（外审 zx(9) P2-1）：保留 400ms 快跟随（老大指令），但主窗口隐藏/
+// 最小化/销毁时跳过本轮（不执行 executeJavaScript，省 IPC/CPU）；恢复可见立即恢复。
 let dshThemeWatchTimer = null;
 function startDshThemeWatch() {
   if (dshThemeWatchTimer) return;
   dshThemeWatchTimer = setInterval(() => {
     const mw = mainWindow;
-    if (!mw || mw.isDestroyed()) return;
+    // P2-1：仅窗口可见时轮询（隐藏/最小化/销毁 → 空转跳过，不打扰且省资源）
+    if (!mw || mw.isDestroyed() || !mw.isVisible()) return;
     mw.webContents.executeJavaScript(`
       (() => {
         const sel = Array.from(document.querySelectorAll('button'))

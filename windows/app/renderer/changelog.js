@@ -28,10 +28,11 @@ async function init() {
   }
 
   const list = el('list');
-  // v0.9.9：只显示已发布版本（released=true）；服务端已按降序维护，这里再保险排序一次
-  const versions = data.versions
-    .filter((v) => v.released !== false)
-    .sort((a, b) => compareVersion(b.version, a.version));
+  // v0.9.9：只显示已发布版本（released=true）。
+  // P3-3（外审 zx(9)）：版本比较/排序已收敛到主进程 compareSemver（共享
+  // modules/semver.js，支持 -rc 预发布号语义），changelog:data 返回即降序，
+  // 渲染端不再自行实现 compareVersion（此前忽略预发布号，行为与主进程不一致）。
+  const versions = data.versions.filter((v) => v.released !== false);
 
   // v0.9.9：当前运行版本若未发布（内部测试版）→ 顶部提示
   const current = data.current;
@@ -63,15 +64,7 @@ async function init() {
   }).join('');
 }
 
-/** 语义化版本比较（仅 x.y.z 数字比较；返回 a 是否 ≥ b 用于降序排序） */
-function compareVersion(a, b) {
-  const pa = String(a).split('-')[0].split('.').map(Number);
-  const pb = String(b).split('-')[0].split('.').map(Number);
-  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
-    const x = pa[i] || 0, y = pb[i] || 0;
-    if (x !== y) return x - y;
-  }
-  return 0;
-}
+/** P3-3（外审 zx(9)）：版本比较已收敛到主进程共享 modules/semver.js，
+ *  changelog:data 返回即按 compareSemver 降序，此处不再重复实现 */
 
 init();

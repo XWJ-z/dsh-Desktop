@@ -26,6 +26,8 @@ function createMainWindowModule(deps) {
     injectDropHandler, // v0.9（T3）：拖拽文件入工作区监听
     getWebUrl, getIsQuitting, setQuitting, getMainWindow, setMainWindow,
   } = deps;
+  // P2-2（外审 zx(9)）：外部链接白名单（setWindowOpenHandler 用）
+  const { isAllowedExternalUrl } = require('../external-links');
 
   function attachWebDiagnostics(win, label) {
     win.webContents.on('did-start-loading', () => {
@@ -176,8 +178,10 @@ function createMainWindowModule(deps) {
     });
     attachWebDiagnostics(win, 'gui');
 
+    // P2-2（外审 zx(9)）：新窗口一律 deny；外部链接仅白名单域名可打开
+    // （DSH 页面 window.open / target=_blank 均经此，防注入恶意链接钓鱼）
     win.webContents.setWindowOpenHandler(({ url }) => {
-      if (/^https?:/i.test(url)) shell.openExternal(url);
+      if (isAllowedExternalUrl(url)) shell.openExternal(url);
       return { action: 'deny' };
     });
     win.webContents.on('will-navigate', (event, url) => {

@@ -20,6 +20,7 @@
  */
 
 const path = require('node:path');
+const fs = require('node:fs');
 const { spawnSync } = require('node:child_process');
 
 const root = path.join(__dirname, '..');
@@ -31,6 +32,48 @@ process.env.ELECTRON_CACHE = process.env.ELECTRON_CACHE || path.join(root, '.ele
 process.env.ELECTRON_BUILDER_BINARIES_MIRROR =
   process.env.ELECTRON_BUILDER_BINARIES_MIRROR || 'https://npmmirror.com/mirrors/electron-builder-binaries/';
 process.env.ELECTRON_BUILDER_CACHE = process.env.ELECTRON_BUILDER_CACHE || path.join(root, '.builder-cache');
+
+/**
+ * P2-3（外审 zx(9) 2026-08-17）：代码签名配置就绪 —— 检测到完整签名凭据环境
+ * 变量时生成临时 azureSignOptions 配置（作为第二 --config 与 electron-builder.yml
+ * 深度合并），否则不签名（现状）。证书到位后只需设置环境变量即可一键启用：
+ *   AZURE_TENANT_ID / AZURE_CLIENT_ID / AZURE_CLIENT_SECRET   （Entra ID 认证，三者齐全才触发）
+ *   AZURE_TS_ENDPOINT        （可选，默认 https://eastus.trustedsigning.azure.net）
+ *   AZURE_TS_CERT_PROFILE    （必填：证书配置文件名称）
+ *   AZURE_TS_ACCOUNT         （必填：Trusted Signing 账户名）
+ * publisherName 固定 "zx(xwj)"（须与证书配置文件发行者一致）。
+ * @returns {string[]} 追加到 electron-builder CLI 的 --config 参数（无签名时为 []）
+ */
+function signingArgs() {
+  const hasAuth = !!(process.env.AZURE_TENANT_ID && process.env.AZURE_CLIENT_ID && process.env.AZURE_CLIENT_SECRET);
+  if (!hasAuth) return [];
+  const profile = process.env.AZURE_TS_CERT_PROFILE || '';
+  const account = process.env.AZURE_TS_ACCOUNT || '';
+  if (!profile || !account) {
+    console.warn('[installer] 检测到 AZURE_* 认证变量但缺少 AZURE_TS_CERT_PROFILE / AZURE_TS_ACCOUNT，本次不签名');
+    return [];
+  }
+  const signCfg = {
+    win: {
+      azureSignOptions: {
+        publisherName: 'zx(xwj)',
+        endpoint: process.env.AZURE_TS_ENDPOINT || 'https://eastus.trustedsigning.azure.net',
+        certificateProfileName: profile,
+        codeSigningAccountName: account,
+      },
+    },
+  };
+  const signFile = path.join(root, 'build', 'sign-options.generated.json');
+  try {
+    fs.mkdirSync(path.dirname(signFile), { recursive: true });
+    fs.writeFileSync(signFile, JSON.stringify(signCfg, null, 2), 'utf8');
+  } catch (err) {
+    console.warn(`[installer] 生成签名配置失败，本次不签名：${err.message}`);
+    return [];
+  }
+  console.log('[installer] 已启用 Azure Trusted Signing 代码签名');
+  return ['--config', signFile];
+}
 
 function main() {
   // 确保内置 Node 运行时就绪（审查 H3：DSH 原生模块需真实 Node ABI）
@@ -50,7 +93,8 @@ function main() {
   }
 
   const cli = path.join(root, 'node_modules', 'electron-builder', 'out', 'cli', 'cli.js');
-  const args = ['--win', 'nsis', '--x64', '--config', path.join(root, 'electron-builder.yml')];
+  // P2-3：签名凭据齐全时追加签名配置（--config 可多次指定，electron-builder 深度合并）
+  const args = ['--win', 'nsis', '--x64', '--config', path.join(root, 'electron-builder.yml'), ...signingArgs()];
   console.log('[installer] 开始构建 NSIS 安装程序 …');
   console.log(`[installer] 命令：node ${cli} ${args.join(' ')}`);
   const result = spawnSync(process.execPath, [cli, ...args], {

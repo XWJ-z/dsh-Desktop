@@ -23,6 +23,8 @@ function registerIpc(deps) {
     // v0.9.5（T2）：自定义提示词 + （T3）公告条
     customPrompts, noticeApi,
   } = deps;
+  // P2-2（外审 zx(9)）：外部链接域名白名单 —— 渲染进程可达的 openExternal 一律过白名单
+  const { isAllowedExternalUrl } = require('./external-links');
 
   ipcMain.handle('dsh:version', () => app.getVersion());
   ipcMain.handle('dsh:installed-dsh-version', () => installedDshVersion());
@@ -92,10 +94,14 @@ function registerIpc(deps) {
   // v0.5.3：更新窗口 / 联系我们 IPC
   ipcMain.handle('update:query', () => queryUpdateInfo());
   // v0.8.1（T3）：更新日志窗口 —— 本地内置 CHANGELOG.json（离线可用）+ 当前版本
+  // P3-3（外审 zx(9)）：版本排序收敛到主进程 compareSemver（共享 modules/semver.js），
+  // 渲染端 changelog.js 不再自行实现（此前忽略 -rc 预发布号，语义不一致）
   ipcMain.handle('changelog:data', () => {
     try {
       const changelogData = require(path.join(app.getAppPath(), 'CHANGELOG.json'));
-      return { versions: changelogData.versions || [], current: app.getVersion() };
+      const versions = (changelogData.versions || []).slice()
+        .sort((a, b) => (compareSemver(b.version, a.version) < 0 ? -1 : 1));
+      return { versions, current: app.getVersion() };
     } catch {
       return { versions: [], current: app.getVersion() };
     }
@@ -178,8 +184,10 @@ function registerIpc(deps) {
     openUpdateWindow();
     return true;
   });
+  // P2-2（外审 zx(9)）：外部链接白名单 —— 渲染进程可达，仅放行白名单域名
+  // （github.com / deepseek.com / qq.com 及子域），防 DSH 页面注入恶意链接钓鱼
   ipcMain.handle('app:open-external', (_e, url) => {
-    if (typeof url === 'string' && /^https?:/i.test(url)) shell.openExternal(url);
+    if (isAllowedExternalUrl(url)) shell.openExternal(url);
     return true;
   });
 }

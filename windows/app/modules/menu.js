@@ -92,7 +92,11 @@ function createMenu(deps) {
           // 恢复默认布局 = 宠物/工具箱回底部居中
           { label: '恢复默认布局', click: () => resetWebOpenBtnLayout() },
           { type: 'separator' },
-          { label: '开发者工具', accelerator: 'F12', click: () => { const mw = getMainWindow(); if (mw) mw.webContents.toggleDevTools(); } },
+          // v0.9.11（外审 zx(9) P3-4）：生产构建（app.isPackaged）隐藏开发者工具 ——
+          // 打包产物无 F12；开发模式（npm start / npm run dev）保留调试入口
+          ...(!app.isPackaged ? [
+            { label: '开发者工具', accelerator: 'F12', click: () => { const mw = getMainWindow(); if (mw) mw.webContents.toggleDevTools(); } },
+          ] : []),
         ],
       },
       // v0.6.1（T-027）：设置菜单

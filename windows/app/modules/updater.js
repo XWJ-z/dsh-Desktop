@@ -17,7 +17,18 @@
  *  - shellUpdateUrls                三源 URL 表（main.js 常量注入）
  *  （v0.9.5 T3：公告已独立到 modules/notice.js（notice.json 唯一源），
  *   本模块不再承载公告解析/缓存）
+ *
+ * 外审 zx(9) 2026-08-17 整改：
+ *  - P1-1：版本比较收敛到 modules/semver.js（P3-3）；壳更新三源多数一致 +
+ *    壳内置期望 hash 台账（modules/shell-hashes.js）双保险 —— 防「同一信任域
+ *    投毒」（hash 与 URL 同源，单靠 SHA256 无法防）；版本比较不再内部实现。
+ *  - P1-2：DSH 升级链路附带 registry 返回的 dist.integrity（sha512），由
+ *    dsh-runtime 落盘核对（固定版本安装，不再无锁定 @latest）。
+ *  - P3-5：下载首 URL 与重定向目标强制 https。
  */
+
+const { compareSemver } = require('./semver');
+const { verifyKnownHash } = require('./shell-hashes');
 
 function createUpdater(deps) {
   const {
@@ -60,52 +71,30 @@ function createUpdater(deps) {
     });
   }
 
-  /** 查询 npm registry 上 DSH 最新版本（dist-tags.latest）；失败返回 null */
-  function fetchLatestDshVersion() {
+  /**
+   * 查询 npm registry 上 DSH 最新版本信息（dist-tags.latest + dist.integrity）。
+   * 返回 { version, integrity } 或 null（失败/超时/无 latest）。
+   *  - integrity：registry 下发的 tarball sha512（P1-2：供 dsh-runtime 固定版本
+   *    安装时落盘核对，避免「无版本锁定 + 不记录完整性」的供应链风险）；
+   *  - 注：Accept 精简头（install-v1）响应中每个版本均带 dist.integrity。
+   */
+  function fetchLatestDshInfo() {
     const cfg = readShellConfig();
     const pkgPath = cfg.dshPackage.replace('/', '%2f'); // scoped 包需编码 /
     const base = (cfg.registry || 'https://registry.npmmirror.com').replace(/\/$/, '');
     // P1-3：Accept 精简头只拉 dist-tags+版本摘要（几十 KB），避免全量元数据（5-20MB）
     return fetchJson(`${base}/${pkgPath}`, 8000, { Accept: 'application/vnd.npm.install-v1+json' })
-      .then((pkg) => pkg?.['dist-tags']?.latest ?? null);
+      .then((pkg) => {
+        const v = pkg?.['dist-tags']?.latest;
+        if (!v || typeof v !== 'string' || !pkg?.versions?.[v]) return null;
+        const dist = pkg.versions[v].dist || {};
+        return { version: v, integrity: String(dist.integrity || '') };
+      });
   }
 
-  /**
-   * 语义化比较（semver 2.0 子集），支持 -rc.x 预发布：
-   *  - 主版本号 x.y.z 数字比较；
-   *  - 预发布号按点分段比较，数字段数值比较、字母段字典序，段多者大；
-   *  - 无预发布号（正式版）> 有预发布号；
-   *  - 任一版本不是合法 semver（如 "latest"）→ 返回 0（无法比较，不误报）。
-   * 返回 1 / 0 / -1。
-   */
-  function compareSemver(a, b) {
-    const sa = String(a), sb = String(b);
-    if (!/^\d+\.\d+\.\d+/.test(sa) || !/^\d+\.\d+\.\d+/.test(sb)) return 0; // 非 semver 无法比较
-    const va = sa.split('-')[0].split('.').map(Number), vb = sb.split('-')[0].split('.').map(Number);
-    for (let i = 0; i < 3; i++) {
-      const x = va[i] || 0, y = vb[i] || 0;
-      if (x !== y) return x > y ? 1 : -1;
-    }
-    // 预发布号取首个 '-' 之后的全段（split 会切开 rc.6-alpha 这类复合号，故用 indexOf）
-    const ra = sa.includes('-') ? sa.slice(sa.indexOf('-') + 1) : '';
-    const rb = sb.includes('-') ? sb.slice(sb.indexOf('-') + 1) : '';
-    if (ra === '' && rb === '') return 0;
-    if (ra === '') return 1;                     // 正式版 > 预发布
-    if (rb === '') return -1;
-    const fa = ra.split('.'), fb = rb.split('.');
-    for (let i = 0; i < Math.max(fa.length, fb.length); i++) {
-      const xa = fa[i], xb = fb[i];
-      if (xa === undefined) return -1;           // 段少者小
-      if (xb === undefined) return 1;
-      const na = /^\d+$/.test(xa) ? Number(xa) : null;
-      const nb = /^\d+$/.test(xb) ? Number(xb) : null;
-      if (na !== null && nb !== null) {
-        if (na !== nb) return na > nb ? 1 : -1;  // 数字段数值比较（rc.10 > rc.9）
-      } else if (xa !== xb) {
-        return xa > xb ? 1 : -1;                 // 字母段字典序
-      }
-    }
-    return 0;
+  /** 查询 npm registry 上 DSH 最新版本号（dist-tags.latest）；失败返回 null */
+  function fetchLatestDshVersion() {
+    return fetchLatestDshInfo().then((info) => (info ? info.version : null));
   }
 
   /**
@@ -158,9 +147,12 @@ function createUpdater(deps) {
   function upgradeDshVersion() {
     const cfg = readShellConfig();
     const current = installedDshVersion() ?? cfg.dshVersion;
-    return fetchLatestDshVersion().then((latest) => {
+    return fetchLatestDshInfo().then((info) => {
+      const latest = info ? info.version : null;
       if (!latest || compareSemver(current, latest) >= 0) return { ok: false, reason: 'no-update' };
-      if (updateDshVersion(latest)) {
+      // P1-2：连同 registry 返回的 integrity 一并交给 updateDshVersion ——
+      // dsh-runtime 落盘记录，重启安装时核对（固定版本安装，不信任无锁定的 @latest）
+      if (updateDshVersion(latest, info.integrity)) {
         // 延迟 relaunch，给渲染端"已更新配置"提示留出展示时间（审查 v12 P0：恢复重启逻辑）
         setTimeout(() => { app.relaunch(); app.exit(0); }, 1500);
         return { ok: true, from: current, to: latest };
@@ -171,8 +163,14 @@ function createUpdater(deps) {
   }
 
   /**
-   * 查询壳最新版本（三源并发：并发请求全部更新源，取版本号最高者）。
-   * 返回 { version, download_urls, release_notes, force, hash, minVersion } 或 null（全部失败/超时静默）。
+   * 查询壳最新版本（三源并发：并发请求全部更新源）。
+   * 返回 { version, download_urls, release_notes, force, hash, minVersion, sourcesAgree }
+   * 或 null（全部失败/超时静默）。
+   *  - sourcesAgree：是否存在「≥2 个源返回相同版本且 hash 一致」的多数一致组
+   *    （P1-1：三源同属一个 GitHub repo 的三个镜像，不是独立信任域；多数一致
+   *    才能防「单源投毒」。自动下载仅在 sourcesAgree=true 时允许，见 doShellDownload）。
+   *  - 取版本号最高的**多数一致组**；若无任何多数一致组，退回版本号最高者
+   *    但标记 sourcesAgree=false（可提示更新，但拒绝自动下载）。
    * v0.7.10（29 建议 A）：新增 minVersion 字段 —— 低于该版本的旧客户端启动时强制提示升级
    * v0.9.5（T3）：公告已独立到 notice.json（modules/notice.js），version.json 不再承载 notices
    */
@@ -192,10 +190,24 @@ function createUpdater(deps) {
       .then((results) => {
         const valid = results.filter(Boolean);
         if (valid.length === 0) return null;
-        valid.sort((a, b) => (compareSemver(a.version, b.version) < 0 ? 1 : -1));
-        const best = valid[0];
+        // P1-1：按版本分组，组内 hash 去重后唯一数 ≤1 且源数 ≥2 → 多数一致组
+        const byVersion = new Map();
+        for (const r of valid) {
+          if (!byVersion.has(r.version)) byVersion.set(r.version, []);
+          byVersion.get(r.version).push(r);
+        }
+        const pick = (group) => ({
+          version: group[0].version,
+          agree: group.length >= 2 && new Set(group.map((r) => r.hash).filter(Boolean)).size <= 1,
+        });
+        const groups = [...byVersion.entries()].map(([, list]) => pick(list));
+        // 多数一致组中取版本最高者；无一致组 → 退回最高版本但 sourcesAgree=false
+        const agreed = groups.filter((g) => g.agree).sort((a, b) => (compareSemver(a.version, b.version) < 0 ? 1 : -1));
+        const chosen = agreed[0] || groups.sort((a, b) => (compareSemver(a.version, b.version) < 0 ? 1 : -1))[0];
+        const best = byVersion.get(chosen.version)[0];
+        best.sourcesAgree = !!chosen.agree;
         const detail = shellUpdateUrls.map((s, i) => `${s.name}=${results[i] ? results[i].version : '×'}`).join(', ');
-        appendLog('info', `版本检查：${valid.length}/${shellUpdateUrls.length} 源可达（${detail}），取最高 v${best.version}`);
+        appendLog('info', `版本检查：${valid.length}/${shellUpdateUrls.length} 源可达（${detail}），取 v${best.version}${best.sourcesAgree ? '' : '（源不一致，仅提示不自动下载）'}`);
         return best;
       });
   }
@@ -257,6 +269,13 @@ function createUpdater(deps) {
           if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
             res.resume();
             req.destroy();
+            // P3-5：重定向目标强制 https（防 https→http 降级投毒）
+            if (!/^https:\/\//i.test(res.headers.location)) {
+              cleanupTimer();
+              rmQuiet(part);
+              reject(new Error('重定向目标非 https，已拒绝'));
+              return;
+            }
             if (++redirects > MAX_REDIRECTS) {
               cleanupTimer();
               rmQuiet(part);
@@ -375,11 +394,30 @@ function createUpdater(deps) {
     if (!info) return { ok: false, reason: 'fetch-failed' };
     const current = app.getVersion();
     if (compareSemver(current, info.version) >= 0) return { ok: false, reason: 'no-update' };
+    // P1-1：多数一致信任门 —— 三源（jsDelivr/API/raw）同属一个 GitHub repo 镜像，
+    // 无 ≥2 源一致时拒绝自动下载（可提示有新版，但不自动拉包），防单源/CDN 投毒
+    if (!info.sourcesAgree) {
+      appendLog('warn', `版本源不一致，拒绝自动下载 v${info.version}（防投毒：仅提示不下载）`);
+      return {
+        ok: false,
+        reason: 'sources-disagree',
+        message: '更新源返回的版本/hash 不一致，已阻止自动下载（可能为镜像缓存差异或被劫持）。请稍后重试或到 GitHub Releases 手动下载。',
+      };
+    }
+    // P1-1：壳内置期望 hash 台账核对 —— 已发布版本 hash 必须与壳内置一致
+    const hashCheck = verifyKnownHash(info.version, info.hash);
+    if (!hashCheck.ok) {
+      appendLog('warn', hashCheck.message);
+      return { ok: false, reason: 'hash-mismatch', message: hashCheck.message };
+    }
 
     const dest = shellDownloadDest(info);
-    const urls = info.downloadUrls.length > 0
-      ? info.downloadUrls
-      : [`https://ghfast.top/https://github.com/XWJ-z/dsh-Desktop/releases/download/v${info.version}/DSH-Desktop-Setup-${info.version}.exe`];
+    // P3-5：下载 URL 强制 https（防 version.json 被投毒塞 http:// 明文下载）
+    let urls = (info.downloadUrls.length > 0 ? info.downloadUrls : [])
+      .filter((u) => /^https:\/\//i.test(String(u)));
+    if (urls.length === 0) {
+      urls = [`https://ghfast.top/https://github.com/XWJ-z/dsh-Desktop/releases/download/v${info.version}/DSH-Desktop-Setup-${info.version}.exe`];
+    }
     let lastErr = null;
     let lastUrl = null;
     for (const url of urls) {
@@ -429,6 +467,7 @@ function createUpdater(deps) {
 
   return {
     fetchJson,
+    fetchLatestDshInfo,       // P1-2：registry 最新版本 + integrity（供 dsh-runtime 固定版本安装）
     fetchLatestDshVersion,
     compareSemver,
     effectiveLatest,

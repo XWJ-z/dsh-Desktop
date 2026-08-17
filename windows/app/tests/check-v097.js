@@ -10,6 +10,16 @@
  *  3. 内置更新日志与 GitHub 不一致 → CHANGELOG.json 0.9.6 改为 version.json
  *     release_notes 12 条（与 GitHub Release body 同源）+ 新增 0.9.7 条目
  *
+ * v0.9.11 追加（外审 zx(9) 全量整改 10 项）：
+ *  8. updater.js 信任模型（P1-1 多数一致 + 内置 hash、P1-2 integrity、P3-5 https）
+ *  9. dsh-runtime.js 固定版本安装 + 安装记录核对（P1-2）
+ * 10. external-links.js / ipc.js / main-window.js 外部链接白名单（P2-2）
+ * 11. main.js 外观轮询仅窗口可见时执行（P2-1）
+ * 12. backup.js 解压总量/条目限制（P3-1）
+ * 13. custom-prompts.js / promptlib.js 长度上限（P3-2）
+ * 14. changelog.js 版本比较收敛共享模块（P3-3）
+ * 15. menu.js F12 生产禁用 / installer.js 签名配置就绪（P3-4 / P2-3）
+ *
  * 用法：node tests/check-v097.js
  */
 
@@ -193,12 +203,143 @@ function testPet() {
 }
 
 // ---------------------------------------------------------------------------
+// 8. updater.js —— P1-1 多数一致 + 内置 hash / P1-2 integrity / P3-5 https
+// ---------------------------------------------------------------------------
+function testUpdaterTrust() {
+  console.log('[8] updater.js 信任模型（P1-1/P1-2/P3-5）');
+  const src = read('modules/updater.js');
+  // P3-3：版本比较收敛到共享模块
+  ok(!/function compareSemver/.test(src), 'updater.js 不再内部实现 compareSemver（收敛共享模块）');
+  ok(src.includes('require(\'./semver\')'), 'updater.js require 共享 semver.js');
+  ok(src.includes('require(\'./shell-hashes\')'), 'updater.js require 内置 hash 台账');
+  // P1-1：多数一致
+  ok(src.includes('sourcesAgree'), 'fetchLatestShellVersion 返回 sourcesAgree 字段');
+  ok(src.includes('group.length >= 2'), '多数一致判定：≥2 源同版本');
+  ok(src.includes('new Set(group.map((r) => r.hash).filter(Boolean)).size <= 1'), '多数一致判定：组内 hash 去重唯一');
+  ok(src.includes('\'sources-disagree\''), '源不一致 → 拒绝自动下载（reason=sources-disagree）');
+  ok(src.includes('verifyKnownHash(info.version, info.hash)'), 'doShellDownload 核对壳内置期望 hash');
+  // P1-2：integrity
+  ok(src.includes('function fetchLatestDshInfo()'), 'fetchLatestDshInfo 已定义（版本+integrity）');
+  ok(src.includes('dist.integrity'), '从 registry dist.integrity 取 sha512');
+  ok(src.includes('updateDshVersion(latest, info.integrity)'), 'upgradeDshVersion 连同 integrity 落盘');
+  // P3-5：https 强制
+  ok(src.includes('/^https:\\/\\//i.test(String(u))'), '下载 URL 过滤强制 https');
+  ok(src.includes('/^https:\\/\\//i.test(res.headers.location)'), '重定向目标强制 https');
+}
+
+// ---------------------------------------------------------------------------
+// 9. dsh-runtime.js —— P1-2 固定版本安装 + 安装记录核对
+// ---------------------------------------------------------------------------
+function testRuntimePin() {
+  console.log('[9] dsh-runtime.js 固定版本安装（P1-2）');
+  const src = read('modules/dsh-runtime.js');
+  ok(src.includes('fetchLatestDshInfo'), 'deps 注入 fetchLatestDshInfo（晚绑定）');
+  ok(src.includes('cfg.dshPackage}@${info.version}'), 'latest 解析为精确版本再安装');
+  ok(src.includes('targetIntegrity'), '记录目标 integrity');
+  ok(src.includes('\'.installed.json\''), '安装记录文件 .installed.json');
+  ok(src.includes('function verifyInstallRecord()'), 'verifyInstallRecord 已定义');
+  ok(src.includes('安装记录异常'), '版本不一致启动告警文案');
+  ok(src.includes('updateDshVersion(newVersion, integrity)'), 'updateDshVersion 接收 integrity');
+}
+
+// ---------------------------------------------------------------------------
+// 10. external-links.js / ipc.js / main-window.js —— P2-2 外部链接白名单
+// ---------------------------------------------------------------------------
+function testExternalWhitelist() {
+  console.log('[10] 外部链接白名单（P2-2）');
+  const { ALLOWED_EXTERNAL_HOSTS, isAllowedExternalUrl } = require('../modules/external-links');
+  ok(ALLOWED_EXTERNAL_HOSTS.includes('github.com'), '白名单含 github.com');
+  ok(ALLOWED_EXTERNAL_HOSTS.includes('deepseek.com'), '白名单含 deepseek.com');
+  ok(ALLOWED_EXTERNAL_HOSTS.includes('qq.com'), '白名单含 qq.com');
+  ok(ALLOWED_EXTERNAL_HOSTS.includes('127.0.0.1'), '白名单含 127.0.0.1（宠物「网页打开」本地回环）');
+  ok(isAllowedExternalUrl('https://github.com/XWJ-z/dsh-Desktop'), 'github.com 放行');
+  ok(isAllowedExternalUrl('https://www.deepseek.com/'), 'www.deepseek.com 子域放行');
+  ok(isAllowedExternalUrl('http://127.0.0.1:3080'), '本地回环放行');
+  ok(!isAllowedExternalUrl('https://evil.example.com/'), '陌生域名拒绝');
+  ok(!isAllowedExternalUrl('https://github.com.evil.com/'), '伪装子域拒绝');
+  ok(!isAllowedExternalUrl('ftp://github.com/'), '非 http(s) 协议拒绝');
+  const ipcSrc = read('modules/ipc.js');
+  ok(ipcSrc.includes('isAllowedExternalUrl(url)'), 'ipc.js app:open-external 过白名单');
+  const mwSrc = read('modules/windows/main-window.js');
+  ok(mwSrc.includes('isAllowedExternalUrl(url)'), 'main-window.js setWindowOpenHandler 过白名单');
+}
+
+// ---------------------------------------------------------------------------
+// 11. main.js —— P2-1 外观轮询仅窗口可见时执行
+// ---------------------------------------------------------------------------
+function testThemeWatchVisible() {
+  console.log('[11] main.js 外观轮询可见性（P2-1）');
+  const src = read('main.js');
+  ok(src.includes('!mw.isVisible()'), '轮询回调检查窗口可见（隐藏/最小化跳过）');
+  ok(src.includes('}, 400);'), '仍保留 400ms 快跟随（老大指令）');
+}
+
+// ---------------------------------------------------------------------------
+// 12. backup.js —— P3-1 解压总量/条目限制
+// ---------------------------------------------------------------------------
+function testRestoreLimit() {
+  console.log('[12] backup.js 解压限制（P3-1）');
+  const src = read('modules/backup.js');
+  ok(src.includes('MAX_RESTORE_BYTES'), '解压总量上限定义');
+  ok(src.includes('MAX_RESTORE_ENTRIES'), '条目数上限定义');
+  ok(src.includes('restoreBytes > MAX_RESTORE_BYTES'), '解压超限中止判定（字节）');
+  ok(src.includes('restoreEntries > MAX_RESTORE_ENTRIES'), '解压超限中止判定（条目）');
+  ok(src.includes('防解压炸弹'), '超限提示文案');
+}
+
+// ---------------------------------------------------------------------------
+// 13. custom-prompts.js / promptlib.js —— P3-2 长度上限
+// ---------------------------------------------------------------------------
+function testPromptLength() {
+  console.log('[13] 自定义提示词长度上限（P3-2）');
+  const src = read('modules/custom-prompts.js');
+  ok(src.includes('MAX_NAME_LEN = 100'), '名称上限 100 字符');
+  ok(src.includes('MAX_CONTENT_LEN = 50 * 1024'), '内容上限 50KB');
+  ok(src.includes('\'name-too-long\''), '超长名称拒绝（name-too-long）');
+  ok(src.includes('\'content-too-long\''), '超长内容拒绝（content-too-long）');
+  const pjs = read('renderer/promptlib.js');
+  ok(pjs.includes('name-too-long'), '前端映射超长名称提示');
+  ok(pjs.includes('content-too-long'), '前端映射超长内容提示');
+}
+
+// ---------------------------------------------------------------------------
+// 14. changelog.js / ipc.js —— P3-3 版本比较收敛共享模块
+// ---------------------------------------------------------------------------
+function testSemverUnify() {
+  console.log('[14] 版本比较收敛（P3-3）');
+  const cljs = read('renderer/changelog.js');
+  ok(!cljs.includes('function compareVersion'), 'changelog.js 不再自行实现 compareVersion');
+  ok(!cljs.includes('compareVersion('), 'changelog.js 不再调用本地比较（排序移主进程）');
+  const ipcSrc = read('modules/ipc.js');
+  ok(ipcSrc.includes('compareSemver(b.version, a.version)'), 'ipc.js changelog:data 主进程按 compareSemver 排序');
+  const semver = require('../modules/semver');
+  ok(semver.compareSemver('0.9.6', '0.9.11') === -1, '共享 compareSemver 基本比较');
+  ok(semver.compareSemver('0.9.11-rc.1', '0.9.11') === -1, '共享 compareSemver 预发布 < 正式版');
+  ok(semver.compareSemver('0.9.11-rc.10', '0.9.11-rc.9') === 1, '共享 compareSemver rc.10 > rc.9');
+}
+
+// ---------------------------------------------------------------------------
+// 15. menu.js / electron-builder.yml / installer.js —— P3-4 / P2-3
+// ---------------------------------------------------------------------------
+function testDevtoolsAndSigning() {
+  console.log('[15] F12 生产禁用 + 签名配置就绪（P3-4/P2-3）');
+  const menuSrc = read('modules/menu.js');
+  ok(menuSrc.includes('!app.isPackaged'), 'menu.js F12 按 app.isPackaged 条件（生产隐藏）');
+  const yml = read('electron-builder.yml');
+  ok(!yml.includes('azureSignOptions:'), 'electron-builder.yml 不再内联签名配置（避免无证书构建报错）');
+  const inst = read('scripts/installer.js');
+  ok(inst.includes('function signingArgs()'), 'installer.js signingArgs 已定义');
+  ok(inst.includes('AZURE_TS_CERT_PROFILE'), '签名凭据检查 AZURE_TS_CERT_PROFILE');
+  ok(inst.includes('azureSignOptions'), 'installer.js 生成 azureSignOptions 配置');
+}
+
+// ---------------------------------------------------------------------------
 // 7. package.json 版本
 // ---------------------------------------------------------------------------
 function testVersion() {
   console.log('[7] package.json 版本');
   const pkg = JSON.parse(fs.readFileSync(path.join(APP, 'package.json'), 'utf8'));
-  ok(pkg.version === '0.9.10', `version = 0.9.10（实际 ${pkg.version}）`);
+  ok(pkg.version === '0.9.11', `version = 0.9.11（实际 ${pkg.version}）`);
 }
 
 // ---------------------------------------------------------------------------
@@ -212,6 +353,14 @@ async function main() {
   testChangelog();
   testPet();
   testVersion();
+  testUpdaterTrust();
+  testRuntimePin();
+  testExternalWhitelist();
+  testThemeWatchVisible();
+  testRestoreLimit();
+  testPromptLength();
+  testSemverUnify();
+  testDevtoolsAndSigning();
   console.log(`\n结果：${passed} 通过 / ${failed} 失败`);
   process.exit(failed === 0 ? 0 : 1);
 }

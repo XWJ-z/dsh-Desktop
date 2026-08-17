@@ -12,6 +12,16 @@
  *  - resolveRunner                Node 运行时解析（node-resolver 模块）
  *  - trackChild                   子进程跟踪（main.js 基础设施）
  *  - npmInstallTimeoutMs          安装超时上限（10 分钟）
+ *  - fetchLatestDshInfo           晚绑定注入（updater.js）：registry 最新版本 +
+ *    dist.integrity（P1-2：config dshVersion='latest' 时解析为精确版本安装）
+ *
+ * 外审 zx(9) 2026-08-17 P1-2 整改：
+ *  - 不再「无锁定安装 @latest」：dshVersion='latest' 时先查 registry 解析精确
+ *    版本，npm install 永远用 <pkg>@<精确版本>（依赖树可复现）；
+ *  - 安装完成后把 { version, integrity } 落盘 <dshenv>/.installed.json，
+ *    下次启动 readDshInstallRecord() 核对已装版本与记录一致（检测目录被替换/
+ *    篡改，不一致记日志告警）；
+ *  - updateDshVersion(newVersion, integrity) 一并落盘目标版本与 integrity。
  */
 
 function createDshRuntime(deps) {
@@ -19,6 +29,7 @@ function createDshRuntime(deps) {
     app, fs, path, os, spawn,
     appendLog, pushStage, pushProgress, dirSizeMB, logPath,
     resolveRunner, trackChild, npmInstallTimeoutMs,
+    fetchLatestDshInfo, // P1-2：晚绑定（main.js 组装，updaterApi 就绪后可调用）
   } = deps;
 
   /** 读取壳配置（app/config.json）：DSH 包名 + 版本号，用户改版本号即升级 DSH */
@@ -94,24 +105,68 @@ function createDshRuntime(deps) {
     return installed === cfg.dshVersion;
   }
 
+  /** P1-2：安装记录文件（<dshenv>/.installed.json）—— 版本 + integrity 落盘 */
+  function installRecordFile() {
+    return path.join(dshRuntimeDir(), '.installed.json');
+  }
+
+  /** P1-2：读取安装记录 { version, integrity, installedAt }；无记录返回 null */
+  function readDshInstallRecord() {
+    try {
+      return JSON.parse(fs.readFileSync(installRecordFile(), 'utf8'));
+    } catch {
+      return null;
+    }
+  }
+
+  /** P1-2：核对已装版本与安装记录一致（检测 dshenv 目录被替换/篡改） */
+  function verifyInstallRecord() {
+    const rec = readDshInstallRecord();
+    const installed = installedDshVersion();
+    if (!rec) return { ok: false, reason: 'no-record', installed };
+    if (installed !== rec.version) {
+      return { ok: false, reason: 'version-mismatch', installed, recorded: rec.version };
+    }
+    return { ok: true, installed, recorded: rec.version, integrity: rec.integrity || '' };
+  }
+
   /**
    * 确保 DSH 运行时已安装且版本匹配：缺失或版本不符时用内置 npm 执行
-   * `npm install --prefix <dshenv> <pkg>@<version>`（等价于 npx 拉取机制）。
+   * `npm install --prefix <dshenv> <pkg>@<精确版本>`（等价于 npx 拉取机制）。
    * 首次运行需要联网；安装完成后即离线可用。
+   * P1-2：config dshVersion='latest' 时先查 registry 解析精确版本（不无锁定
+   * @latest 安装），安装完成/升级目标均落盘 .installed.json 供启动核对。
    * @returns 安装后的 DSH 入口 bin.js
    */
-  function ensureDshRuntime() {
-    return new Promise((resolve, reject) => {
-      const cfg = readShellConfig();
-      if (dshUpToDate(cfg)) {
-        appendLog('info', `DSH 运行时已就绪：${cfg.dshPackage}@${installedDshVersion()}`);
-        pushStage('start');
-        resolve(installedDshBin());
-        return;
+  async function ensureDshRuntime() {
+    const cfg = readShellConfig();
+    if (dshUpToDate(cfg)) {
+      appendLog('info', `DSH 运行时已就绪：${cfg.dshPackage}@${installedDshVersion()}`);
+      pushStage('start');
+      // P1-2：启动核对安装记录（不一致记日志告警，不阻断启动）
+      const v = verifyInstallRecord();
+      if (!v.ok && v.reason === 'version-mismatch') {
+        appendLog('warn', `安装记录异常：已装 v${v.installed} ≠ 记录 v${v.recorded}（目录可能被替换，建议重新安装）`);
       }
+      return installedDshBin();
+    }
+    // P1-2：latest → 解析精确版本 + integrity（固定版本安装，依赖树可复现）
+    let spec = dshSpec(cfg);
+    let targetIntegrity = '';
+    if (cfg.dshVersion === 'latest') {
+      const info = fetchLatestDshInfo ? await fetchLatestDshInfo() : null;
+      if (!info) {
+        appendLog('error', 'DSH 运行时未安装且无法解析 registry 最新版本（网络不可达？）');
+        pushStage('install');
+        throw new Error('无法解析 DSH 最新版本（registry 不可达）。请检查网络后重试。');
+      }
+      spec = `${cfg.dshPackage}@${info.version}`;
+      targetIntegrity = info.integrity || '';
+      appendLog('info', `DSH 配置为 latest，已解析为精确版本 ${info.version} 安装（P1-2 固定版本）`);
+    }
+    return new Promise((resolve, reject) => {
       const runner = resolveRunner();
       const cli = npmCliJs();
-      const spec = dshSpec(cfg);
       appendLog('info', `DSH 运行时未满足要求（配置 ${spec}，实际 ${installedDshVersion() ?? '未安装'}）`);
       appendLog('info', '首次运行需要联网下载 DSH 运行时，请稍候…');
       pushStage('install');
@@ -122,6 +177,9 @@ function createDshRuntime(deps) {
       // 脚本（均自带 N-API 预编译，放行仅为保险）。
       // 同时写入 registry 配置：默认 npmmirror 镜像（国内可达），可被 config.json
       // 的 registry 字段覆盖；写 .npmrc 可让 npm 每次安装都命中同一镜像。
+      // 外审 zx(9) P1-2 评估：allow-scripts 保持白名单放行（非全开）—— koffi /
+      // node-pty 等原生依赖需 install 脚本落地预编译产物，白名单 5 个包均为
+      // DSH 官方依赖链，无法整体关闭；继续白名单是「可安装」与「最小放行」的平衡。
       const registry = cfg.registry || 'https://registry.npmmirror.com';
       try {
         // v0.7.3（T-034）：目录可能尚不存在（npm --prefix 安装时才创建），先建再写，
@@ -215,6 +273,17 @@ function createDshRuntime(deps) {
           reject(new Error('npm 安装成功但未找到 DSH 入口 bin.js，请检查配置的包名/版本。'));
           return;
         }
+        // P1-2：落盘安装记录（版本 + integrity），下次启动核对
+        try {
+          const rec = {
+            version: installedDshVersion(),
+            integrity: targetIntegrity,
+            installedAt: new Date().toISOString(),
+          };
+          fs.writeFileSync(installRecordFile(), JSON.stringify(rec, null, 2), 'utf8');
+        } catch (err) {
+          appendLog('warn', `写入安装记录失败（不影响运行）：${err.message}`);
+        }
         appendLog('info', `DSH 运行时安装完成：${cfg.dshPackage}@${installedDshVersion()}`);
         pushStage('start');
         resolve(bin);
@@ -222,14 +291,25 @@ function createDshRuntime(deps) {
     });
   }
 
-  /** 备份并改写 config.json 的 dshVersion；成功返回 true */
-  function updateDshVersion(newVersion) {
+  /** 备份并改写 config.json 的 dshVersion；成功返回 true。P1-2：一并落盘目标版本 + integrity */
+  function updateDshVersion(newVersion, integrity) {
     const file = path.join(app.getAppPath(), 'config.json');
     try {
       fs.copyFileSync(file, `${file}.bak`);          // 先备份
       const cfg = JSON.parse(fs.readFileSync(file, 'utf8'));
       cfg.dshVersion = newVersion;
       fs.writeFileSync(file, JSON.stringify(cfg, null, 2), 'utf8');
+      // P1-2：目标版本 + integrity 落盘（重启安装完成后与 .installed.json 核对）
+      try {
+        fs.mkdirSync(dshRuntimeDir(), { recursive: true });
+        fs.writeFileSync(installRecordFile(), JSON.stringify({
+          version: newVersion,
+          integrity: String(integrity || ''),
+          targetAt: new Date().toISOString(),
+        }, null, 2), 'utf8');
+      } catch (err) {
+        appendLog('warn', `写入安装目标记录失败（不影响配置更新）：${err.message}`);
+      }
       return true;
     } catch { return false; }
   }
@@ -245,6 +325,8 @@ function createDshRuntime(deps) {
     dshUpToDate,
     ensureDshRuntime,
     updateDshVersion,
+    readDshInstallRecord,   // P1-2：安装记录读取/核对（诊断/启动告警用）
+    verifyInstallRecord,
   };
 }
 
