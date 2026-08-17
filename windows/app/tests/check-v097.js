@@ -387,6 +387,7 @@ function testGlobalMemory() {
   ok(gms.includes('function ensureGuide()'), 'ensureGuide 引导检查（首次对话引导）');
   ok(gms.includes('DEFAULT_DSH_FIELDS'), '内置默认我的设定字段（我的名字/语气/默认角色）');
   ok(gms.includes('DEFAULT_FIELDS'), '内置默认用户设定字段');
+  ok(gms.includes('rolesDir'), 'data() 返回角色目录 rolesDir（v1.0.1：窗口左下角显示角色文件路径）');
   ok(gms.includes('function parse('), 'parse 区块化解析（自动识别 ## 标题）');
   ok(gms.includes('kind: \'long\''), '其他 ## 区块识别为长文本（kind=long）');
   ok(gms.includes('renderLong'), '长文本区块渲染');
@@ -399,7 +400,12 @@ function testGlobalMemory() {
   ok(rjs0.includes('默认角色') && rjs0.includes('f-select'), '默认角色字段为下拉选择（f-select）');
   ok(rjs0.includes('btn-add-field'), '窗口有「＋ 添加字段」按钮逻辑');
   ok(rjs0.includes('btn-add-dsh'), '窗口有「＋ 添加 DSH 设定」按钮逻辑');
-  ok(rjs0.includes('btn-add-role') && rjs0.includes('role-fields'), '窗口有 DSH 角色列表 + 添加角色按钮');
+  ok(rjs0.includes('btn-add-role') && rjs0.includes('role-tabs') && rjs0.includes('role-name') && rjs0.includes('role-body'),
+    'DSH 角色页：顶部 tab 选择（角色1/2/3/＋添加角色）+ 下方大输入区（v1.0.1 老大指令）');
+  ok(!rjs0.includes('role-fields') && !rjs0.includes('renderRoleFields'), '角色页不再用紧凑字段列表（v1.0.1 改 tab+大输入区）');
+  ok(rjs0.includes('path-memory') && rjs0.includes('path-roles'), '窗口左下角显示 记忆文件 + 角色文件 两个路径（v1.0.1）');
+  ok(rjs0.includes('btn-open-memory') && rjs0.includes('btn-open-roles') && rjs0.includes('openGlobalMemoryRoles'),
+    '两个按钮：记忆文件位置 / 角色文件位置（v1.0.1 老大指令）');
   const ghtml = read('renderer/global-memory.html');
   ok(ghtml.includes('dsh-view') && ghtml.includes('(DSH 视角)'), '标题红色标注（DSH 视角）（v0.9.16 老大指令）');
   ok(ghtml.includes('tip-red') && ghtml.includes('双击对话框选择角色') && ghtml.includes('默认角色请在[DSH角色中修改]'),
@@ -418,6 +424,9 @@ function testGlobalMemory() {
   ok(mainSrc1.includes('mw.isMinimized()'), 'P2-1：外观轮询最小化时跳过（isMinimized，外审 zx9）');
   const preloadSrc = read('preload.js');
   ok(preloadSrc.includes('getPathForFile 失败') && preloadSrc.includes('console.warn'), 'S13：getPathForFile 异常记录 warn（外审 zx29）');
+  ok(preloadSrc.includes('openGlobalMemoryRoles'), 'preload：openGlobalMemoryRoles API（v1.0.1：角色文件位置）');
+  const ipcSrc3 = read('modules/ipc.js');
+  ok(ipcSrc3.includes('memory:open-roles') && ipcSrc3.includes('roles'), 'IPC：memory:open-roles 打开角色目录（v1.0.1）');
   ok(rjs0.includes('guide-tip'), '窗口显示未配置引导提示条');
   ok(rjs0.includes('TIDY_PROMPT') && rjs0.includes('整理你的全局记忆，不要改变原意'), '保存后整理记忆提示词');
   ok(rjs0.includes('tidy-bar') && rjs0.includes('showTidyBar'), '保存后询问是否让 DSH 整理记忆');
@@ -695,7 +704,7 @@ $env:PATH = "..."
 function testVersion() {
   console.log('[7] package.json 版本');
   const pkg = JSON.parse(fs.readFileSync(path.join(APP, 'package.json'), 'utf8'));
-  ok(pkg.version === '0.9.16', `version = 0.9.16（实际 ${pkg.version}）`);
+  ok(pkg.version === '1.0.1', `version = 1.0.1（实际 ${pkg.version}）`);
 }
 
 // ---------------------------------------------------------------------------

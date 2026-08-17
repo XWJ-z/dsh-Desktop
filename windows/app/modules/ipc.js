@@ -168,6 +168,13 @@ function registerIpc(deps) {
     shell.openPath(path.dirname(globalMemory.file()));
     return true;
   });
+  // v1.0.1（老大指令）：全局记忆窗口底部「角色文件位置」—— 打开 ~/.dsh/roles（不存在则先创建）
+  ipcMain.handle('memory:open-roles', () => {
+    const dir = path.join(path.dirname(globalMemory.file()), 'roles');
+    try { fs.mkdirSync(dir, { recursive: true }); } catch { /* ignore */ }
+    shell.openPath(dir);
+    return true;
+  });
   // v0.9.13（老大反馈）：双击 DSH 输入框重选角色 —— 弹窗选角色并注入
   ipcMain.handle('role:choose', () => pickAndInjectRole());
   // 联系我们窗口：向渲染进程提供二维码路径与群号（文件路径经 IPC 传递最稳）

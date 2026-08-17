@@ -38,6 +38,7 @@ const SAVE_TIMEOUT_MS = 8000; // 保存超时兜底（任何挂起 8s 必恢复�
 let userFields = [];   // 用户设定 [{name,value}]
 let dshFields = [];    // DSH 设定 [{name,value}]
 let roleFields = [];   // DSH 角色 [{name,value}]（新对话时选择）
+let activeRole = 0;    // v1.0.1（老大指令）：DSH 角色页顶部 tab 当前选中
 let sections = [];     // 其他 ## 区块 [{title, body}]
 let activeKey = USERS_KEY;
 let fileExists = false;
@@ -114,13 +115,17 @@ function renderRight() {
     return;
   }
   if (activeKey === ROLES_KEY) {
-    head.innerHTML = 'DSH 角色 <span class="tag">角色 1/2/3 · 双击对话框切换 · 可增删</span>';
+    // v1.0.1（老大指令）：顶部 tab 选角色（角色1/2/3/＋添加角色），下方全是输入位置（角色名 + 定位/详细记忆），不再拥挤
+    head.innerHTML = 'DSH 角色 <span class="tag">顶部选择 · 下方输入 · 可增删</span>';
     body.innerHTML = `
-      <div class="guide-tip">💡 每个角色保存后会自动建立角色文件（~/.dsh/roles/），详细记忆写入角色文件避免 AGENTS.md 过大；想切换角色随时双击 DSH 输入框重选。默认角色请在下方「我的设定 → 默认角色」中选择（或修改本区块角色）。</div>
-      <div class="fields" id="role-fields"></div>
-      <button id="btn-add-role" class="add-field">＋ 添加角色</button>`;
-    renderRoleFields();
-    el('btn-add-role').addEventListener('click', () => addRow(roleFields, renderRoleFields));
+      <div class="guide-tip">💡 每个角色保存后自动建立角色文件（~/.dsh/roles/）；「我的设定 → 默认角色」选默认角色；双击 DSH 输入框可随时切换角色。</div>
+      <div class="role-tabs" id="role-tabs"></div>
+      <div class="role-edit">
+        <div class="role-edit-name"><span>角色名</span><input id="role-name" placeholder="如：学习导师" /></div>
+        <textarea id="role-body" class="sec-body" rows="12" placeholder="角色定位 / 详细记忆（保存后写入 ~/.dsh/roles/ 角色文件，DSH 切到此角色时按此扮演）…"></textarea>
+      </div>`;
+    renderRoleTabs();
+    renderRoleEdit();
     return;
   }
   const idx = sections.findIndex((s) => secKey(s) === activeKey);
@@ -194,7 +199,64 @@ function renderRows(listElId, arr) {
 
 function renderFields() { renderRows('fields', userFields); }
 function renderDshFields() { renderRows('dsh-fields', dshFields); }
-function renderRoleFields() { renderRows('role-fields', roleFields); }
+
+// ── v1.0.1（老大指令）：DSH 角色页 = 顶部 tab 选择角色 + 下方大输入区（不拥挤）──
+function renderRoleTabs() {
+  const tabs = el('role-tabs');
+  if (!tabs) return;
+  tabs.innerHTML = roleFields.map((r, i) => `
+    <div class="role-tab ${i === activeRole ? 'active' : ''}" data-i="${i}" title="点击选择此角色">
+      <span class="rt-name">${escapeHtml(r.name || '未命名')}</span>
+      <button class="rt-del" data-i="${i}" title="删除此角色">✕</button>
+    </div>`).join('')
+    + `<button class="role-add" id="btn-add-role">＋ 添加角色</button>`;
+  tabs.querySelectorAll('.role-tab').forEach((t) => {
+    const i = Number(t.dataset.i);
+    t.addEventListener('click', (e) => {
+      if (e.target.closest('.rt-del')) return; // 删除按钮单独处理
+      activeRole = i;
+      renderRoleTabs();
+      renderRoleEdit();
+    });
+  });
+  tabs.querySelectorAll('.rt-del').forEach((b) => {
+    b.addEventListener('click', (e) => {
+      e.stopPropagation();
+      roleFields.splice(Number(b.dataset.i), 1);
+      if (activeRole >= roleFields.length) activeRole = Math.max(0, roleFields.length - 1);
+      renderRoleTabs();
+      renderRoleEdit();
+    });
+  });
+  const add = el('btn-add-role');
+  if (add) add.addEventListener('click', addRole);
+}
+
+function addRole() {
+  let n = `角色 ${roleFields.length + 1}`;
+  let i = 1;
+  while (roleFields.some((r) => r.name === n)) { i++; n = `角色 ${i}`; }
+  roleFields.push({ name: n, value: '' });
+  activeRole = roleFields.length - 1;
+  renderRoleTabs();
+  renderRoleEdit();
+  const ni = el('role-name');
+  if (ni) { ni.focus(); ni.select(); }
+}
+
+function renderRoleEdit() {
+  const r = roleFields[activeRole];
+  const nameEl = el('role-name');
+  const bodyEl = el('role-body');
+  if (!nameEl || !bodyEl) return;
+  if (!r) { nameEl.value = ''; bodyEl.value = ''; nameEl.disabled = true; bodyEl.disabled = true; return; }
+  nameEl.disabled = false;
+  bodyEl.disabled = false;
+  nameEl.value = r.name || '';
+  bodyEl.value = r.value || '';
+  nameEl.oninput = () => { r.name = nameEl.value; renderRoleTabs(); };
+  bodyEl.oninput = () => { r.value = bodyEl.value; };
+}
 
 function addRow(arr, renderFn) {
   arr.push({ name: '', value: '' });
@@ -340,7 +402,9 @@ async function loadData() {
   sections = list
     .filter((s) => s.kind === 'long')
     .map((s) => ({ title: s.title, body: (s.body || []).join('\n') }));
-  el('path').textContent = filePath;
+  // v1.0.1（老大指令）：左下角显示 记忆文件 + 角色文件 两个路径
+  el('path-memory').textContent = filePath;
+  el('path-roles').textContent = (data && data.rolesDir) || '';
 }
 
 async function init() {
@@ -355,8 +419,12 @@ async function init() {
   }
   renderAll();
   el('btn-save').addEventListener('click', onSaveClick);
-  el('btn-open-folder').addEventListener('click', () => {
+  // v1.0.1（老大指令）：两个按钮 —— 记忆文件位置 / 角色文件位置
+  el('btn-open-memory').addEventListener('click', () => {
     if (dsh && dsh.openGlobalMemoryFolder) dsh.openGlobalMemoryFolder();
+  });
+  el('btn-open-roles').addEventListener('click', () => {
+    if (dsh && dsh.openGlobalMemoryRoles) dsh.openGlobalMemoryRoles();
   });
   // 保存后整理记忆确认条
   const tidyYes = el('tidy-yes');

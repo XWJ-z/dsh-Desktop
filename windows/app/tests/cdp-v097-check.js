@@ -182,7 +182,7 @@ async function main() {
     const ver = await cdp.send('Runtime.evaluate', {
       expression: 'window.dshDesktop.getVersion()', returnByValue: true, awaitPromise: true,
     });
-    ok(ver.result && ver.result.value === '0.9.16', `壳版本 = 0.9.16（实际 ${ver.result && ver.result.value}）`);
+    ok(ver.result && ver.result.value === '1.0.1', `壳版本 = 1.0.1（实际 ${ver.result && ver.result.value}）`);
 
     // ①.5 宠物注入正常（v0.9.10 间歇提示改动不破坏注入）+ 气泡元素存在
     // 注：injectPet 在 did-finish-load 后执行，需轮询等待注入完成
@@ -280,7 +280,10 @@ async function main() {
                 dshCount: dshRows.length,
                 hasAddDsh: !!document.getElementById('btn-add-dsh'),
                 hasGuideTip: !!document.querySelector('.guide-tip'),
-                path: (document.getElementById('path') || {}).textContent || '',
+                pathMemory: (document.getElementById('path-memory') || {}).textContent || '',
+                pathRoles: (document.getElementById('path-roles') || {}).textContent || '',
+                hasBtnMem: !!document.getElementById('btn-open-memory'),
+                hasBtnRoles: !!document.getElementById('btn-open-roles'),
               };
             })()`,
             returnByValue: true,
@@ -352,23 +355,26 @@ async function main() {
         while (Date.now() - tr < 5000) {
           const s = await memCdp.send('Runtime.evaluate', {
             expression: `(() => {
-              const rows = Array.from(document.querySelectorAll('#role-fields .row'));
+              const tabs = Array.from(document.querySelectorAll('#role-tabs .role-tab'));
               return {
-                hasRoleFields: !!document.getElementById('role-fields'),
-                roleCount: rows.length,
-                roleNames: rows.map((r) => (r.querySelector('.f-name') || {}).value || '').filter(Boolean),
+                hasRoleTabs: !!document.getElementById('role-tabs'),
+                roleCount: tabs.length,
+                roleNames: tabs.map((t) => (t.querySelector('.rt-name') || {}).textContent || '').filter(Boolean),
                 hasAddRole: !!document.getElementById('btn-add-role'),
+                hasRoleName: !!document.getElementById('role-name'),
+                hasRoleBody: !!document.getElementById('role-body'),
               };
             })()`,
             returnByValue: true,
           });
           rv = s.result && s.result.value;
-          if (rv && rv.hasRoleFields && rv.roleCount >= 1) break;
+          if (rv && rv.hasRoleTabs && rv.roleCount >= 1) break;
           await sleep(400);
         }
-        ok(!!rv && rv.hasRoleFields && rv.roleCount >= 1, `DSH 角色独立区块视图（${rv && rv.roleCount} 个角色）`);
-        ok(!!rv && rv.roleNames.includes('角色 1') && rv.roleNames.includes('角色 3'), '默认角色 1/2/3');
+        ok(!!rv && rv.hasRoleTabs && rv.roleCount >= 1, `DSH 角色 tab 视图（${rv && rv.roleCount} 个角色，v1.0.1）`);
+        ok(!!rv && rv.roleNames.includes('角色 1') && rv.roleNames.includes('角色 3'), '默认角色 tab：角色 1/2/3');
         ok(!!rv && rv.hasAddRole, '有「＋ 添加角色」按钮');
+        ok(!!rv && rv.hasRoleName && rv.hasRoleBody, '下方大输入区（角色名 + 定位/详细记忆 textarea，v1.0.1）');
         // v0.9.16（老大指令）：标题红色标注（DSH 视角）+ 红色提示移到窗口介绍下方、文案更新
         const tip = await memCdp.send('Runtime.evaluate', {
           expression: `(() => {
@@ -417,7 +423,9 @@ async function main() {
         }
         ok(!!sv && sv.hasTitle && sv.hasBody, '右侧显示区块标题输入框（可修改）+ 长文本内容');
         ok(!!sv && sv.title === '其他记忆', `标题可编辑且已回填（${sv && sv.title}）`);
-        ok(!!fv && /AGENTS\.md$/.test(fv.path), `窗口显示记忆文件路径（${fv && fv.path}）`);
+        ok(!!fv && /AGENTS\.md$/.test(fv.pathMemory), `窗口左下角显示记忆文件路径（${fv && fv.pathMemory}）`);
+        ok(!!fv && /roles$/.test(fv.pathRoles || ''), `窗口左下角显示角色文件路径（${fv && fv.pathRoles}，v1.0.1）`);
+        ok(!!fv && fv.hasBtnMem && fv.hasBtnRoles, '两个按钮：记忆文件位置 / 角色文件位置（v1.0.1 老大指令）');
       } catch (err) {
         ok(false, '全局记忆窗口内容断言异常：' + err.message);
       } finally {
@@ -469,7 +477,7 @@ async function main() {
     ok(!!cv && cv.r096 === true, 'changelog:data 0.9.6 released=true');
     ok(!!cv && cv.r098 === false, 'changelog:data 0.9.8（内部）released=false');
     ok(!!cv && cv.releasedCount === 12, `released=true 共 12 个（实际 ${cv && cv.releasedCount}）`);
-    ok(!!cv && cv.sortedFirst === '0.9.16', `changelog:data 降序首条 = 0.9.16（P3-3 共享比较，实际 ${cv && cv.sortedFirst}）`);
+    ok(!!cv && cv.sortedFirst === '1.0.1', `changelog:data 降序首条 = 1.0.1（P3-3 共享比较，实际 ${cv && cv.sortedFirst}）`);
 
     // ④ 日志：公告自动刷新已启动 + fetchLatest 已执行
     await sleep(1500); // 等 checkUpdatesOnStart 的 fetchLatest 落日志

@@ -473,7 +473,7 @@ function createGlobalMemory(deps) {
     }
   }
 
-  /** 读取窗口数据：头部 + 全部区块（用户/DSH/角色/长文本）+ 默认字段 + 文件路径 */
+  /** 读取窗口数据：头部 + 全部区块（用户/DSH/角色/长文本）+ 默认字段 + 文件路径 + 角色目录 */
   function data() {
     const raw = readRaw();
     const parsed = raw === null ? parse('') : parse(raw);
@@ -485,6 +485,7 @@ function createGlobalMemory(deps) {
       defaultDshFields: DEFAULT_DSH_FIELDS.slice(),
       defaultRoles: DEFAULT_ROLES.slice(),
       file: file(),
+      rolesDir: path.join(os.homedir(), '.dsh', ROLES_DIR), // v1.0.1（老大指令）：窗口左下角显示角色文件目录
     };
   }
 
