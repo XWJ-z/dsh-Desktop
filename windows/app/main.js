@@ -863,6 +863,9 @@ if (!gotLock) {
     }
     pushStage('check');
 
+    // v0.9.12（老大指令）：未配置全局记忆 → 插入引导句（DSH 第一次对话引导用户配置）
+    globalMemoryApi.ensureGuide();
+
     try {
       await spawnServer(resolvedPort);
       await waitForServer(DEFAULT_HOST, resolvedPort, SERVER_READY_TIMEOUT_MS);

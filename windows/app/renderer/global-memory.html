@@ -100,6 +100,29 @@
     }
     .group-label.role { margin-top: 14px; color: var(--brand); }
     .group-label .hint { font-weight: 400; color: var(--text-quaternary); margin-left: 8px; font-size: 11px; }
+    /* 未配置引导提示条 */
+    .guide-tip {
+      font-size: 12px; line-height: 1.7; color: var(--warn);
+      background: rgba(245,166,35,.08); border: 1px solid rgba(245,166,35,.3);
+      border-radius: var(--radius-btn); padding: 8px 12px; margin-bottom: 10px;
+    }
+    /* 保存后整理记忆确认条 */
+    .tidy-bar {
+      display: none; align-items: center; gap: 10px; margin-top: 10px;
+      font-size: 13px; color: var(--text-primary);
+      background: rgba(94,106,210,.08); border: 1px solid rgba(94,106,210,.35);
+      border-radius: var(--radius-btn); padding: 9px 14px;
+    }
+    .tidy-bar.show { display: flex; }
+    .tidy-bar .ask { flex: 1; }
+    .tidy-bar button {
+      padding: 6px 16px; border: none; border-radius: var(--radius-btn); cursor: pointer;
+      font-size: 12.5px; font-weight: 590;
+    }
+    .tidy-bar .tidy-yes { background: var(--brand); color: #fff; }
+    .tidy-bar .tidy-yes:hover { background: var(--accent-hover); }
+    .tidy-bar .tidy-no { background: var(--bg-hover); color: var(--text-secondary); }
+    .tidy-bar .tidy-no:hover { color: var(--text-primary); }
     /* 其他区块：标题可改 + 长文本 */
     .sec-title-input {
       display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
@@ -139,7 +162,7 @@
 </head>
 <body>
   <h1>🧠 全局记忆</h1>
-  <div class="subtitle">写入 <code>~/.dsh/AGENTS.md</code>，DSH 启动时自动读取。左边选类别（自动识别基础设定 / 各记忆区块），右边编辑内容；基础设定含「角色设定」可设置 DSH 扮演角色；区块标题可直接修改。覆盖已有内容保存时需二次确认。</div>
+  <div class="subtitle">写入 <code>~/.dsh/AGENTS.md</code>，DSH 启动时自动读取。左边选类别（用户设定 / DSH 设定 / 自动识别的各记忆区块），右边编辑内容；区块标题可直接修改。覆盖已有内容保存时需二次确认。</div>
   <div id="banner" class="banner"></div>
   <div class="layout">
     <div class="left" id="cats"></div>
@@ -152,6 +175,11 @@
     <span id="path" class="path"></span>
     <button id="btn-open-folder" class="btn ghost">打开文件位置</button>
     <button id="btn-save" class="btn">保存</button>
+  </div>
+  <div id="tidy-bar" class="tidy-bar">
+    <span id="tidy-ask" class="ask">要不要让 DSH 整理一下你的全局记忆？（不影响原意）</span>
+    <button id="tidy-yes" class="tidy-yes">立即整理</button>
+    <button id="tidy-no" class="tidy-no">不用</button>
   </div>
   <script src="global-memory.js"></script>
 </body>

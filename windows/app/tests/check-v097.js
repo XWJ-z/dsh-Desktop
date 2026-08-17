@@ -356,28 +356,35 @@ function testGlobalMemory() {
   const gms = read('modules/global-memory.js');
   ok(gms.includes('\'AGENTS.md\''), '记忆文件 = AGENTS.md');
   ok(gms.includes('os.homedir(), \'.dsh\''), '路径 ~/.dsh/AGENTS.md（DSH 自动读取）');
-  ok(gms.includes('基础设定（DSH-Desktop 图形化编辑）'), '基础设定区块标题');
-  ok(gms.includes('角色设定（DSH 扮演）'), '角色设定子组标题（DSH 扮演角色）');
-  ok(gms.includes('roleItems'), '解析支持角色字段 roleItems');
-  ok(gms.includes('DEFAULT_ROLES'), '内置默认角色字段 DEFAULT_ROLES');
-  ok(gms.includes('DEFAULT_FIELDS'), '内置默认字段 DEFAULT_FIELDS');
+  ok(gms.includes('用户设定') && gms.includes('DSH 设定'), '两个独立顶层区块：用户设定 / DSH 设定');
+  ok(gms.includes('LEGACY_SECTION'), '兼容旧「基础设定」容器（迁移为两个独立区块）');
+  ok(gms.includes('LEGACY_ROLE_TITLE'), '兼容旧「角色设定」子组（归入 DSH 设定）');
+  ok(gms.includes('kind: \'users\'') && gms.includes('kind: \'dsh\''), '用户/DSH 设定各自独立 kind');
+  ok(gms.includes('GUIDE_FIELD') && gms.includes('GUIDE_TEXT'), '未配置引导句定义（引导用户配置全局记忆）');
+  ok(gms.includes('function ensureGuide()'), 'ensureGuide 引导检查（首次对话引导）');
+  ok(gms.includes('DEFAULT_DSH_FIELDS'), '内置默认 DSH 设定字段（DSH 的名字/语气/角色）');
+  ok(gms.includes('DEFAULT_FIELDS'), '内置默认用户设定字段');
   ok(gms.includes('function parse('), 'parse 区块化解析（自动识别 ## 标题）');
   ok(gms.includes('kind: \'long\''), '其他 ## 区块识别为长文本（kind=long）');
-  ok(gms.includes('kind: \'fields\''), '基础设定识别为字段列表（kind=fields）');
   ok(gms.includes('renderLong'), '长文本区块渲染');
-  ok(gms.includes('你的称呼'), '默认字段含你的称呼（用户视角）');
+  ok(gms.includes('你的称呼'), '默认用户设定含你的称呼');
+  ok(gms.includes('\'DSH 的名字\''), '默认 DSH 设定含 DSH 的名字');
   const rjs0 = read('renderer/global-memory.js');
   ok(rjs0.includes('renderCats'), '窗口左侧类别列表（renderCats）');
   ok(rjs0.includes('renderRight'), '窗口右侧内容区（renderRight）');
+  ok(rjs0.includes('👤 用户设定') && rjs0.includes('🤖 DSH 设定'), '左侧 用户设定/DSH 设定 两个独立类别');
   ok(rjs0.includes('btn-add-field'), '窗口有「＋ 添加字段」按钮逻辑');
-  ok(rjs0.includes('btn-add-role'), '窗口有「＋ 添加角色」按钮逻辑（角色设定）');
-  ok(rjs0.includes('角色设定（DSH 扮演）'), '窗口角色设定子组');
+  ok(rjs0.includes('btn-add-dsh'), '窗口有「＋ 添加 DSH 设定」按钮逻辑');
+  ok(rjs0.includes('guide-tip'), '窗口显示未配置引导提示条');
+  ok(rjs0.includes('TIDY_PROMPT') && rjs0.includes('整理你的全局记忆，不要改变原意'), '保存后整理记忆提示词');
+  ok(rjs0.includes('tidy-bar') && rjs0.includes('showTidyBar'), '保存后询问是否让 DSH 整理记忆');
+  ok(rjs0.includes('injectPrompt'), '整理提示词经注入链路进 DSH 输入框');
   ok(!/window\.prompt\(/.test(rjs0), '不使用 window.prompt（沙箱渲染进程禁用，改界面内输入）');
   ok(rjs0.includes('sec-title'), '区块标题可修改（标题输入框）');
   ok(rjs0.includes('onSaveClick'), '保存走前端二次确认（onSaveClick）');
   ok(rjs0.includes('确认保存？'), '文件存在 → 按钮二次确认（防误覆盖）');
   ok(rjs0.includes('SAVE_TIMEOUT_MS') || rjs0.includes('保存超时'), '保存带超时兜底（绝不卡「保存中」）');
-  ok(rjs0.includes('collectPayload'), '保存收集字段+角色+区块');
+  ok(rjs0.includes('collectPayload'), '保存收集用户+DSH+区块');
   ok(rjs0.includes('saveGlobalMemory'), '保存调 saveGlobalMemory');
   ok(rjs0.includes('getGlobalMemory'), '读取调 getGlobalMemory');
   const ipcSrc2 = read('modules/ipc.js');
@@ -397,6 +404,12 @@ function testGlobalMemory() {
   ok(html0.includes('id="cats"') && html0.includes('id="right-body"'), '左右分栏布局（左类别 / 右内容）');
   ok(html0.includes('参考提示词库') || html0.includes('左边'), '布局说明');
   ok(html0.includes('自动识别'), '窗口说明自动识别 ## 区块');
+  ok(html0.includes('tidy-bar'), 'html 有整理记忆确认条容器');
+  const loadHtml = read('renderer/loading.html');
+  ok(loadHtml.includes('① 检查 DSH 组件'), '启动阶段①文案：检查 DSH 组件（老大反馈：运行时表述不清）');
+  ok(!loadHtml.includes('检查 DSH 运行时'), '旧的"检查 DSH 运行时"文案已移除');
+  const mainSrc = read('main.js');
+  ok(mainSrc.includes('ensureGuide()'), '启动时调用 ensureGuide（未配置插入引导句）');
   const bkSrc = read('modules/backup.js');
   ok(bkSrc.includes('AGENTS.md'), 'backup 显式记录全局记忆 AGENTS.md');
   ok(bkSrc.includes('fs.promises.cp(dshHome'), 'backup 整目录复制 ~/.dsh（含 AGENTS.md）');
@@ -421,12 +434,13 @@ async function testGlobalMemoryBehavior() {
   const d0 = api.data();
   ok(d0.exists === false, '首次 data.exists=false');
   ok(Array.isArray(d0.defaultFields) && d0.defaultFields.includes('你的称呼'), 'data 带默认字段');
-  const r1 = api.save({ fields: [{ name: '你的称呼', value: '小六' }], sections: [] });
+  const r1 = api.save({ users: [{ name: '你的称呼', value: '小六' }], dsh: [], sections: [] });
   ok(r1.ok === true && fs.existsSync(target), 'save 自动创建 AGENTS.md');
   const raw1 = fs.readFileSync(target, 'utf8');
   ok(raw1.includes('# AGENTS.md（全局记忆）'), '模板头部正确');
-  ok(raw1.includes('- 你的称呼：小六'), '基础设定字段写入');
+  ok(raw1.includes('## 用户设定') && raw1.includes('- 你的称呼：小六'), '用户设定独立区块写入');
   ok(raw1.includes('## 其他记忆'), '模板含其他记忆区');
+  ok(!raw1.includes('基础设定（DSH-Desktop 图形化编辑）'), '模板无旧「基础设定」容器');
   // 2) 自动识别：模拟老大式多区块 AGENTS.md（含列表/代码块/空行），parse 全识别
   const rich = `# AGENTS.md（全局记忆）
 
@@ -450,7 +464,7 @@ $env:PATH = "..."
 `;
   fs.writeFileSync(target, rich, 'utf8');
   const d2 = api.data();
-  ok(d2.exists === true && d2.hasBasic === false, '识别：无基础设定区块（hasBasic=false）');
+  ok(d2.exists === true, '识别：文件已存在');
   ok(Array.isArray(d2.sections) && d2.sections.length === 3, `自动识别 3 个 ## 区块（实际 ${d2.sections.length}）`);
   const secTitles = d2.sections.map((s) => s.title);
   ok(secTitles.includes('身份与称呼') && secTitles.includes('项目通用约定（老大指令）') && secTitles.includes('全局记忆指令'),
@@ -471,17 +485,20 @@ $env:PATH = "..."
   ok(raw2.includes('## 身份与称呼') && raw2.includes('我的姓名：**小六**'), '其他区块标题与内容保留');
   ok(raw2.includes('```powershell') && raw2.includes('$env:PATH = "..."'), '代码块原样保留（不破坏格式）');
   ok(raw2.includes('## 全局记忆指令'), '第三个区块保留');
-  ok(raw2.indexOf('## 身份与称呼') > raw2.indexOf('## 基础设定（DSH-Desktop 图形化编辑）'), '基础设定插在头部之后、其他区块之前');
+  ok(raw2.includes('## 用户设定'), '保存后生成独立「用户设定」顶层区块');
+  ok(raw2.indexOf('## 身份与称呼') > raw2.indexOf('## 用户设定'), '用户设定在头部之后、其他区块之前');
   // 4) 区块内容编辑：改长文本保存 → 文件更新
   const r3 = api.save({
-    fields: [{ name: '你的称呼', value: '小六' }],
+    users: [{ name: '你的称呼', value: '小六' }],
+    dsh: [],
     sections: d2.sections.map((s) => (s.title === '身份与称呼' ? { title: s.title, body: '- 我的姓名：**小六**（已更新）' } : { title: s.title, body: s.body.join('\n') })),
   });
   ok(r3.ok === true, '长文本编辑保存成功');
   ok(fs.readFileSync(target, 'utf8').includes('- 我的姓名：**小六**（已更新）'), '长文本区块内容更新生效');
   // 4.5) 标题修改（v0.9.12 修复：按序覆盖，旧标题消失 / 新标题生效 / 无重复副本）
   const r3b = api.save({
-    fields: [{ name: '你的称呼', value: '小六' }],
+    users: [{ name: '你的称呼', value: '小六' }],
+    dsh: [],
     sections: d2.sections.map((s) => (s.title === '身份与称呼' ? { title: '身份与称呼（改）', body: '- 我的姓名：**小六**' } : { title: s.title, body: s.body.join('\n') })),
   });
   ok(r3b.ok === true, '标题修改保存成功');
@@ -489,30 +506,56 @@ $env:PATH = "..."
   ok(raw3b.includes('## 身份与称呼（改）'), '新标题生效');
   ok(!raw3b.includes('## 身份与称呼\n') && !raw3b.includes('## 身份与称呼（改）\n\n## 身份与称呼（改）'), '旧标题消失且无重复副本');
   ok((raw3b.match(/## 身份与称呼/g) || []).length === 1, '身份与称呼相关区块仅 1 个');
-  // 4.6) 角色设定：save 带 roles → 基础设定区块内「### 角色设定（DSH 扮演）」子组；重读回填
+  // 4.6) DSH 设定独立顶层区块（v0.9.12 老大指令：删除"基础设定"容器）
+  //      save 带 dsh → 生成独立「## DSH 设定」区块；重读回填
   const r3c = api.save({
-    fields: [{ name: '你的称呼', value: '小六' }],
-    roles: [{ name: '角色 1', value: '资深 C++ 工程师' }, { name: '角色 2', value: '数据分析师' }],
+    users: [{ name: '你的称呼', value: '小六' }],
+    dsh: [{ name: 'DSH 的名字', value: '小鲸鱼' }, { name: '角色 1', value: '资深 C++ 工程师' }],
     sections: d2.sections.map((s) => ({ title: s.title, body: s.body.join('\n') })),
   });
-  ok(r3c.ok === true, '含角色设定保存成功');
+  ok(r3c.ok === true, '含 DSH 设定保存成功');
   const raw3c = fs.readFileSync(target, 'utf8');
-  ok(raw3c.includes('### 角色设定（DSH 扮演）'), '角色设定子组标题写入');
-  ok(raw3c.includes('- 角色 1：资深 C++ 工程师') && raw3c.includes('- 角色 2：数据分析师'), '角色字段写入');
+  ok(raw3c.includes('## 用户设定') && raw3c.includes('## DSH 设定'), '用户设定 / DSH 设定 两个独立顶层区块写入');
+  ok(!raw3c.includes('基础设定（DSH-Desktop 图形化编辑）'), '不再输出旧「基础设定」容器');
+  ok(raw3c.includes('- DSH 的名字：小鲸鱼') && raw3c.includes('- 角色 1：资深 C++ 工程师'), 'DSH 设定字段写入');
   const d3c = api.data();
-  const basic3c = d3c.sections.find((s) => s.title === '基础设定（DSH-Desktop 图形化编辑）');
-  ok(!!basic3c && Array.isArray(basic3c.roleItems) && basic3c.roleItems.length === 2
-    && basic3c.roleItems[0].name === '角色 1' && basic3c.roleItems[0].value === '资深 C++ 工程师', '角色设定解析回填（重开窗口仍在）');
-  // 4.7) 角色为空 → 不输出角色子组（保持文件简洁）
-  const r3d = api.save({ fields: [{ name: '你的称呼', value: '小六' }], roles: [], sections: [] });
-  ok(r3d.ok === true && !fs.readFileSync(target, 'utf8').includes('### 角色设定'), '角色为空不输出子组');
+  const usersSec3c = d3c.sections.find((s) => s.kind === 'users');
+  const dshSec3c = d3c.sections.find((s) => s.kind === 'dsh');
+  ok(!!usersSec3c && !!dshSec3c, '解析出 用户设定/DSH 设定 两个独立区块');
+  ok(Array.isArray(dshSec3c.fields) && dshSec3c.fields.length === 2
+    && dshSec3c.fields[0].name === 'DSH 的名字' && dshSec3c.fields[0].value === '小鲸鱼', 'DSH 设定解析回填（重开窗口仍在）');
+  // 4.7) DSH 设定为空 → 不输出 DSH 区块（保持文件简洁）
+  const r3d = api.save({ users: [{ name: '你的称呼', value: '小六' }], dsh: [], sections: [] });
+  ok(r3d.ok === true && !fs.readFileSync(target, 'utf8').includes('## DSH 设定'), 'DSH 设定为空不输出区块');
+  // 4.8) 旧格式迁移：文件含旧「## 基础设定」容器 + 「### 角色设定」→ 解析成 用户/DSH 两个独立区块
+  fs.writeFileSync(target, '# AGENTS.md\n\n## 基础设定（DSH-Desktop 图形化编辑）\n\n- 你的称呼：旧称呼\n\n### 角色设定（DSH 扮演）\n\n- 角色 1：旧角色\n', 'utf8');
+  const d3e = api.data();
+  const usersSec3e = d3e.sections.find((s) => s.kind === 'users');
+  const dshSec3e = d3e.sections.find((s) => s.kind === 'dsh');
+  ok(!!usersSec3e && usersSec3e.fields.some((it) => it.name === '你的称呼' && it.value === '旧称呼'),
+    '旧容器用户字段迁移到「用户设定」独立区块');
+  ok(!!dshSec3e && dshSec3e.fields.length === 1 && dshSec3e.fields[0].value === '旧角色',
+    '旧「角色设定」子组迁移为「DSH 设定」独立区块');
   // 5) 空字段名行过滤
-  const r4 = api.save({ fields: [{ name: '', value: '空名行' }, { name: '你的称呼', value: '李四' }], sections: [] });
+  const r4 = api.save({ users: [{ name: '', value: '空名行' }, { name: '你的称呼', value: '李四' }], dsh: [], sections: [] });
   ok(r4.ok === true && !fs.readFileSync(target, 'utf8').includes('- ：空名行'), '空字段名行被过滤');
   // 6) 无 ## 区块的文件 → sections 为空
   fs.writeFileSync(target, '只有一行没有区块标题\n', 'utf8');
   const d5 = api.data();
   ok(d5.sections.length === 0 && d5.head.includes('只有一行'), '无 ## 区块 → sections 空（内容归头部）');
+  // 7) 未配置引导（老大指令）：无文件 → ensureGuide 建模板+引导句；已配置 → 不插入；save 配置完成 → 删除引导句
+  fs.rmSync(target, { force: true });
+  const g1 = api.ensureGuide();
+  ok(g1.ok === true && g1.guided === true, '无文件 ensureGuide 创建模板并插入引导句');
+  ok(fs.readFileSync(target, 'utf8').includes('引导提示') && fs.readFileSync(target, 'utf8').includes('请在对话中引导用户配置全局记忆'),
+    '引导句写入文件');
+  const g2 = api.ensureGuide();
+  ok(g2.guided === false, '重复 ensureGuide 幂等（不重复插入）');
+  // 已配置（用户设定有值）→ ensureGuide 不插入
+  await api.save({ users: [{ name: '你的称呼', value: '小六' }], dsh: [], sections: [] });
+  ok(!fs.readFileSync(target, 'utf8').includes('引导提示'), '配置完成后引导句被删除');
+  const g3 = api.ensureGuide();
+  ok(g3.guided === false && !fs.readFileSync(target, 'utf8').includes('引导提示'), '已配置后 ensureGuide 不再插入');
   fs.rmSync(tmp, { recursive: true, force: true });
 }
 

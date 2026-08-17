@@ -20,31 +20,39 @@
 
 const FILE_NAME = 'AGENTS.md';
 
-/** 基础设定区块标题（字段列表模式；其余 ## 区块为长文本模式） */
-const SECTION_TITLE = '基础设定（DSH-Desktop 图形化编辑）';
+/** 两个独立顶层区块（v0.9.12 老大指令：用户设定 / DSH 设定 平级，删除"基础设定"容器） */
+const USER_SECTION = '用户设定';
+const DSH_SECTION = 'DSH 设定';
 
-/** 基础设定内的角色设定子标题（## 区块下的 ### 子组，字段形式，设置 DSH 角色） */
-const ROLE_TITLE = '角色设定（DSH 扮演）';
+/** 旧版「基础设定」容器标题（兼容迁移：解析时拆成 用户设定/DSH 设定 两个独立区块） */
+const LEGACY_SECTION = '基础设定（DSH-Desktop 图形化编辑）';
 
-/** 内置默认字段（首次/空区块时窗口初始行） */
-const DEFAULT_FIELDS = ['你的称呼', '你的身份/角色', '项目背景', '语言风格', '输出习惯', '常用约定'];
+/** 旧版角色设定子标题（兼容迁移：归入 DSH 设定） */
+const LEGACY_ROLE_TITLE = '角色设定（DSH 扮演）';
 
-/** 内置默认角色字段（首次/空区块时窗口初始行；可增删） */
-const DEFAULT_ROLES = ['角色 1'];
+/** 未配置引导句的字段名与内容（老大指令：第一次对话引导用户配置全局记忆） */
+const GUIDE_FIELD = '引导提示';
+const GUIDE_TEXT = '【请在对话中引导用户配置全局记忆，配置完成后删除此句】';
 
-/** 首次创建时的模板（头部 + 基础设定 + 角色设定 + 其他记忆区） */
+/** 内置默认用户设定字段（首次/空区块时窗口初始行） */
+const DEFAULT_FIELDS = ['你的称呼', '你的身份/角色', '项目背景', '常用约定'];
+
+/** 内置默认 DSH 设定字段（名字/语气/输出习惯/角色，可增删） */
+const DEFAULT_DSH_FIELDS = ['DSH 的名字', '语气风格', '输出习惯', '角色 1'];
+
+/** 首次创建时的模板（头部 + 用户设定 + DSH 设定 + 其他记忆区） */
 const TEMPLATE = `# AGENTS.md（全局记忆）
 
 > 此文件由 DSH-Desktop「全局记忆」窗口维护，DSH 会自动读取其中的内容作为长期记忆（无需手动发送）。
-> 「基础设定」请用窗口中的表单编辑；其他内容可自行追加到「其他记忆」区。
+> 「用户设定」与「DSH 设定」请用窗口中的表单编辑；其他内容可自行追加到「其他记忆」区。
 
-## ${SECTION_TITLE}
+## ${USER_SECTION}
 
 ${DEFAULT_FIELDS.map((f) => `- ${f}：`).join('\n')}
 
-### ${ROLE_TITLE}
+## ${DSH_SECTION}
 
-${DEFAULT_ROLES.map((f) => `- ${f}：`).join('\n')}
+${DEFAULT_DSH_FIELDS.map((f) => `- ${f}：`).join('\n')}
 
 ## 其他记忆
 
@@ -75,27 +83,45 @@ function createGlobalMemory(deps) {
 
   /**
    * 解析 AGENTS.md 为区块模型：
-   *  - head：第一个 `## ` 之前的头部原文（# 标题 + 说明，保留原样）；
-   *  - sections：[{ title, kind }] —— 基础设定 kind='fields'（items 基础字段行 +
-   *    roleItems 角色设定字段行，`### 角色设定（DSH 扮演）` 子组），
-   *    其他 `## xxxx` kind='long'（body 为区块内原文行，含空行/列表/代码块，保留格式）。
-   *  - 其他记忆区块（## 其他记忆）同样识别为 long 区块。
-   * @returns {{ head: string, sections: Array, hasBasic: boolean }}
+   *  - head：第一个 `## ` 之前的头部原文（保留原样）；
+   *  - sections：[{ title, kind }] —— 用户设定 kind='users'（fields 字段行 + guide 标记）、
+   *    DSH 设定 kind='dsh'（fields 字段行）、其他 `## xxxx` kind='long'（body 原文行）。
+   *  - 旧版「基础设定」容器 → 拆成 用户设定/DSH 设定 两个独立区块（迁移）。
+   * @returns {{ head: string, sections: Array }}
    */
   function parse(content) {
     const head = [];
     const sections = [];
-    let cur = null; // { title, kind, body:[] | items:[] | roleItems:[] }
+    let cur = null;
+    let legacy = null; // 旧容器缓冲区 { u, d, group }
     let seenSection = false;
     const lines = String(content || '').split(/\r?\n/);
+    const flushLegacy = () => {
+      if (legacy) {
+        sections.push(legacy.u, legacy.d);
+        legacy = null;
+      }
+    };
     for (const line of lines) {
       const t = /^##\s+(.+)$/.exec(line);
       if (t) {
+        flushLegacy();
         seenSection = true;
         const title = t[1].trim();
-        if (title === SECTION_TITLE) {
-          sections.push({ title, kind: 'fields', items: [], roleItems: [] });
+        if (title === USER_SECTION) {
+          sections.push({ title, kind: 'users', fields: [], guide: false });
           cur = sections[sections.length - 1];
+        } else if (title === DSH_SECTION) {
+          sections.push({ title, kind: 'dsh', fields: [] });
+          cur = sections[sections.length - 1];
+        } else if (title === LEGACY_SECTION) {
+          // 旧容器：拆成 用户设定 + DSH 设定 两个独立区块（内部 ### 子组路由）
+          legacy = {
+            u: { title: USER_SECTION, kind: 'users', fields: [], guide: false },
+            d: { title: DSH_SECTION, kind: 'dsh', fields: [] },
+            group: 'users',
+          };
+          cur = legacy.u;
         } else {
           sections.push({ title, kind: 'long', body: [] });
           cur = sections[sections.length - 1];
@@ -103,44 +129,65 @@ function createGlobalMemory(deps) {
         continue;
       }
       if (cur) {
-        if (cur.kind === 'fields') {
-          // ### 角色设定 子组：后续字段行归 roleItems
+        if (legacy) {
+          // 旧容器内部：### 子组路由 + 引导句 + 字段行
           const sub = /^###\s+(.+)$/.exec(line);
           if (sub) {
-            cur.roleMode = sub[1].trim() === ROLE_TITLE;
+            const st = sub[1].trim();
+            legacy.group = (st === USER_SECTION || st === LEGACY_ROLE_TITLE) ? 'dsh' : 'users';
+            if (st === USER_SECTION || st === DSH_SECTION || st === LEGACY_ROLE_TITLE) {
+              cur = legacy.group === 'dsh' ? legacy.d : legacy.u;
+            } else {
+              cur = legacy.u;
+            }
             continue;
           }
           const m = /^-\s*([^：:]+)[：:]\s*(.*)$/.exec(line);
           if (m) {
-            const item = { name: m[1].trim(), value: m[2].trim() };
-            if (cur.roleMode) cur.roleItems.push(item);
-            else cur.items.push(item);
+            const name = m[1].trim();
+            if (name === GUIDE_FIELD) { legacy.u.guide = true; continue; }
+            const item = { name, value: m[2].trim() };
+            if (legacy.group === 'dsh') legacy.d.fields.push(item);
+            else legacy.u.fields.push(item);
+          }
+        } else if (cur.kind === 'users' || cur.kind === 'dsh') {
+          const m = /^-\s*([^：:]+)[：:]\s*(.*)$/.exec(line);
+          if (m) {
+            const name = m[1].trim();
+            if (name === GUIDE_FIELD) { cur.guide = true; continue; }
+            cur.fields.push({ name, value: m[2].trim() });
           }
         } else {
           cur.body.push(line);
         }
       } else if (!seenSection) {
-        head.push(line); // 第一个 ## 之前 → 头部
+        head.push(line);
       }
     }
-    return { head: head.join('\n'), sections, hasBasic: sections.some((s) => s.kind === 'fields') };
+    flushLegacy();
+    return { head: head.join('\n'), sections };
   }
 
-  /** 渲染基础设定区块（基础字段 + 角色设定子组；顺序即写入顺序） */
-  function renderFields(items, roleItems) {
-    const lines = [`## ${SECTION_TITLE}`, ''];
-    (items || []).forEach((it) => {
+  /** 渲染用户设定区块（字段行；guide=true 时带未配置引导句） */
+  function renderUsers(fields, guide) {
+    const lines = [`## ${USER_SECTION}`, ''];
+    if (guide) lines.push(`- ${GUIDE_FIELD}：${GUIDE_TEXT}`);
+    (fields || []).forEach((it) => {
       const name = String(it.name || '').trim();
-      if (!name) return; // 空字段名丢弃
+      if (!name || name === GUIDE_FIELD) return;
       lines.push(`- ${name}：${String(it.value || '').trim()}`);
     });
-    const roles = (roleItems || []).filter((it) => String(it.name || '').trim() !== '');
-    if (roles.length > 0) {
-      lines.push(`### ${ROLE_TITLE}`, '');
-      roles.forEach((it) => {
-        lines.push(`- ${it.name.trim()}：${String(it.value || '').trim()}`);
-      });
-    }
+    return lines.join('\n');
+  }
+
+  /** 渲染 DSH 设定区块（字段行） */
+  function renderDsh(fields) {
+    const ds = (fields || []).filter((it) => String(it.name || '').trim() !== '');
+    if (ds.length === 0) return null; // 空则不输出（保持简洁）
+    const lines = [`## ${DSH_SECTION}`, ''];
+    ds.forEach((it) => {
+      lines.push(`- ${it.name.trim()}：${String(it.value || '').trim()}`);
+    });
     return lines.join('\n');
   }
 
@@ -153,60 +200,65 @@ function createGlobalMemory(deps) {
   }
 
   /**
-   * 重组完整文件：head + 基础设定区块（无则插入最前）+ 其他区块（按序）。
+   * 重组完整文件：head + 用户设定 + DSH 设定（两个独立顶层区块）+ 其他区块（按序）。
    * @param {string} head
-   * @param {Array} sections [{ title, kind, items?|roleItems?|body? }]
+   * @param {Array} sections [{ title, kind: 'users'|'dsh'|'long', fields?|guide?|body? }]
    */
   function render(head, sections) {
     const blocks = [];
-    let fieldsBlock = null;
+    let usersBlock = null;
+    let dshBlock = null;
     const others = [];
     for (const s of sections) {
-      if (s.kind === 'fields') {
-        fieldsBlock = renderFields(s.items || [], s.roleItems || []);
-      } else {
-        others.push(renderLong(s.title, s.body));
-      }
+      if (s.kind === 'users') usersBlock = renderUsers(s.fields || [], !!s.guide);
+      else if (s.kind === 'dsh') dshBlock = renderDsh(s.fields || []);
+      else if (s.kind === 'long') others.push(renderLong(s.title, s.body));
     }
-    if (fieldsBlock === null) fieldsBlock = renderFields([], []); // 确保基础设定始终存在
+    if (usersBlock === null) usersBlock = renderUsers([], false);
     const headText = String(head || '').trim() || templateHead().trim();
-    blocks.push(headText, fieldsBlock, ...others);
+    blocks.push(headText, usersBlock);
+    if (dshBlock) blocks.push(dshBlock);
+    blocks.push(...others);
     return blocks.join('\n\n') + '\n';
   }
 
   /**
-   * 保存：用窗口提交的字段（基础 + 角色）+ 区块内容重组文件。
-   * @param {{ fields?: Array, roles?: Array, sections?: Array }} payload
-   *  - fields: [{ name, value }]（基础设定）
-   *  - roles: [{ name, value }]（角色设定，DSH 扮演角色）
-   *  - sections: [{ title, body }]（其他长文本区块，窗口顺序）
+   * 保存：用窗口提交的用户/DSH 设定 + 区块内容重组文件。
+   * 配置完成（用户设定有非空值）→ 移除未配置引导句。
+   * @param {{ users?: Array, dsh?: Array, fields?: Array, roles?: Array, sections?: Array }} payload
    * @returns {{ ok: boolean, file: string, message?: string }}
    */
   function save(payload) {
     const p = payload || {};
-    // 基础设定字段（过滤空字段名）
     const clean = (arr) => (Array.isArray(arr) ? arr : [])
       .map((it) => ({ name: String((it && it.name) || '').trim(), value: String((it && it.value) || '').trim() }))
-      .filter((it) => it.name !== '');
-    const fields = clean(p.fields);
-    const roles = clean(p.roles);
+      .filter((it) => it.name !== '' && it.name !== GUIDE_FIELD);
+    // 兼容旧 payload 字段名（fields/roles → users/dsh）
+    const users = clean(p.users !== undefined ? p.users : p.fields);
+    const dsh = clean(p.dsh !== undefined ? p.dsh : p.roles);
+    // 配置完成判定：用户设定有非空值 → 不输出引导句
+    const configured = users.some((it) => it.value !== '');
+    const guide = !configured;
     // 其他长文本区块（窗口顺序；标题非空才保留）
     const longSections = (Array.isArray(p.sections) ? p.sections : [])
       .map((s) => ({ title: String((s && s.title) || '').trim(), body: String((s && s.body) || '') }))
       .filter((s) => s.title !== '');
     const raw = readRaw();
-    // 重组：首次用完整模板解析（含「其他记忆」区块），已有文件保留原头部与区块
+    // 重组：首次用完整模板解析，已有文件保留原头部与区块（旧「基础设定」容器自动迁移）
     const { head, sections } = raw === null ? parse(TEMPLATE) : parse(raw);
-    // v0.9.12（老大反馈：保存没写入）：按序覆盖 —— 窗口区块顺序 = 原文件区块顺序
-    //（窗口无排序功能），第 i 个长区块用窗口第 i 个提交值（标题与内容都可修改生效），
-    // 原文件没有的新区块追加末尾；避免按标题匹配导致「改标题后旧区块残留 + 新增重复」。
+    // v0.9.12（老大反馈：保存没写入）：按序覆盖 —— 窗口区块顺序 = 原文件区块顺序，
+    // 第 i 个长区块用窗口第 i 个提交值（标题与内容都可修改生效），原文件没有的新区块追加末尾。
     const merged = [];
-    let fieldsPlaced = false;
+    let usersPlaced = false;
+    let dshPlaced = false;
     let li = 0;
     for (const s of sections) {
-      if (s.kind === 'fields') {
-        merged.push({ title: SECTION_TITLE, kind: 'fields', items: fields, roleItems: roles });
-        fieldsPlaced = true;
+      if (s.kind === 'users') {
+        merged.push({ title: USER_SECTION, kind: 'users', fields: users, guide });
+        usersPlaced = true;
+      } else if (s.kind === 'dsh') {
+        merged.push({ title: DSH_SECTION, kind: 'dsh', fields: dsh });
+        dshPlaced = true;
       } else {
         const incoming = longSections[li] || null;
         li++;
@@ -217,9 +269,10 @@ function createGlobalMemory(deps) {
         });
       }
     }
-    if (!fieldsPlaced) merged.unshift({ title: SECTION_TITLE, kind: 'fields', items: fields, roleItems: roles });
+    if (!usersPlaced) merged.unshift({ title: USER_SECTION, kind: 'users', fields: users, guide });
+    if (!dshPlaced) merged.splice(merged.findIndex((s) => s.kind === 'users') + 1, 0, { title: DSH_SECTION, kind: 'dsh', fields: dsh });
     // 窗口新增区块（原文件区块数之后）追加末尾
-    const originalLong = sections.filter((s) => s.kind !== 'fields').length;
+    const originalLong = sections.filter((s) => s.kind === 'long').length;
     for (let i = originalLong; i < longSections.length; i++) {
       merged.push({ title: longSections[i].title, kind: 'long', body: longSections[i].body });
     }
@@ -238,22 +291,69 @@ function createGlobalMemory(deps) {
     }
   }
 
-  /** 读取窗口数据：头部 + 全部区块（含基础设定字段/角色）+ 默认字段 + 文件路径 */
+  /**
+   * 未配置引导（老大指令）：用户还没配置过全局记忆 → 在「用户设定」区块加引导句
+   * 【请在对话中引导用户配置全局记忆，配置完成后删除此句】，DSH 第一次对话时
+   * 会读到并主动引导。配置完成（用户设定有非空值）后 save() 自动删除该句。
+   * 每次启动调用，幂等：已配置或已有引导句则不重复插入。
+   * @returns {{ ok: boolean, guided: boolean, file: string }}
+   */
+  function ensureGuide() {
+    try {
+      const raw = readRaw();
+      let content;
+      let guided = false;
+      if (raw === null) {
+        // 首次：创建模板 + 引导句（插入用户设定区块）
+        const { head, sections } = parse(TEMPLATE);
+        content = render(head, sections.map((s) => (s.kind === 'users' ? { ...s, fields: [], guide: true } : s)));
+        guided = true;
+      } else {
+        const { head, sections } = parse(raw);
+        const usersSec = sections.find((s) => s.kind === 'users');
+        const configured = usersSec && usersSec.fields.some((it) => it.value !== '');
+        if (!configured && usersSec && !usersSec.guide) {
+          // 未配置且无引导句 → 插入
+          content = render(head, sections.map((s) => (s.kind === 'users' ? { ...s, guide: true } : s)));
+          guided = true;
+        } else {
+          return { ok: true, guided: false, file: file() };
+        }
+      }
+      const f = file();
+      fs.mkdirSync(path.dirname(f), { recursive: true });
+      const tmp = `${f}.tmp`;
+      fs.writeFileSync(tmp, content, 'utf8');
+      fs.renameSync(tmp, f);
+      appendLog(guided ? 'info' : 'debug', `全局记忆未配置引导句：${guided ? '已插入' : '已存在/无需'} → ${f}`);
+      return { ok: true, guided, file: f };
+    } catch (err) {
+      appendLog('error', `全局记忆引导检查失败：${err.message}`);
+      return { ok: false, guided: false, file: file(), message: err.message };
+    }
+  }
+
+  /** 读取窗口数据：头部 + 全部区块（用户/DSH/长文本）+ 默认字段 + 文件路径 */
   function data() {
     const raw = readRaw();
     const parsed = raw === null ? parse('') : parse(raw);
     return {
       exists: raw !== null,
-      hasBasic: parsed.hasBasic,
       head: parsed.head,
       sections: parsed.sections,
       defaultFields: DEFAULT_FIELDS.slice(),
-      defaultRoles: DEFAULT_ROLES.slice(),
+      defaultDshFields: DEFAULT_DSH_FIELDS.slice(),
       file: file(),
     };
   }
 
-  return { file, data, save, parse, DEFAULT_FIELDS, DEFAULT_ROLES, SECTION_TITLE, ROLE_TITLE };
+  return {
+    file, data, save, parse, ensureGuide,
+    DEFAULT_FIELDS, DEFAULT_DSH_FIELDS, USER_SECTION, DSH_SECTION, GUIDE_FIELD, GUIDE_TEXT,
+  };
 }
 
-module.exports = { createGlobalMemory, FILE_NAME, SECTION_TITLE, ROLE_TITLE, DEFAULT_FIELDS, DEFAULT_ROLES, TEMPLATE };
+module.exports = {
+  createGlobalMemory, FILE_NAME, USER_SECTION, DSH_SECTION, LEGACY_SECTION, LEGACY_ROLE_TITLE,
+  GUIDE_FIELD, GUIDE_TEXT, DEFAULT_FIELDS, DEFAULT_DSH_FIELDS, TEMPLATE,
+};

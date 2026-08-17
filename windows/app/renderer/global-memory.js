@@ -1,38 +1,42 @@
 'use strict';
 
 /**
- * global-memory.js — 全局记忆窗口脚本（v0.9.12 角色设定 + 前端确认版）
- * 布局参考提示词库：左边选类别（基础设定 / 各 ## 记忆区块），右边编辑内容。
- *  - 基础设定 → 两组动态字段列表：「你的信息」+「角色设定（DSH 扮演）」（均可增删）；
+ * global-memory.js — 全局记忆窗口脚本（v0.9.12 用户/DSH 独立区块版）
+ * 布局参考提示词库：左边选类别（用户设定 / DSH 设定 / 各 ## 记忆区块），右边编辑内容。
+ *  - 用户设定 / DSH 设定 是两个独立顶层区块（老大指令：删除"基础设定"容器），字段列表可增删；
  *  - 其他 ## 区块 → 标题可直接修改 + 长文本编辑（自动识别，格式原样保留）；
- *  - 覆盖确认在**前端**（保存按钮二次确认）—— 主进程 dialog 在子窗口上会挂起
- *    导致"保存中"卡死，故确认逻辑移到前端；保存带 8s 超时兜底，绝不卡按钮。
+ *  - 覆盖确认在**前端**（保存按钮二次确认）+ 8s 超时兜底；保存后可选让 DSH 整理记忆。
  */
 
 const el = (id) => document.getElementById(id);
 const dsh = window.dshDesktop;
 
-const BASIC_KEY = '__basic__';
-const SECTION_FULL = '基础设定（DSH-Desktop 图形化编辑）';
-const DEFAULT_FIELDS = ['你的称呼', '你的身份/角色', '项目背景', '语言风格', '输出习惯', '常用约定'];
-const DEFAULT_ROLES = ['角色 1'];
+// v0.9.12（老大指令）：用户设定 / DSH 设定 两个独立顶层区块（删除"基础设定"容器）
+const USERS_KEY = '__users__';
+const DSH_KEY = '__dsh__';
+const DEFAULT_FIELDS = ['你的称呼', '你的身份/角色', '项目背景', '常用约定'];
+const DEFAULT_DSH_FIELDS = ['DSH 的名字', '语气风格', '输出习惯', '角色 1'];
 const VALUE_HINTS = {
   你的称呼: '例：老大 / 张三',
   你的身份角色: '例：技术总监 / 项目负责人',
   项目背景: '例：DSH-Desktop（Electron 套壳），团队 4 人',
-  语言风格: '例：简洁、专业、中文回复',
-  输出习惯: '例：代码带注释、结论先行',
   常用约定: '例：有改必升版本号；开发日志必写',
+  'DSH 的名字': '例：小鲸鱼',
+  语气风格: '例：专业、简洁、中文',
+  输出习惯: '例：代码带注释、结论先行',
+  '角色 1': '例：资深 C++ 工程师',
 };
 const VALUE_HINT_FALLBACK = '填写内容…';
+const TIDY_PROMPT = '整理你的全局记忆，不要改变原意'; // v0.9.12：保存后可选让 DSH 整理记忆
 const SAVE_TIMEOUT_MS = 8000; // 保存超时兜底（任何挂起 8s 必恢复按钮）
 
-let fields = [];       // 你的信息 [{name,value}]
-let roleFields = [];   // 角色设定 [{name,value}]
+let userFields = [];   // 用户设定 [{name,value}]
+let dshFields = [];    // DSH 设定 [{name,value}]
 let sections = [];     // 其他 ## 区块 [{title, body}]
-let activeKey = BASIC_KEY;
+let activeKey = USERS_KEY;
 let fileExists = false;
 let filePath = '';
+let guidePending = false; // 未配置引导标记（文件用户设定区有引导句）
 let bannerTimer = null;
 let confirmTimer = null; // 保存二次确认计时
 
@@ -60,7 +64,8 @@ function valueHint(name) {
 // ── 左侧类别列表 ──
 function renderCats() {
   const cats = el('cats');
-  let html = `<div class="cat ${activeKey === BASIC_KEY ? 'active' : ''}" data-key="${BASIC_KEY}">📋 基础设定<span class="tag">字段</span></div>`;
+  let html = `<div class="cat ${activeKey === USERS_KEY ? 'active' : ''}" data-key="${USERS_KEY}">👤 用户设定<span class="tag">字段</span></div>`;
+  html += `<div class="cat ${activeKey === DSH_KEY ? 'active' : ''}" data-key="${DSH_KEY}">🤖 DSH 设定<span class="tag">字段</span></div>`;
   html += sections.map((s) => {
     const key = secKey(s);
     return `<div class="cat ${activeKey === key ? 'active' : ''}" data-key="${escapeHtml(key)}"><span class="sec-title">## ${escapeHtml(s.title || '未命名')}</span></div>`;
@@ -82,23 +87,27 @@ function secKey(s) {
 function renderRight() {
   const head = el('right-head');
   const body = el('right-body');
-  if (activeKey === BASIC_KEY) {
-    head.innerHTML = '基础设定 <span class="tag">你的信息 + 角色设定 · 可增删</span>';
+  if (activeKey === USERS_KEY) {
+    head.innerHTML = '用户设定 <span class="tag">关于你 · 可增删</span>';
     body.innerHTML = `
-      <div class="group-label">你的信息</div>
+      ${guidePending ? '<div class="guide-tip">💡 检测到未配置引导句：DSH 第一次对话会主动引导你配置全局记忆，配置保存后该提示自动移除。</div>' : ''}
       <div class="fields" id="fields"></div>
-      <button id="btn-add-field" class="add-field">＋ 添加字段</button>
-      <div class="group-label role">角色设定（DSH 扮演）</div>
-      <div class="fields" id="role-fields"></div>
-      <button id="btn-add-role" class="add-field">＋ 添加角色</button>`;
+      <button id="btn-add-field" class="add-field">＋ 添加字段</button>`;
     renderFields();
-    renderRoleFields();
-    el('btn-add-field').addEventListener('click', () => addRow(fields, renderFields));
-    el('btn-add-role').addEventListener('click', () => addRow(roleFields, renderRoleFields));
+    el('btn-add-field').addEventListener('click', () => addRow(userFields, renderFields));
+    return;
+  }
+  if (activeKey === DSH_KEY) {
+    head.innerHTML = 'DSH 设定 <span class="tag">DSH 的名字 / 语气 / 角色 · 可增删</span>';
+    body.innerHTML = `
+      <div class="fields" id="dsh-fields"></div>
+      <button id="btn-add-dsh" class="add-field">＋ 添加 DSH 设定</button>`;
+    renderDshFields();
+    el('btn-add-dsh').addEventListener('click', () => addRow(dshFields, renderDshFields));
     return;
   }
   const idx = sections.findIndex((s) => secKey(s) === activeKey);
-  if (idx < 0) { activeKey = BASIC_KEY; renderRight(); return; }
+  if (idx < 0) { activeKey = USERS_KEY; renderRight(); return; }
   const s = sections[idx];
   head.innerHTML = '记忆区块 <span class="tag">## 标题可改 · 长文本</span>';
   body.innerHTML = `
@@ -151,8 +160,8 @@ function renderRows(listElId, arr) {
   });
 }
 
-function renderFields() { renderRows('fields', fields); }
-function renderRoleFields() { renderRows('role-fields', roleFields); }
+function renderFields() { renderRows('fields', userFields); }
+function renderDshFields() { renderRows('dsh-fields', dshFields); }
 
 function addRow(arr, renderFn) {
   arr.push({ name: '', value: '' });
@@ -183,13 +192,13 @@ function collectPayload() {
       seen.add(s.title);
       return true;
     });
-  return { fields: clean(fields), roles: clean(roleFields), sections: cleanSections };
+  return { users: clean(userFields), dsh: clean(dshFields), sections: cleanSections };
 }
 
 /** 保存（覆盖确认在前端：文件已存在 → 按钮二次确认；首次直接保存） */
 async function doSave() {
   const payload = collectPayload();
-  if (payload.fields.length === 0 && payload.roles.length === 0 && payload.sections.length === 0) {
+  if (payload.users.length === 0 && payload.dsh.length === 0 && payload.sections.length === 0) {
     showBanner('没有可保存的内容（至少保留一个字段）', false);
     return;
   }
@@ -210,10 +219,38 @@ async function doSave() {
   if (res && res.ok) {
     try { await loadData(); renderAll(); } catch { /* ignore */ }
     showBanner('✅ 已保存（DSH 新会话自动生效）', true);
+    // v0.9.12（老大指令）：保存后询问是否让 DSH 整理记忆
+    showTidyBar();
   } else if (res && res.reason === 'cancelled') {
     showBanner('已取消保存（未改动文件）', false);
   } else {
     showBanner('保存失败：' + ((res && res.message) || '未知错误'), false);
+  }
+}
+
+/** 保存后询问是否让 DSH 整理全局记忆（注入提示词到 DSH 输入框） */
+function showTidyBar() {
+  const bar = el('tidy-bar');
+  if (!bar) return;
+  bar.classList.add('show');
+  const ask = el('tidy-ask');
+  if (ask) ask.textContent = '要不要让 DSH 整理一下你的全局记忆？（不影响原意）';
+}
+
+function hideTidyBar() {
+  const bar = el('tidy-bar');
+  if (bar) bar.classList.remove('show');
+}
+
+async function onTidy() {
+  if (!dsh || !dsh.injectPrompt) { hideTidyBar(); return; }
+  const res = await dsh.injectPrompt(TIDY_PROMPT);
+  hideTidyBar();
+  if (res && res.ok) {
+    showBanner('已把「整理你的全局记忆」填入 DSH 输入框，发送即可', true);
+  } else {
+    showBanner('已复制整理提示词，到 DSH 输入框粘贴发送（Ctrl+V）', false);
+    if (dsh.copyText) await dsh.copyText(TIDY_PROMPT);
   }
 }
 
@@ -243,21 +280,25 @@ async function loadData() {
   const data = await dsh.getGlobalMemory();
   filePath = (data && data.file) || '';
   fileExists = !!(data && data.exists);
-  const basic = data && data.sections.find((s) => s.title === SECTION_FULL);
-  if (basic && Array.isArray(basic.items) && basic.items.length > 0) {
-    fields = basic.items.map((it) => ({ name: it.name || '', value: it.value || '' }));
+  const list = (data && Array.isArray(data.sections)) ? data.sections : [];
+  // 用户设定 / DSH 设定 两个独立顶层区块
+  const usersSec = list.find((s) => s.kind === 'users');
+  const dshSec = list.find((s) => s.kind === 'dsh');
+  if (usersSec && Array.isArray(usersSec.fields) && usersSec.fields.length > 0) {
+    userFields = usersSec.fields.map((it) => ({ name: it.name || '', value: it.value || '' }));
   } else {
     const defs = (data && Array.isArray(data.defaultFields)) ? data.defaultFields : DEFAULT_FIELDS;
-    fields = defs.map((n) => ({ name: n, value: '' }));
+    userFields = defs.map((n) => ({ name: n, value: '' }));
   }
-  if (basic && Array.isArray(basic.roleItems) && basic.roleItems.length > 0) {
-    roleFields = basic.roleItems.map((it) => ({ name: it.name || '', value: it.value || '' }));
+  if (dshSec && Array.isArray(dshSec.fields) && dshSec.fields.length > 0) {
+    dshFields = dshSec.fields.map((it) => ({ name: it.name || '', value: it.value || '' }));
   } else {
-    const defs = (data && Array.isArray(data.defaultRoles)) ? data.defaultRoles : DEFAULT_ROLES;
-    roleFields = defs.map((n) => ({ name: n, value: '' }));
+    const defs = (data && Array.isArray(data.defaultDshFields)) ? data.defaultDshFields : DEFAULT_DSH_FIELDS;
+    dshFields = defs.map((n) => ({ name: n, value: '' }));
   }
-  sections = (data && Array.isArray(data.sections) ? data.sections : [])
-    .filter((s) => s.title !== SECTION_FULL)
+  guidePending = !!(usersSec && usersSec.guide);
+  sections = list
+    .filter((s) => s.kind === 'long')
     .map((s) => ({ title: s.title, body: (s.body || []).join('\n') }));
   el('path').textContent = filePath;
 }
@@ -267,8 +308,8 @@ async function init() {
   try {
     await loadData();
   } catch {
-    fields = DEFAULT_FIELDS.map((n) => ({ name: n, value: '' }));
-    roleFields = DEFAULT_ROLES.map((n) => ({ name: n, value: '' }));
+    userFields = DEFAULT_FIELDS.map((n) => ({ name: n, value: '' }));
+    dshFields = DEFAULT_DSH_FIELDS.map((n) => ({ name: n, value: '' }));
     sections = [];
   }
   renderAll();
@@ -276,6 +317,11 @@ async function init() {
   el('btn-open-folder').addEventListener('click', () => {
     if (dsh && dsh.openGlobalMemoryFolder) dsh.openGlobalMemoryFolder();
   });
+  // 保存后整理记忆确认条
+  const tidyYes = el('tidy-yes');
+  const tidyNo = el('tidy-no');
+  if (tidyYes) tidyYes.addEventListener('click', onTidy);
+  if (tidyNo) tidyNo.addEventListener('click', hideTidyBar);
 }
 
 init();

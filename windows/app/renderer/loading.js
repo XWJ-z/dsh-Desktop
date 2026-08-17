@@ -44,7 +44,7 @@ function setStage(stage) {
   // 安装阶段结束后清空下载进度
   if (stage !== 'install' && dlProgressEl) dlProgressEl.textContent = '';
 }
-setStage('check'); // 默认处于"检查 DSH 运行时"，即使阶段消息先于监听到达也能显示
+setStage('check'); // 默认处于"检查 DSH 组件"，即使阶段消息先于监听到达也能显示
 
 if (window.dshDesktop) {
   window.dshDesktop.getPort().then((port) => { if (port) portEl.textContent = port; });
