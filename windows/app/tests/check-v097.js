@@ -379,6 +379,11 @@ function testGlobalMemory() {
   ok(ipcSrc2.includes('将覆盖已有全局记忆内容'), 'ipc 保存有覆盖确认弹窗');
   ok(ipcSrc2.includes('\'cancelled\''), '取消返回 cancelled（不写盘）');
   ok(ipcSrc2.includes('defaultId: 0'), '确认弹窗默认选中「保存」（防误按取消）');
+  ok(ipcSrc2.includes('shell, dialog, path, fs'), 'ipc 解构含 dialog（修复：之前漏解构 dialog 导致保存异常卡死）');
+  ok(ipcSrc2.includes('appendLog'), 'ipc 解构含 appendLog（异常记录）');
+  ok(ipcSrc2.includes('catch (err)') && ipcSrc2.includes('保存全局记忆异常'), 'memory:save handler try/catch（绝不 reject 卡死前端）');
+  const rjs1 = read('renderer/global-memory.js');
+  ok(rjs1.includes('try {\n      res = await dsh.saveGlobalMemory') || /try\s*\{\s*res = await dsh\.saveGlobalMemory/.test(rjs1), '前端保存 await 有 try/catch（按钮不卡「保存中」）');
   const mw = read('modules/windows/misc-windows.js');
   ok(mw.includes('openGlobalMemoryWindow'), 'misc-windows 有全局记忆窗口');
   ok(mw.includes('\'global-memory.html\''), '窗口加载 global-memory.html');

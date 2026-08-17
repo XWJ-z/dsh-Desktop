@@ -214,7 +214,13 @@ async function init() {
     const btn = el('btn-save');
     btn.disabled = true;
     btn.textContent = '保存中…';
-    const res = await dsh.saveGlobalMemory(payload);
+    let res;
+    try {
+      res = await dsh.saveGlobalMemory(payload);
+    } catch (err) {
+      // v0.9.12（老大反馈：点保存一直"保存中"）：IPC 异常必须恢复按钮，不能卡死
+      res = { ok: false, message: String((err && err.message) || err || '内部错误') };
+    }
     btn.disabled = false;
     btn.textContent = '保存';
     if (res && res.ok) {

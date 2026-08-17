@@ -11,7 +11,8 @@
 
 function registerIpc(deps) {
   const {
-    ipcMain, app, clipboard, shell, path, fs,
+    ipcMain, app, clipboard, shell, dialog, path, fs, // dialog/appName：memory:save 覆盖确认弹窗
+    appendLog, // v0.9.12：memory:save 异常记录
     readShellConfig, installedDshVersion,
     fetchLatestDshVersion, fetchLatestShellVersion, compareSemver, effectiveLatest,
     queryUpdateInfo, upgradeDshVersion, downloadShellUpdate,
@@ -24,6 +25,7 @@ function registerIpc(deps) {
     customPrompts, noticeApi,
     // v0.9.12（老大指令）：全局记忆（读写 ~/.dsh/AGENTS.md + 打开编辑窗口）
     globalMemory, openGlobalMemoryWindow, getGlobalMemoryWin,
+    appName, // v0.9.12：覆盖确认弹窗标题
   } = deps;
   // P2-2（外审 zx(9)）：外部链接域名白名单 —— 渲染进程可达的 openExternal 一律过白名单
   const { isAllowedExternalUrl } = require('./external-links');
@@ -150,23 +152,30 @@ function registerIpc(deps) {
   ipcMain.handle('memory:open-window', () => { openGlobalMemoryWindow(); return true; });
   ipcMain.handle('memory:data', () => globalMemory.data());
   ipcMain.handle('memory:save', async (_e, payload) => {
-    // 覆盖确认（老大指令）：文件已存在 → 弹窗确认后才写盘
-    const existing = globalMemory.data();
-    if (existing && existing.exists) {
-      const owner = getGlobalMemoryWin && getGlobalMemoryWin() && !getGlobalMemoryWin().isDestroyed()
-        ? getGlobalMemoryWin()
-        : (getMainWindow() && !getMainWindow().isDestroyed() ? getMainWindow() : undefined);
-      const { response } = await dialog.showMessageBox(owner, {
-        type: 'warning',
-        title: appName,
-        message: '将覆盖已有全局记忆内容？',
-        detail: '保存会用当前表单/区块内容覆盖 ~/.dsh/AGENTS.md 中展示的内容（其余未展示部分保持不变）。',
-        buttons: ['保存', '取消'],
-        defaultId: 0, cancelId: 1, noLink: true, // defaultId=保存（老大反馈：误按取消导致没写入）
-      });
-      if (response !== 0) return { ok: false, reason: 'cancelled' };
+    try {
+      // 覆盖确认（老大指令）：文件已存在 → 弹窗确认后才写盘
+      const existing = globalMemory.data();
+      if (existing && existing.exists) {
+        const owner = getGlobalMemoryWin && getGlobalMemoryWin() && !getGlobalMemoryWin().isDestroyed()
+          ? getGlobalMemoryWin()
+          : (getMainWindow() && !getMainWindow().isDestroyed() ? getMainWindow() : undefined);
+        const { response } = await dialog.showMessageBox(owner, {
+          type: 'warning',
+          title: appName,
+          message: '将覆盖已有全局记忆内容？',
+          detail: '保存会用当前表单/区块内容覆盖 ~/.dsh/AGENTS.md 中展示的内容（其余未展示部分保持不变）。',
+          buttons: ['保存', '取消'],
+          defaultId: 0, cancelId: 1, noLink: true, // defaultId=保存（老大反馈：误按取消导致没写入）
+        });
+        if (response !== 0) return { ok: false, reason: 'cancelled' };
+      }
+      return globalMemory.save(payload || {});
+    } catch (err) {
+      // v0.9.12（老大反馈：点保存一直"保存中"）：handler 绝不 reject ——
+      // 之前 dialog 未解构抛 TypeError 导致 IPC reject，前端 await 无 catch 卡死按钮
+      appendLog('error', `保存全局记忆异常：${err.message}`);
+      return { ok: false, message: err.message };
     }
-    return globalMemory.save(payload || {});
   });
   ipcMain.handle('memory:open-folder', () => {
     shell.openPath(path.dirname(globalMemory.file()));
