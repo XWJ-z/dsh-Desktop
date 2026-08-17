@@ -358,26 +358,32 @@ function testGlobalMemory() {
   ok(gms.includes('os.homedir(), \'.dsh\''), '路径 ~/.dsh/AGENTS.md（DSH 自动读取）');
   ok(gms.includes('基础设定（DSH-Desktop 图形化编辑）'), '基础设定区块标题');
   ok(gms.includes('DEFAULT_FIELDS'), '内置默认字段 DEFAULT_FIELDS');
+  ok(gms.includes('function parse('), 'parse 区块化解析（自动识别 ## 标题）');
+  ok(gms.includes('kind: \'long\''), '其他 ## 区块识别为长文本（kind=long）');
+  ok(gms.includes('kind: \'fields\''), '基础设定识别为字段列表（kind=fields）');
+  ok(gms.includes('renderLong'), '长文本区块渲染');
   ok(gms.includes('你的称呼'), '默认字段含你的称呼（用户视角）');
-  ok(gms.includes('项目背景'), '默认字段含项目背景');
-  ok(gms.includes('items'), '字段列表 items（动态增删）');
-  ok(gms.includes('replaceSection'), '区块替换函数存在');
   const rjs0 = read('renderer/global-memory.js');
   ok(rjs0.includes('btn-add'), '窗口有「＋ 添加字段」按钮逻辑');
-  ok(rjs0.includes('＋ 添加字段') || rjs0.includes('addField'), '支持添加字段');
-  ok(rjs0.includes('del'), '支持删除字段行');
+  ok(rjs0.includes('btn-add-sec'), '窗口有「＋ 添加区块」按钮逻辑');
+  ok(rjs0.includes('sec-body'), '其他 ## 区块以长文本 textarea 编辑');
+  ok(rjs0.includes('sections'), '窗口维护区块列表（自动识别）');
   ok(rjs0.includes('saveGlobalMemory'), '保存调 saveGlobalMemory');
   ok(rjs0.includes('getGlobalMemory'), '读取调 getGlobalMemory');
+  const ipcSrc2 = read('modules/ipc.js');
+  ok(ipcSrc2.includes('将覆盖已有全局记忆内容'), 'ipc 保存有覆盖确认弹窗');
+  ok(ipcSrc2.includes('\'cancelled\''), '取消返回 cancelled（不写盘）');
   const mw = read('modules/windows/misc-windows.js');
   ok(mw.includes('openGlobalMemoryWindow'), 'misc-windows 有全局记忆窗口');
   ok(mw.includes('\'global-memory.html\''), '窗口加载 global-memory.html');
-  ok(read('renderer/global-memory.html').includes('id="list"'), '窗口有字段列表容器');
-  ok(read('renderer/global-memory.html').includes('btn-add'), '窗口有添加字段按钮');
+  ok(read('renderer/global-memory.html').includes('id="scroll"'), '窗口有区块滚动容器');
+  ok(read('renderer/global-memory.html').includes('自动识别'), '窗口说明自动识别 ## 区块');
   ok(!read('modules/backup.js').includes('global-memory.md'), 'backup 不再单独处理 global-memory.md（AGENTS.md 在 ~/.dsh 整目录备份内）');
 }
 
 // ---------------------------------------------------------------------------
-// 16.5 global-memory 行为测试（首次创建 / 动态字段增删持久化 / 区块替换保留 / 追加 / 防误解析）
+// 16.5 global-memory 行为测试（首次创建 / 自动识别 ## 区块 / 长文本保留格式 /
+//      字段增删持久化 / 空名过滤 / 无区块文件）
 // ---------------------------------------------------------------------------
 async function testGlobalMemoryBehavior() {
   console.log('[16.5] global-memory 行为');
@@ -389,57 +395,75 @@ async function testGlobalMemoryBehavior() {
     appendLog: () => {},
   });
   const target = path.join(tmp, '.dsh', 'AGENTS.md');
-  // 1) 首次：data 返回 exists=false + 默认字段；save 自动创建
+  // 1) 首次：data 返回 exists=false + 默认字段；save 自动创建模板
   const d0 = api.data();
   ok(d0.exists === false, '首次 data.exists=false');
-  ok(Array.isArray(d0.defaultFields) && d0.defaultFields.includes('你的称呼'), 'data 带默认字段（窗口初始行）');
-  const r1 = api.save([
-    { name: '你的称呼', value: '小六' },
-    { name: '你的身份/角色', value: '开发助手' },
-    { name: '语言风格', value: '简洁' },
-    { name: '我的微信号', value: 'wx-12345' }, // 自定义字段
-  ]);
+  ok(Array.isArray(d0.defaultFields) && d0.defaultFields.includes('你的称呼'), 'data 带默认字段');
+  const r1 = api.save({ fields: [{ name: '你的称呼', value: '小六' }], sections: [] });
   ok(r1.ok === true && fs.existsSync(target), 'save 自动创建 AGENTS.md');
   const raw1 = fs.readFileSync(target, 'utf8');
-  ok(raw1.includes('- 你的称呼：小六'), '你的称呼写入区块');
-  ok(raw1.includes('- 你的身份/角色：开发助手'), '身份角色写入区块');
-  ok(raw1.includes('- 我的微信号：wx-12345'), '自定义字段（我的微信号）写入区块');
+  ok(raw1.includes('# AGENTS.md（全局记忆）'), '模板头部正确');
+  ok(raw1.includes('- 你的称呼：小六'), '基础设定字段写入');
   ok(raw1.includes('## 其他记忆'), '模板含其他记忆区');
-  // 2) 解析回填：data.items 读回（含自定义字段，顺序保持）
-  const d1 = api.data();
-  ok(d1.exists === true && d1.hasSection === true, '保存后 data.exists=true / hasSection=true');
-  ok(Array.isArray(d1.items) && d1.items.length === 4, `字段列表 4 条（实际 ${d1.items.length}）`);
-  ok(d1.items[0].name === '你的称呼' && d1.items[0].value === '小六', '解析回填第一条正确');
-  ok(d1.items[3].name === '我的微信号' && d1.items[3].value === 'wx-12345', '自定义字段重开窗口仍在');
-  // 3) 区块替换：改一个字段 + 删一个 + 加一个，其他记忆区内容保留
-  fs.appendFileSync(target, '\n## 我的私有笔记\n\n- 只能我自己看的内容\n');
-  const r2 = api.save([
-    { name: '你的称呼', value: '小六' },
-    { name: '语言风格', value: '专业' },
-    { name: '常用工具', value: 'VS Code / Git' },
-  ]);
-  ok(r2.ok === true, '二次保存成功');
-  const raw2 = fs.readFileSync(target, 'utf8');
-  ok(raw2.includes('- 语言风格：专业'), '字段更新生效');
-  ok(!raw2.includes('我的微信号'), '删除字段后不再写入（你的身份/角色 也未保留）');
-  ok(raw2.includes('- 常用工具：VS Code / Git'), '新增字段写入');
-  ok(raw2.includes('## 我的私有笔记') && raw2.includes('只能我自己看的内容'), '其他区块内容原样保留（不破坏）');
-  // 4) 追加：文件无基础设定区块时 → 追加末尾
-  const custom = '# 用户自定义文件\n\n- 已有内容\n';
-  fs.writeFileSync(target, custom, 'utf8');
-  const r3 = api.save([{ name: '你的称呼', value: '张三' }]);
-  ok(r3.ok === true, '追加模式保存成功');
-  const raw3 = fs.readFileSync(target, 'utf8');
-  ok(raw3.startsWith('# 用户自定义文件') && raw3.includes('- 已有内容'), '原文件内容保留在开头');
-  ok(raw3.includes('- 你的称呼：张三'), '基础设定区块追加到末尾');
-  // 5) 空字段名行过滤（防脏数据）
-  const r4 = api.save([{ name: '', value: '空名行' }, { name: '你的称呼', value: '李四' }]);
-  ok(r4.ok === true, '含空字段名保存成功');
-  ok(!fs.readFileSync(target, 'utf8').includes('- ：空名行'), '空字段名行被过滤');
-  // 6) 不存在的区块标题（非本模块管理的 ## 标题）不影响解析
-  fs.writeFileSync(target, '## 身份与称呼\n\n- 我的姓名：**小六**\n', 'utf8');
+  // 2) 自动识别：模拟老大式多区块 AGENTS.md（含列表/代码块/空行），parse 全识别
+  const rich = `# AGENTS.md（全局记忆）
+
+## 身份与称呼
+
+- 我的姓名：**小六**
+- 对用户的称呼：**老大**
+
+## 项目通用约定（老大指令）
+
+- **开发日志必写**：每次开发后必须写开发日志。
+
+\`\`\`powershell
+# 1. git PATH
+$env:PATH = "..."
+\`\`\`
+
+## 全局记忆指令
+
+涉及 **stm32** 项目，必须先读取 .DSH/AGENTS.md 文件。
+`;
+  fs.writeFileSync(target, rich, 'utf8');
   const d2 = api.data();
-  ok(d2.items.length === 0, '其他 ## 区块（身份与称呼）不被误解析为基础设定');
+  ok(d2.exists === true && d2.hasBasic === false, '识别：无基础设定区块（hasBasic=false）');
+  ok(Array.isArray(d2.sections) && d2.sections.length === 3, `自动识别 3 个 ## 区块（实际 ${d2.sections.length}）`);
+  const secTitles = d2.sections.map((s) => s.title);
+  ok(secTitles.includes('身份与称呼') && secTitles.includes('项目通用约定（老大指令）') && secTitles.includes('全局记忆指令'),
+    '识别出 身份与称呼 / 项目通用约定 / 全局记忆指令');
+  ok(d2.sections.every((s) => s.kind === 'long'), '非基础设定区块均为长文本模式');
+  const sec1 = d2.sections.find((s) => s.title === '身份与称呼');
+  ok(Array.isArray(sec1.body) && sec1.body.join('\n').includes('我的姓名：**小六**'), '区块 body 保留原内容');
+  const sec2 = d2.sections.find((s) => s.title === '项目通用约定（老大指令）');
+  ok(sec2.body.join('\n').includes('```powershell') && sec2.body.join('\n').includes('$env:PATH'), '代码块原样识别保留');
+  // 3) 保存不破坏：只改基础设定字段，其他区块原样（格式/空行/代码块不变）
+  const r2 = api.save({
+    fields: [{ name: '你的称呼', value: '小六' }, { name: '我的微信号', value: 'wx-12345' }],
+    sections: d2.sections.map((s) => ({ title: s.title, body: s.body.join('\n') })),
+  });
+  ok(r2.ok === true, '保存成功');
+  const raw2 = fs.readFileSync(target, 'utf8');
+  ok(raw2.includes('- 你的称呼：小六') && raw2.includes('- 我的微信号：wx-12345'), '基础设定字段写入');
+  ok(raw2.includes('## 身份与称呼') && raw2.includes('我的姓名：**小六**'), '其他区块标题与内容保留');
+  ok(raw2.includes('```powershell') && raw2.includes('$env:PATH = "..."'), '代码块原样保留（不破坏格式）');
+  ok(raw2.includes('## 全局记忆指令'), '第三个区块保留');
+  ok(raw2.indexOf('## 身份与称呼') > raw2.indexOf('## 基础设定（DSH-Desktop 图形化编辑）'), '基础设定插在头部之后、其他区块之前');
+  // 4) 区块内容编辑：改长文本保存 → 文件更新
+  const r3 = api.save({
+    fields: [{ name: '你的称呼', value: '小六' }],
+    sections: d2.sections.map((s) => (s.title === '身份与称呼' ? { title: s.title, body: '- 我的姓名：**小六**（已更新）' } : { title: s.title, body: s.body.join('\n') })),
+  });
+  ok(r3.ok === true, '长文本编辑保存成功');
+  ok(fs.readFileSync(target, 'utf8').includes('- 我的姓名：**小六**（已更新）'), '长文本区块内容更新生效');
+  // 5) 空字段名行过滤
+  const r4 = api.save({ fields: [{ name: '', value: '空名行' }, { name: '你的称呼', value: '李四' }], sections: [] });
+  ok(r4.ok === true && !fs.readFileSync(target, 'utf8').includes('- ：空名行'), '空字段名行被过滤');
+  // 6) 无 ## 区块的文件 → sections 为空
+  fs.writeFileSync(target, '只有一行没有区块标题\n', 'utf8');
+  const d5 = api.data();
+  ok(d5.sections.length === 0 && d5.head.includes('只有一行'), '无 ## 区块 → sections 空（内容归头部）');
   fs.rmSync(tmp, { recursive: true, force: true });
 }
 

@@ -225,7 +225,7 @@ async function main() {
     const memWin = await waitTarget(SIM_DEBUG_PORT, (t) => /global-memory\.html/.test(t.url), 15_000);
     ok(!!memWin, '「🧠 全局记忆」点击打开编辑窗口（global-memory.html）');
     if (memWin && memWin.webSocketDebuggerUrl) {
-      // 窗口内：字段列表 + 添加按钮存在（图形化动态字段，而非裸文件）
+      // 窗口内：基础设定字段列表 + 其他 ## 区块自动识别（长文本）—— 页面加载异步，轮询等待就绪
       const memCdp = cdpConnect(memWin.webSocketDebuggerUrl);
       try {
         let fv = null;
@@ -233,24 +233,31 @@ async function main() {
         while (Date.now() - t1 < 10_000) {
           const f = await memCdp.send('Runtime.evaluate', {
             expression: `(() => {
-              const rows = Array.from(document.querySelectorAll('#list .row'));
+              const rows = Array.from(document.querySelectorAll('#fields .row'));
+              const secs = Array.from(document.querySelectorAll('#sections .sec'));
               return {
-                hasList: !!document.getElementById('list'),
+                hasFields: !!document.getElementById('fields'),
                 rowCount: rows.length,
                 names: rows.map((r) => (r.querySelector('.f-name') || {}).value || '').filter(Boolean),
-                hasAdd: !!document.getElementById('btn-add'),
+                hasAddField: !!document.getElementById('btn-add'),
+                hasAddSec: !!document.getElementById('btn-add-sec'),
+                secCount: secs.length,
+                secTitles: secs.map((s) => (s.querySelector('.sec-head') || {}).textContent || ''),
+                hasSecBody: secs.length > 0 && !!secs[0].querySelector('.sec-body'),
                 path: (document.getElementById('path') || {}).textContent || '',
               };
             })()`,
             returnByValue: true,
           });
           fv = f.result && f.result.value;
-          if (fv && fv.hasList && fv.rowCount >= 6) break;
+          if (fv && fv.hasFields && fv.rowCount >= 6) break;
           await sleep(500);
         }
-        ok(!!fv && fv.hasList && fv.rowCount >= 6, `全局记忆窗口字段列表（${fv && fv.rowCount} 行）`);
+        ok(!!fv && fv.hasFields && fv.rowCount >= 6, `全局记忆窗口基础设定字段列表（${fv && fv.rowCount} 行）`);
         ok(!!fv && fv.names.includes('你的称呼') && fv.names.includes('项目背景'), '默认字段含你的称呼/项目背景');
-        ok(!!fv && fv.hasAdd, '窗口有「＋ 添加字段」按钮');
+        ok(!!fv && fv.hasAddField && fv.hasAddSec, '窗口有「＋ 添加字段」和「＋ 添加区块」按钮');
+        ok(!!fv && fv.secCount >= 1 && fv.hasSecBody, `自动识别 ## 区块（${fv && fv.secCount} 个，长文本可编辑）`);
+        ok(!!fv && fv.secTitles.some((t) => t.includes('身份与称呼')), `识别出 身份与称呼 区块（${fv && fv.secTitles.join(' | ')}）`);
         ok(!!fv && /AGENTS\.md$/.test(fv.path), `窗口显示记忆文件路径（${fv && fv.path}）`);
       } catch (err) {
         ok(false, '全局记忆窗口内容断言异常：' + err.message);

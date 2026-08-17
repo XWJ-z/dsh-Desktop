@@ -23,7 +23,7 @@ function registerIpc(deps) {
     // v0.9.5（T2）：自定义提示词 + （T3）公告条
     customPrompts, noticeApi,
     // v0.9.12（老大指令）：全局记忆（读写 ~/.dsh/AGENTS.md + 打开编辑窗口）
-    globalMemory, openGlobalMemoryWindow,
+    globalMemory, openGlobalMemoryWindow, getGlobalMemoryWin,
   } = deps;
   // P2-2（外审 zx(9)）：外部链接域名白名单 —— 渲染进程可达的 openExternal 一律过白名单
   const { isAllowedExternalUrl } = require('./external-links');
@@ -146,10 +146,28 @@ function registerIpc(deps) {
     return true;
   });
   // v0.9.12（老大指令）：全局记忆 —— 读写 ~/.dsh/AGENTS.md（DSH 自动读取），
-  // 图形化表单编辑基础设定（区块级写回，不破坏其他内容）
+  // 图形化编辑：基础设定字段列表 + 自动识别所有 ## 区块长文本编辑
   ipcMain.handle('memory:open-window', () => { openGlobalMemoryWindow(); return true; });
   ipcMain.handle('memory:data', () => globalMemory.data());
-  ipcMain.handle('memory:save', (_e, form) => globalMemory.save(form || {}));
+  ipcMain.handle('memory:save', async (_e, payload) => {
+    // 覆盖确认（老大指令）：文件已存在 → 弹窗确认后才写盘
+    const existing = globalMemory.data();
+    if (existing && existing.exists) {
+      const owner = getGlobalMemoryWin && getGlobalMemoryWin() && !getGlobalMemoryWin().isDestroyed()
+        ? getGlobalMemoryWin()
+        : (getMainWindow() && !getMainWindow().isDestroyed() ? getMainWindow() : undefined);
+      const { response } = await dialog.showMessageBox(owner, {
+        type: 'warning',
+        title: appName,
+        message: '将覆盖已有全局记忆内容？',
+        detail: '保存会用当前表单/区块内容覆盖 ~/.dsh/AGENTS.md 中展示的内容（其余未展示部分保持不变）。',
+        buttons: ['保存', '取消'],
+        defaultId: 1, cancelId: 1, noLink: true,
+      });
+      if (response !== 0) return { ok: false, reason: 'cancelled' };
+    }
+    return globalMemory.save(payload || {});
+  });
   ipcMain.handle('memory:open-folder', () => {
     shell.openPath(path.dirname(globalMemory.file()));
     return true;

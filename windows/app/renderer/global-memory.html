@@ -23,14 +23,23 @@
     .banner.show { display: block; }
     .banner.ok { color: var(--success); background: rgba(16,185,129,.1); border: 1px solid rgba(16,185,129,.3); }
     .banner.fail { color: var(--warn); background: rgba(245,166,35,.1); border: 1px solid rgba(245,166,35,.3); }
-    /* 字段列表 */
-    .list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
-    .row {
-      display: flex; gap: 10px; align-items: stretch;
+    .scroll { flex: 1; overflow-y: auto; min-height: 0; display: flex; flex-direction: column; gap: 16px; }
+    /* 区块卡 */
+    .card {
       background: var(--bg-surface); border: 1px solid var(--border-standard);
-      border-radius: var(--radius-btn); padding: 10px 12px;
+      border-radius: var(--radius-card); padding: 12px 14px;
     }
-    .row:hover { border-color: rgba(94,106,210,.45); }
+    .card-title { font-size: 13px; font-weight: 590; color: var(--text-primary); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+    .card-title .tag {
+      font-size: 10.5px; font-weight: 400; color: var(--text-quaternary);
+      background: var(--bg-hover); border-radius: 999px; padding: 1px 8px;
+    }
+    /* 基础设定字段列表 */
+    .row {
+      display: flex; gap: 10px; align-items: stretch; margin-bottom: 8px;
+      background: var(--bg-input); border: 1px solid var(--border-standard);
+      border-radius: var(--radius-btn); padding: 8px 10px;
+    }
     .row .f-name {
       width: 148px; flex-shrink: 0; padding: 8px 10px;
       background: var(--bg-input); border: 1px solid var(--border-standard);
@@ -50,13 +59,23 @@
       color: var(--text-quaternary); font-size: 15px; border-radius: 8px;
     }
     .row .del:hover { color: #ff6b6b; background: rgba(255,107,107,.12); }
-    /* 添加字段 */
     .add {
-      padding: 9px 14px; border: 1px dashed var(--border-standard); border-radius: var(--radius-btn);
+      padding: 8px 14px; border: 1px dashed var(--border-standard); border-radius: var(--radius-btn);
       background: transparent; color: var(--text-secondary); cursor: pointer;
       font-size: 13px; font-weight: 590;
     }
     .add:hover { color: var(--brand); border-color: rgba(94,106,210,.55); background: var(--bg-hover); }
+    /* 其他 ## 区块（长文本） */
+    .sec-head { font-size: 12.5px; font-weight: 590; color: var(--brand); margin: 10px 0 6px; font-family: Consolas, "Courier New", monospace; }
+    .sec-body {
+      width: 100%; padding: 10px 12px; min-height: 120px; resize: vertical;
+      background: var(--bg-input); border: 1px solid var(--border-standard);
+      border-radius: var(--radius-btn); color: var(--text-primary);
+      font: 12.5px/1.7 Consolas, "Courier New", "Microsoft YaHei", monospace; outline: none;
+      white-space: pre; box-sizing: border-box;
+    }
+    .sec-body:focus { border-color: rgba(94,106,210,.55); }
+    .sec-empty { font-size: 12px; color: var(--text-quaternary); padding: 6px 2px; }
     .foot { display: flex; align-items: center; gap: 12px; margin-top: 14px; }
     .path { font-size: 11px; color: var(--text-quaternary); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .btn {
@@ -74,10 +93,9 @@
 </head>
 <body>
   <h1>🧠 全局记忆</h1>
-  <div class="subtitle">写入 <code>~/.dsh/AGENTS.md</code>，DSH 启动时自动读取（无需手动发送）。每条是「字段名 → 内容」；可点「＋ 添加字段」自定义任意条目（如微信、常用工具）。表单只管理「基础设定」区块，其他记忆内容不受影响。</div>
+  <div class="subtitle">写入 <code>~/.dsh/AGENTS.md</code>，DSH 启动时自动读取（无需手动发送）。「基础设定」按字段填写；下方自动识别记忆里的各个 <code>##</code> 区块，可直接修改长内容。覆盖已有内容保存时会弹窗确认。</div>
   <div id="banner" class="banner"></div>
-  <div class="list" id="list"></div>
-  <button id="btn-add" class="add">＋ 添加字段</button>
+  <div class="scroll" id="scroll"></div>
   <div class="foot">
     <span id="path" class="path"></span>
     <button id="btn-open-folder" class="btn ghost">打开文件位置</button>

@@ -837,9 +837,10 @@ if (!gotLock) {
       // v0.9.5：自定义提示词（T2）+ 公告模块（T3，notice:data 唯一源）
       customPrompts: customPromptsApi,
       noticeApi,
-      // v0.9.12：全局记忆（读写 AGENTS.md + 打开编辑窗口）
+      // v0.9.12：全局记忆（读写 AGENTS.md + 打开编辑窗口 + 覆盖确认宿主窗口）
       globalMemory: globalMemoryApi,
       openGlobalMemoryWindow,
+      getGlobalMemoryWin: () => globalMemoryWin,
     });
 
     resolvedPort = parsePortArg() ?? await pickPort(DEFAULT_PORT);
