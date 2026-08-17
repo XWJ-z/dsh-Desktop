@@ -327,6 +327,8 @@ async function main() {
                 dshCount: rows.length,
                 dshNames: names,
                 hasDefaultRoleSelect: !!(roleRow && roleRow.querySelector('select.f-select')),
+                roleRowHasNoDel: !!roleRow && !roleRow.querySelector('.del'), // v1.0.2c：默认角色不可删除
+                otherRowsHaveDel: rows.some((r) => (r.querySelector('.f-name') || {}).value !== '默认角色' && r.querySelector('.del')),
                 hasAddDsh: !!document.getElementById('btn-add-dsh'),
               };
             })()`,
@@ -339,6 +341,7 @@ async function main() {
         ok(!!dv && dv.hasDshFields && dv.dshCount >= 1, `我的设定独立区块视图（${dv && dv.dshCount} 个字段）`);
         ok(!!dv && dv.dshNames.includes('我的名字') && dv.dshNames.includes('默认角色'), '我的设定默认字段（我的名字/默认角色）');
         ok(!!dv && dv.hasDefaultRoleSelect, '默认角色为下拉选择（select）');
+        ok(!!dv && dv.roleRowHasNoDel === true && dv.otherRowsHaveDel === true, '「默认角色」行无删除按钮、其他字段行有（v1.0.2c 老大反馈）');
         ok(!!dv && dv.hasAddDsh, '有「＋ 添加 DSH 设定」按钮');
         // 点击「DSH 角色」类别 → 卡片列表式（每角色 = 角色名 + 文件全文大输入框，v1.0.2 老大指令 3）
         const roleCat = await memCdp.send('Runtime.evaluate', {

@@ -143,7 +143,8 @@ function renderAll() {
 }
 
 /** 通用字段行渲染（listElId：容器 id；arr：数据数组）。
- *  v0.9.13：「默认角色」字段渲染为下拉选择（选项 = DSH 角色区块的角色名）。 */
+ *  v0.9.13：「默认角色」字段渲染为下拉选择（选项 = DSH 角色区块的角色名）。
+ *  v1.0.2c（老大反馈）：「默认角色」字段**不可删除**（下拉是功能入口，误删后 DSH 没默认角色）。 */
 function renderRows(listElId, arr) {
   const wrap = el(listElId);
   const roleNames = roleFields.map((r) => String(r.name || '').trim()).filter(Boolean);
@@ -159,7 +160,7 @@ function renderRows(listElId, arr) {
     <div class="row" data-i="${i}">
       <input class="f-name" placeholder="字段名" value="${escapeHtml(it.name)}" />
       ${valueCtrl}
-      <button class="del" title="删除这一条">✕</button>
+      ${isRoleSelect ? '' : '<button class="del" title="删除这一条">✕</button>'}
     </div>`;
   }).join('');
   wrap.querySelectorAll('.row').forEach((row) => {
@@ -176,7 +177,8 @@ function renderRows(listElId, arr) {
     } else {
       value.addEventListener('input', () => { arr[i].value = value.value; });
     }
-    row.querySelector('.del').addEventListener('click', () => {
+    const delBtn = row.querySelector('.del');
+    if (delBtn) delBtn.addEventListener('click', () => {
       arr.splice(i, 1);
       renderRows(listElId, arr);
     });

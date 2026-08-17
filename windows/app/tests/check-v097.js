@@ -403,6 +403,8 @@ function testGlobalMemory() {
   ok(rjs0.includes('renderMemoList') && rjs0.includes('memo-list') && rjs0.includes('MEMO_KEY'),
     '全局记忆区块：合并所有 ## 区块的卡片列表（v1.0.2 老大指令 2）');
   ok(rjs0.includes('默认角色') && rjs0.includes('f-select'), '默认角色字段为下拉选择（f-select）');
+  ok(rjs0.includes('isRoleSelect ? \'\' : \'<button class="del"'), '「默认角色」字段行不渲染删除按钮（v1.0.2c 老大反馈：默认角色不能删除）');
+  ok(rjs0.includes('const delBtn = row.querySelector(\'.del\')') && rjs0.includes('if (delBtn)'), '删除按钮监听做空值保护（无删除按钮的行不报错）');
   ok(rjs0.includes('btn-add-field'), '窗口有「＋ 添加字段」按钮逻辑');
   ok(rjs0.includes('btn-add-dsh'), '窗口有「＋ 添加 DSH 设定」按钮逻辑');
   ok(rjs0.includes('btn-add-role') && rjs0.includes('role-cards') && rjs0.includes('role-card-name') && rjs0.includes('role-card-body'),
