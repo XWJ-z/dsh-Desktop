@@ -5,7 +5,7 @@
  * 通过 contextBridge 向渲染进程暴露最小化的、只读的桌面应用信息。
  */
 
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 contextBridge.exposeInMainWorld('dshDesktop', {
   /** 桌面应用版本号 */
@@ -62,6 +62,13 @@ contextBridge.exposeInMainWorld('dshDesktop', {
   injectPrompt: (text) => ipcRenderer.invoke('promptlib:inject', text),
   /** 打开提示词库面板（工具箱菜单入口） */
   openPromptLib: () => ipcRenderer.invoke('toolbox:open-promptlib'),
+  // ── v0.9.5（T2）：自定义提示词（我的提示词 tab）──
+  /** 获取自定义提示词库（{ categories, items }） */
+  getCustomPrompts: () => ipcRenderer.invoke('promptlib:custom-list'),
+  /** 保存自定义提示词（有 id 更新 / 无 id 新增；返回 { ok, item?, reason? }） */
+  saveCustomPrompt: (item) => ipcRenderer.invoke('promptlib:custom-save', item),
+  /** 删除自定义提示词（按 id） */
+  deleteCustomPrompt: (id) => ipcRenderer.invoke('promptlib:custom-delete', id),
   /** 关于窗口：关闭并打开更新窗口 */
   openUpdateWindow: () => ipcRenderer.invoke('about:open-update'),
   /** 打开外部链接（仅 http/https） */
@@ -75,4 +82,14 @@ contextBridge.exposeInMainWorld('dshDesktop', {
   setPetHidden: (v) => ipcRenderer.invoke('pet:hidden', v),
   /** 宠物气泡通知（key: 'copied' 等） */
   petNotify: (key) => ipcRenderer.invoke('pet:notify', key),
+  // ── v0.9（T2）：拖拽文件取路径（Electron 32+ 唯一方式，仅 preload 可用）──
+  /**
+   * 取拖入 File 的本地绝对路径（webUtils.getPathForFile；非 File 或非磁盘文件返回 ''）。
+   * ⚠ 必须在 drop 事件同步调用（异步会丢 File 引用，返回空）。
+   */
+  getPathForFile: (file) => {
+    try { return webUtils.getPathForFile(file); } catch { return ''; }
+  },
+  /** 拖拽文件 → 主进程处理（复制进工作区 + 注入提示词） */
+  dropFiles: (paths) => ipcRenderer.invoke('drop:files', paths),
 });

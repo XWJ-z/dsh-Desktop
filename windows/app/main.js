@@ -37,6 +37,12 @@ const { createDshRuntime } = require('./modules/dsh-runtime');
 const { createServerLifecycle } = require('./modules/serverLifecycle');
 const { createUpdater } = require('./modules/updater');
 const { createPet } = require('./modules/pet');
+const { createPromptInject } = require('./modules/prompt-inject'); // v0.9：提示词注入公共模块
+const { createWorkspaceLocator } = require('./modules/workspace');  // v0.9（T1）：工作区定位
+const { createDragDrop } = require('./modules/drag-drop');          // v0.9（T3）：拖拽监听注入
+const { createDropFiles } = require('./modules/drop-files');        // v0.9（T4/T5）：拖文件处理
+const { createCustomPrompts } = require('./modules/custom-prompts'); // v0.9.5（T2）：自定义提示词
+const { createNoticeModule } = require('./modules/notice');          // v0.9.5（T3）：公告条/公告源
 const { createMenu } = require('./modules/menu');
 const { registerIpc } = require('./modules/ipc');
 const { createSecurityModule } = require('./modules/security'); // v0.8.30 R1
@@ -315,7 +321,42 @@ const petApi = createPet({
   getMainWindow: () => mainWindow,
   getWebUrl: webUrl,
 });
-const { injectPet, resetWebOpenBtnLayout } = petApi;
+const { injectPet, resetWebOpenBtnLayout, petBubble } = petApi;
+
+// ---------------------------------------------------------------------------
+// v0.9（T1/T3/T4/T5）：拖文件入工作区 —— 提示词注入公共模块 / 工作区定位 /
+// 拖拽监听注入 / 拖文件处理。放在 petApi 之后（需要 petBubble）与窗口模块之前。
+// ---------------------------------------------------------------------------
+// 提示词注入链路（v0.8.6 两段式：聚焦 + insertText），提示词库与拖文件共用。
+// settingsApi 在下方才组装 —— 全部经 getter 晚绑定，运行时取值无时序问题。
+const promptInject = createPromptInject({
+  dialog, appName: APP_NAME,
+  getSettings: () => settings,
+  saveSettings: () => settingsApi.saveSettings(),
+  refreshMenus: () => refreshMenusRef(),
+  localDate,
+});
+
+// 工作区定位（当前 DSH 工作区绝对路径；途径 A localStorage + 途径 B 存储兜底）
+const workspaceApi = createWorkspaceLocator({ fs, os, path, appendLog });
+const { getWorkspacePath } = workspaceApi;
+
+// 主窗口拖拽监听注入（防导航 + overlay + 同步取路径）
+const dragDropApi = createDragDrop({ appendLog });
+const { injectDropHandler } = dragDropApi;
+
+// 拖文件处理（复制进工作区 + 注入提示词 + 气泡反馈）
+const dropFilesApi = createDropFiles({
+  fs, path, appendLog,
+  getWorkspacePath,
+  promptInject,
+  petBubble,
+  getMainWindow: () => mainWindow,
+});
+const { handleDropFiles } = dropFilesApi;
+
+// v0.9.5（T2.1）：自定义提示词存储（userData/custom-prompts.json）
+const customPromptsApi = createCustomPrompts({ fs, path, app, appendLog });
 
 // ----
 // 更新检查/下载（v0.8.12：逻辑已移入 modules/updater.js）
@@ -342,18 +383,20 @@ const SHELL_UPDATE_URLS = [
   },
 ];
 
-// v0.8.11（T0.6）：远程公告缓存 —— 拉取成功后记录；帮助菜单「公告（新）」标记依据
-let shellNotices = null;
-
+// v0.8.11（T0.6）：远程公告 —— v0.9.5（T3）起公告唯一源 = notice.json，
+// 独立公告模块（三源并发 + 本地缓存），不再依赖 version.json notices。
 const updaterApi = createUpdater({
   app, shell, https, crypto, fs, path, rmQuiet,
   appendLog,
   readShellConfig, installedDshVersion, updateDshVersion,
   getMainWindow: () => mainWindow,
-  setShellNotices: (v) => { shellNotices = v; },
   shellUpdateUrls: SHELL_UPDATE_URLS,
 });
-const { fetchLatestDshVersion, compareSemver, effectiveLatest, queryUpdateInfo, upgradeDshVersion, downloadShellUpdate, fetchLatestShellVersion } = updaterApi;
+const { fetchLatestDshVersion, compareSemver, effectiveLatest, queryUpdateInfo, upgradeDshVersion, downloadShellUpdate, fetchLatestShellVersion, fetchJson } = updaterApi;
+
+// v0.9.5（T3）：公告模块 —— notice.json 三源并发 + userData 缓存；菜单栏公告条 + 公告窗口
+const noticeApi = createNoticeModule({ app, fs, path, appendLog, fetchJson });
+noticeApi.loadCache(); // 启动即载入缓存（buildMenu 用缓存 marquee，拉取失败不闪没）
 
 // ---------------------------------------------------------------------------
 // 窗口模块组装（v0.8.12：逻辑已移入 modules/windows/）
@@ -384,6 +427,7 @@ const mainWindowModule = createMainWindowModule({
   getSettings: () => settings,
   saveSettings: () => settingsApi.saveSettings(),
   injectPet, openCloseChoiceWindow,
+  injectDropHandler, // v0.9（T3）：拖拽监听注入
   getWebUrl: webUrl,
   getIsQuitting: () => isQuitting,
   setQuitting: (v) => { isQuitting = v; },
@@ -535,7 +579,9 @@ const menuApi = createMenu({
   getMainWindow: () => mainWindow,
   getShellHasUpdate: () => shellHasUpdate,
   getDshHasUpdate: () => dshHasUpdate,
-  getShellNotices: () => shellNotices,
+  // v0.9.5（T3）：公告唯一源 notice.json（noticeApi），公告菜单「（新）」标记同源
+  getShellNotices: () => noticeApi.getNotices(),
+  getMarquee: () => noticeApi.getMarquee(),
   isTrayCreated: () => trayApi.isTrayCreated(),
   updateTrayMenu: () => trayApi.updateTrayMenu(),
   openAppearanceDialog, // v0.8.18：设置菜单「外观…」
@@ -599,6 +645,10 @@ function showMainWindow() {
  */
 async function checkUpdatesOnStart() {
   const cfg = readShellConfig();
+  // v0.9.5（T3）：公告拉取与版本检查并行；拉取成功 → 刷新菜单（公告条 + 「公告（新）」标记）
+  noticeApi.fetchLatest().then((notice) => {
+    if (notice) refreshMenusRef();
+  }).catch(() => { /* ignore */ });
   const [dshLatest, shellInfo] = await Promise.all([
     fetchLatestDshVersion(),
     fetchLatestShellVersion(),
@@ -746,11 +796,15 @@ if (!gotLock) {
       getSettings: () => settings,
       saveSettings: () => settingsApi.saveSettings(),
       refreshMenus: () => refreshMenusRef(),
-      getShellNotices: () => shellNotices,
       openPromptLibWindow, openUpdateWindow,
       getWebUrl: webUrl,
       getResolvedPort: () => resolvedPort,
       getCurrentStage,
+      // v0.9：提示词注入公共链路 + 拖文件处理 + 工作区定位
+      promptInject, handleDropFiles, getWorkspacePath,
+      // v0.9.5：自定义提示词（T2）+ 公告模块（T3，notice:data 唯一源）
+      customPrompts: customPromptsApi,
+      noticeApi,
     });
 
     resolvedPort = parsePortArg() ?? await pickPort(DEFAULT_PORT);

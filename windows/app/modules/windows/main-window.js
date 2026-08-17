@@ -23,6 +23,7 @@ function createMainWindowModule(deps) {
     appendLog, logPath, appName,
     getSettings, saveSettings,
     injectPet, openCloseChoiceWindow,
+    injectDropHandler, // v0.9（T3）：拖拽文件入工作区监听
     getWebUrl, getIsQuitting, setQuitting, getMainWindow, setMainWindow,
   } = deps;
 
@@ -166,6 +167,8 @@ function createMainWindowModule(deps) {
       setTimeout(() => {
         if (win.isDestroyed()) return;
         injectPet(win);
+        // v0.9（T3）：拖拽监听注入（window 级，SPA 重渲染不影响；幂等）
+        if (injectDropHandler) injectDropHandler(win);
         if (petGuardTimer) clearInterval(petGuardTimer);
         petGuardTimer = setInterval(guardPet, 3000);
       }, 1000);

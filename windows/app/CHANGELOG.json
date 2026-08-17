@@ -1,6 +1,56 @@
 {
   "versions": [
     {
+      "version": "0.9.6",
+      "date": "2026-08-17",
+      "notes": [
+        "优化（老大指令）：「我的提示词」tab 加左侧分组 —— 全部 + 内置类 + 自定义类（只显示有条目的分组，带计数徽章），点击分组过滤；空状态/无条目分组提示；事件委托一次性绑定防重复监听",
+        "优化（老大指令）：安装器显示日志 —— build/installer.nsh（ShowInstDetails show 默认展开安装详情）+ customInstall 宏补友好提示文案；electron-builder.yml nsis.include 挂载",
+        "★ 修复（builder-debug.yml 实锤）：electron-builder 把 include 拼到 .nsi 最前面，而模板 common.nsh 的 `ShowInstDetails nevershow`（安装界面只显示进度条 =「光秃秃」根因）会后执行覆盖 —— 改用 customHeader 宏（模板在 common.nsh 之后展开）保证 show 生效；生成脚本已验证顺序 nevershow → show",
+        "★ 修复（老大实测：日志框空白 → 仍无日志，mini 安装器 UIA 实验三连实锤）：① installSection.nsh 强制 `SetDetailsPrint none` 抑制全部 DetailPrint + 7z 静默解压无逐文件日志 → 详情区空白；② MUI_INSTFILESPAGE_TEXT_TOP 是错误名（MUI2 实际无此 define，实测无效，页眉文字 = 语言宏且页面宏先于语言文件展开无法覆盖）；③ 最终方案：MUI_PAGE_CUSTOMFUNCTION_SHOW 放进 customPageAfterChangeDir 宏（assisted 模板在 MUI_PAGE_INSTFILES 之前展开它，只给安装页挂 SHOW 回调）→ 进入安装页详情区先写「正在解压应用文件（约 114MB）…」，解压期间常驻；customInstall 里 SetDetailsPrint both 恢复输出追加阶段日志；⚠ instFilesShow 函数须包 !ifndef BUILD_UNINSTALLER（electron-builder 先编译卸载器，未引用 → NSIS 6010 警告 → -WX 失败，实测构建报错）",
+        "回退（老大指令）：宠物尾巴晃动整体移除 —— pet-whale.svg 恢复无 .tail、pet.js 恢复无 wag（SVG 主体为单一 path，尾巴无法单独旋转；叠加方案观感不满足，按约定回退）",
+        "CDP 仿真扩展：分组断言（保存 2 条不同分类 → 左侧 3 分组「全部/学习/仿真分类」→ 点击过滤）→ 25/25"
+      ]
+    },
+    {
+      "version": "0.9.5",
+      "date": "2026-08-17",
+      "notes": [
+        "T1 提示词库扩充 40 条 → 101 条（6 分类：学习/写作/工作 各 18、生活/编程 各 14、DSH 任务 19），每条含 [占位符] + hint；prompts.json version 3",
+        "T2 自定义提示词：modules/custom-prompts.js（userData/custom-prompts.json，损坏备份 .bak + 空库、原子写盘 .tmp→rename、id = Date.now()+随机后缀）；IPC 新增 promptlib:custom-list/save/delete（校验 name/content 非空、cat 缺省「我的」）；提示词库窗口双 tab（📚 内置库 / ✏️ 我的提示词）+ 新建/编辑弹窗（分类下拉含内置类+自定义类+新建分类）+ 删除二次确认 + 复用 promptlib:inject 注入链路",
+        "T3 公告条：仓库根 notice.json 成为公告唯一源（version.json notices 字段移除）；modules/notice.js 三源并发（jsDelivr/API/raw）取 schema 版本最高者，缓存 userData/notice-cache.json（失败沿用缓存不闪没）；菜单栏最右端（公告菜单之后）禁用态纯文字条 📢 marquee（超 40 字符截断 37+…，空回退默认文案）；公告窗口 notice:data 改读 notice.json items；启动与版本检查并行拉取",
+        "T4 测试：check-v095.js 334 项（101 条结构校验 / 自定义存储全链路 / 公告三源与缓存容错）；ESLint 0 error；mock-load-test OK；check-v090 30 项回归无破坏"
+      ]
+    },
+    {
+      "version": "0.9.3",
+      "date": "2026-08-17",
+      "notes": [
+        "优化（老大指令）：拖入的文件统一放入工作区下的专用文件夹「拖入文件」，不再直接放工作区根目录——drop-files.js 复制目标改为 ws/拖入文件/（mkdir 幂等），重名去重/文件夹递归/.lnk/大文件异步全部在该子目录内生效",
+        "提示词带相对路径：注入文案变为「请分析工作区里的文件：拖入文件/xxx.txt」（多文件同理），DSH 按工作区相对路径定位文件更准确",
+        "测试同步：check-v090 单测（30 项，含专用文件夹创建断言）/ cdp-drag-sim-check.js / cdp-v090-sim.js / e2e T5 断言全部更新为子目录路径与新提示词格式"
+      ]
+    },
+    {
+      "version": "0.9.2",
+      "date": "2026-08-17",
+      "notes": [
+        "修复（老大实测反馈）：拖文件进窗口后卡在 DSH 的「图片拖动添加界面」——根因：dragenter/dragover/dragleave 仅 preventDefault 未 stopPropagation，事件继续传播到 document，DSH 页面自身的 document 级拖放监听（dsh-client-ui-attachment DropOverlay/DragMask）收到 dragenter 激活遮罩，而 drop 被我们吞掉后其 enter/leave 计数永不归零 → 遮罩卡死",
+        "修复方案：Files 拖拽的 dragenter/dragover/dragleave/drop 四事件全部 preventDefault + stopPropagation + stopImmediatePropagation（window capture 阶段），DSH 页面从第一个事件起收不到任何文件拖放事件；非 Files 拖拽（DSH 会话/工作区 text/plain 拖放）不受影响",
+        "CDP 仿真防回归（zx(6)）：cdp-v090-sim.js 新增 document 级探针（模拟 DSH 自身监听）+ role=status 遮罩残留检查；对照实验证明旧行为下 document 探针 enter=1/over=2/drop=0/leave=1（断言失败），修复后全 0（9/9 通过）"
+      ]
+    },
+    {
+      "version": "0.9.1",
+      "date": "2026-08-17",
+      "notes": [
+        "新增：拖文件进窗口 → 自动复制到当前 DSH 工作区 + 注入提示词「请分析工作区里的文件：xxx」（v0.9 拖动文件功能；Electron 32+ 用 webUtils.getPathForFile 取路径）",
+        "工作区定位：读取 DSH 真实状态（localStorage 当前会话 dsh.sessions.current → ~/.dsh/storages/session_projcache.json 的 cwd），多级兜底（最近活跃会话 / 唯一工作区）",
+        "拖拽体验：全窗口 overlay「松开以将文件放入工作区」、防页面导航、同步取路径、多文件/文件夹递归复制、重名自动 (1) 不覆盖、.lnk 原样复制、大文件异步复制+气泡进度、无工作区友好提示",
+        "提示词注入链路抽取公共模块 modules/prompt-inject.js（提示词库与拖文件共用）"
+      ]
+    },
+    {
       "version": "0.8.30",
       "date": "2026-08-16",
       "notes": [

@@ -11,14 +11,17 @@
 
 function registerIpc(deps) {
   const {
-    ipcMain, app, clipboard, shell, dialog, path, fs,
-    localDate, appName,
+    ipcMain, app, clipboard, shell, path, fs,
     readShellConfig, installedDshVersion,
     fetchLatestDshVersion, fetchLatestShellVersion, compareSemver, effectiveLatest,
     queryUpdateInfo, upgradeDshVersion, downloadShellUpdate,
     getMainWindow, getUpdateWin, getAboutWin,
-    getSettings, saveSettings, refreshMenus, getShellNotices,
+    getSettings, saveSettings, refreshMenus,
     openPromptLibWindow, openUpdateWindow, getWebUrl,
+    // v0.9：提示词注入公共链路 + 拖文件处理（drop:files）
+    promptInject, handleDropFiles,
+    // v0.9.5（T2）：自定义提示词 + （T3）公告条
+    customPrompts, noticeApi,
   } = deps;
 
   ipcMain.handle('dsh:version', () => app.getVersion());
@@ -35,8 +38,9 @@ function registerIpc(deps) {
     return true;
   });
   // v0.8.11（T0.6）：公告数据 —— 打开即标记已读（刷新菜单清「（新）」标记）
+  // v0.9.5（T3.4）：公告唯一源改为 notice.json（noticeApi），不再读 version.json notices
   ipcMain.handle('notice:data', () => {
-    const notices = getShellNotices() || [];
+    const notices = noticeApi.getNotices() || [];
     const settings = getSettings();
     const ids = (settings.readNotices || []).slice();
     let changed = false;
@@ -103,111 +107,21 @@ function registerIpc(deps) {
       return { categories: [] };
     }
   });
+  // v0.9：提示词注入链路抽到 modules/prompt-inject.js（v0.8.6 两段式：
+  // ①聚焦输入框 ②主进程 insertText 模拟真实键盘输入；v0.8.7 P0-3 覆盖/追加
+  // 询问 + 记住选择；v0.8.11 注入庆祝）。提示词库与拖文件（drop:files）共用，
+  // 行为完全一致，此处仅做薄封装。
   ipcMain.handle('promptlib:inject', async (_e, text) => {
     const mainWindow = getMainWindow();
     if (!mainWindow || mainWindow.isDestroyed()) return { ok: false, reason: 'no-window' };
-    const payload = String(text ?? '');
-    // v0.8.6（P0-2 修复）：注入两段式 —— ①聚焦输入框 ②主进程 insertText 模拟真实键盘输入。
-    // 真机实测（2026-08-16，DSH web 0.1.0-rc.6）：
-    //  - DSH 聊天输入框 = 透明辅助 TEXTAREA（color rgba(0,0,0,0)）+ 框架渲染层
-    //    （overlay slot / mirror），非 CodeMirror/ProseMirror；
-    //  - 直接赋 value + input 事件：value 虽保留但 React 状态不更新（发送按钮禁用、文字不可见）；
-    //  - webContents.insertText：走真实输入路径，React 必然接收 → 文字注入 + 发送按钮变可点。
-    // v0.8.7（P0-3）：输入框已有内容时弹原生对话框（覆盖/追加/取消 + 记住选择）。
-    const focusRes = await mainWindow.webContents.executeJavaScript(`
-      (() => {
-        // 多选择器探测输入框（可见的才用）；'textarea' 放最前（DSH 实测主输入框即 textarea）
-        const selectors = ['textarea', '[contenteditable="true"]', 'div[role="textbox"]',
-                           'input[type="text"]', '[data-testid*="input"]'];
-        let el = null;
-        for (const sel of selectors) {
-          const found = document.querySelector(sel);
-          if (found && found.offsetParent !== null) { el = found; break; }
-        }
-        if (!el) return { ok: false, reason: 'not-found' };
-        el.focus();
-        // 聚焦可能被模态弹窗（内测声明/API Key 对话框）拦截：必须确认焦点到位，
-        // 否则 insertText 会插入到错误位置。失败由前端降级为复制。
-        if (document.activeElement !== el) return { ok: false, reason: 'focus-failed' };
-        const current = (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT')
-          ? (el.value || '') : (el.textContent || '');
-        return { ok: true, current };
-      })()
-    `).catch(() => ({ ok: false, reason: 'exec-error' }));
-    if (!focusRes || !focusRes.ok) return focusRes;
-    const current = focusRes.current || '';
-    const settings = getSettings();
-    // P0-3：输入框已有内容 → 询问覆盖/追加/取消（记住选择后不再询问；设置菜单可清除记忆）
-    let mode;
-    if (current.trim()) {
-      if (settings.promptInjectChoice === 'overwrite') mode = 'overwrite';
-      else if (settings.promptInjectChoice === 'append') mode = 'append';
-      else {
-        const choice = await dialog.showMessageBox(mainWindow, {
-          type: 'question', title: appName,
-          message: '输入框已有内容，怎么处理？',
-          detail: '覆盖 —— 用提示词替换输入框现有内容\n追加 —— 接在现有内容后面继续输入\n取消 —— 不做任何修改',
-          buttons: ['覆盖', '追加', '取消'], defaultId: 0, cancelId: 2, noLink: true,
-          checkboxLabel: '记住我的选择，下次不再询问', checkboxChecked: false,
-        }).catch(() => null);
-        if (!choice || choice.response === 2) return { ok: false, reason: 'cancelled' };
-        mode = choice.response === 0 ? 'overwrite' : 'append';
-        if (choice.checkboxChecked) {
-          settings.promptInjectChoice = mode;
-          saveSettings();
-          refreshMenus();
-        }
-      }
-    } else {
-      mode = 'overwrite'; // 空输入框：直接注入，不询问
-    }
-    // 第三步：按模式设置光标/选区（覆盖=全选待替换，追加=光标末尾），再 insertText
-    await mainWindow.webContents.executeJavaScript(`
-      (() => {
-        const el = document.activeElement;
-        if (!el) return;
-        const isInput = el.tagName === 'TEXTAREA' || el.tagName === 'INPUT';
-        if (${mode === 'overwrite'}) {
-          if (isInput) el.setSelectionRange(0, el.value.length);
-          else { const r = document.createRange(); r.selectNodeContents(el); const s = window.getSelection(); s.removeAllRanges(); s.addRange(r); }
-        } else if (isInput) {
-          el.setSelectionRange(el.value.length, el.value.length);
-        }
-      })()
-    `).catch(() => { /* ignore */ });
-    // 主进程原生模拟输入（等同真实键盘输入，任何框架都必然接收；替换当前选区）
-    mainWindow.webContents.insertText(payload);
-    // v0.8.11（T4.3/T5.3）+ v0.8.16：注入成功 → 鲸鱼开心跳跃 + 气泡（仅宠物形态；
-    // 工具箱形态静默 —— pet 元素 data-mode="pet" 才是宠物）。当天第 10 次注入触发庆祝彩蛋
-    try {
-      const today = localDate();
-      if (settings.petInjectCountDate !== today) { settings.petInjectCountDate = today; settings.petInjectCount = 0; }
-      settings.petInjectCount = (settings.petInjectCount || 0) + 1;
-      saveSettings();
-      const tenth = settings.petInjectCount === 10;
-      const bubbleText = tenth ? '今天干得漂亮！🎉' : '搞定！去发送吧～';
-      mainWindow.webContents.executeJavaScript(`
-        (() => {
-          const p = document.getElementById('dsh-pet');
-          if (!p || p.dataset.mode !== 'pet') return; // v0.8.16：工具箱形态不庆祝
-          p.classList.add('happy');
-          p.animate(
-            [{ transform: 'translateY(0)' }, { transform: 'translateY(-18px)' },
-             { transform: 'translateY(-8px)' }, { transform: 'translateY(0)' }],
-            { duration: 600, easing: 'ease' });
-          const b = p.querySelector('.pet-bubble');
-          if (b) {
-            b.textContent = ${JSON.stringify(bubbleText)};
-            b.style.display = 'block';
-            clearTimeout(p._bt);
-            p._bt = setTimeout(() => { b.style.display = 'none'; }, 2000);
-          }
-          setTimeout(() => p.classList.remove('happy'), 2000);
-        })()
-      `).catch(() => { /* ignore */ });
-    } catch { /* ignore */ }
-    return { ok: true, mode };
+    return promptInject.injectTextIntoInput(mainWindow, text);
   });
+  // v0.9.5（T2.2）：自定义提示词 —— 列表 / 保存（新增+更新）/ 删除
+  ipcMain.handle('promptlib:custom-list', () => customPrompts.read());
+  ipcMain.handle('promptlib:custom-save', (_e, item) => customPrompts.save(item));
+  ipcMain.handle('promptlib:custom-delete', (_e, id) => customPrompts.remove(String(id || '')));
+  // v0.9（T4）：拖文件 → 复制进工作区 + 注入提示词（处理逻辑见 drop-files 模块）
+  ipcMain.handle('drop:files', (_e, paths) => handleDropFiles(paths));
   ipcMain.handle('toolbox:open-promptlib', () => { openPromptLibWindow(); return true; });
   ipcMain.handle('update:dsh-upgrade', () => upgradeDshVersion());
   ipcMain.handle('update:shell-download', () => {

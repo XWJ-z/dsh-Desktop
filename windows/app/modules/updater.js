@@ -14,8 +14,9 @@
  *  - appendLog                      日志模块
  *  - readShellConfig / installedDshVersion / updateDshVersion   运行时模块
  *  - getMainWindow                  主窗口 getter（下载完打开安装包/弹窗归属）
- *  - setShellNotices                公告缓存 setter（fetchLatestShellVersion 成功后写入）
  *  - shellUpdateUrls                三源 URL 表（main.js 常量注入）
+ *  （v0.9.5 T3：公告已独立到 modules/notice.js（notice.json 唯一源），
+ *   本模块不再承载公告解析/缓存）
  */
 
 function createUpdater(deps) {
@@ -23,7 +24,7 @@ function createUpdater(deps) {
     app, shell, https, crypto, fs, path, rmQuiet,
     appendLog,
     readShellConfig, installedDshVersion, updateDshVersion,
-    setShellNotices, shellUpdateUrls,
+    shellUpdateUrls,
   } = deps;
 
   /** GET 并解析 JSON；失败/超时返回 null（静默）。响应体超 maxBytes（默认 5MB）放弃。 */
@@ -171,9 +172,9 @@ function createUpdater(deps) {
 
   /**
    * 查询壳最新版本（三源并发：并发请求全部更新源，取版本号最高者）。
-   * 返回 { version, download_urls, release_notes, force, hash, minVersion, notices } 或 null（全部失败/超时静默）。
+   * 返回 { version, download_urls, release_notes, force, hash, minVersion } 或 null（全部失败/超时静默）。
    * v0.7.10（29 建议 A）：新增 minVersion 字段 —— 低于该版本的旧客户端启动时强制提示升级
-   * v0.8.11（T0.6）：新增 notices 字段 —— 项目公告（发布通知/紧急提醒），help 菜单展示
+   * v0.9.5（T3）：公告已独立到 notice.json（modules/notice.js），version.json 不再承载 notices
    */
   function fetchLatestShellVersion() {
     const parse = (info) => {
@@ -185,11 +186,6 @@ function createUpdater(deps) {
         force: !!info.force,
         hash: String(info.hash || '').toLowerCase(),
         minVersion: String(info.minVersion || ''), // v0.7.10：最低支持版本（空 = 不限制）
-        // v0.8.11（T0.6）：公告列表（字段全部字符串化，容错脏数据）
-        notices: Array.isArray(info.notices) ? info.notices.map((n) => ({
-          id: String(n.id || ''), title: String(n.title || ''),
-          date: String(n.date || ''), content: String(n.content || ''),
-        })) : [],
       };
     };
     return Promise.all(shellUpdateUrls.map((s) => fetchJson(s.url, 8000, s.headers || {}).then(parse)))
@@ -198,7 +194,6 @@ function createUpdater(deps) {
         if (valid.length === 0) return null;
         valid.sort((a, b) => (compareSemver(a.version, b.version) < 0 ? 1 : -1));
         const best = valid[0];
-        setShellNotices(best.notices || []); // v0.8.11（T0.6）：缓存公告（拉取失败保留上次值）
         const detail = shellUpdateUrls.map((s, i) => `${s.name}=${results[i] ? results[i].version : '×'}`).join(', ');
         appendLog('info', `版本检查：${valid.length}/${shellUpdateUrls.length} 源可达（${detail}），取最高 v${best.version}`);
         return best;

@@ -181,6 +181,7 @@ function createPet(deps) {
         const tail = () => pet.querySelector('.tail');
         const prep = (el) => { if (el) { el.style.transformBox = 'fill-box'; el.style.transformOrigin = 'center'; el.style.transition = 'transform .2s ease'; } };
         eyes().forEach(prep); prep(mouth()); prep(tail());
+
         const setCls = (cls) => {
           pet.classList.remove('happy', 'sleepy', 'wink', 'hover');
           eyes().forEach((e) => { e.style.transform = ''; });
@@ -422,7 +423,46 @@ function createPet(deps) {
     appendLog('info', '已恢复默认布局（宠物/工具箱回底部居中）');
   }
 
-  return { petSvgText, toolboxSvgText, injectPet, resetWebOpenBtnLayout };
+  /**
+   * v0.9（T4/T5）：主进程直接显示气泡反馈（拖文件复制结果等）。
+   * 与 pet:notify 的差异：工具箱形态也显示（拖文件反馈是壳级提示，不应因
+   * 宠物隐藏而丢失）；宠物节点不存在时用底部 toast 兜底（2.6s 自动消失）。
+   */
+  function petBubble(win, text) {
+    if (!win || win.isDestroyed()) return;
+    win.webContents.executeJavaScript(`
+      (() => {
+        const p = document.getElementById('dsh-pet');
+        if (p) {
+          const b = p.querySelector('.pet-bubble');
+          if (b) {
+            b.textContent = ${JSON.stringify(text)};
+            b.style.display = 'block';
+            clearTimeout(p._bt);
+            p._bt = setTimeout(() => { b.style.display = 'none'; }, 2600);
+          }
+          return;
+        }
+        let t = document.getElementById('dsh-drop-toast');
+        if (!t) {
+          t = document.createElement('div');
+          t.id = 'dsh-drop-toast';
+          t.style.cssText = 'position:fixed;left:50%;bottom:96px;transform:translateX(-50%);z-index:2147483644;'
+            + 'max-width:70%;padding:9px 16px;background:#171a21;color:#dbe2f0;'
+            + 'border:1px solid #2a2f3a;border-radius:10px;'
+            + 'font:13px/1.5 "Segoe UI","Microsoft YaHei",sans-serif;'
+            + 'box-shadow:0 4px 16px rgba(0,0,0,.4);pointer-events:none;';
+          document.body.appendChild(t);
+        }
+        t.textContent = ${JSON.stringify(text)};
+        t.style.display = 'block';
+        clearTimeout(t._timer);
+        t._timer = setTimeout(() => { t.style.display = 'none'; }, 2600);
+      })()
+    `).catch(() => { /* ignore */ });
+  }
+
+  return { petSvgText, toolboxSvgText, injectPet, resetWebOpenBtnLayout, petBubble };
 }
 
 module.exports = { createPet };

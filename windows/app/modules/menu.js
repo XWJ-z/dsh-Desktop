@@ -19,6 +19,7 @@
  *  - resetWebOpenBtnLayout / injectPet     pet 模块
  *  - hasNewNotices                         misc-windows 模块
  *  - getMainWindow / getShellHasUpdate / getDshHasUpdate / getShellNotices
+ *  - getMarquee                           notice 模块（v0.9.5 T3：菜单栏公告条）
  *  - isTrayCreated / updateTrayMenu        tray 模块
  */
 
@@ -37,8 +38,15 @@ function createMenu(deps) {
     openAppearanceDialog, // v0.8.18：设置菜单「外观…」（浅色/深色/跟随系统）
     hasNewNotices,
     getMainWindow, getShellHasUpdate, getDshHasUpdate, getShellNotices,
+    getMarquee, // v0.9.5（T3）：公告条文案
     isTrayCreated, updateTrayMenu,
   } = deps;
+
+  /** v0.9.5（T3.3）：公告条截断 —— 超 40 字符 → 前 37 + '…'（菜单栏宽度有限） */
+  function truncateMarquee(s) {
+    const t = String(s || '');
+    return t.length > 40 ? `${t.slice(0, 37)}…` : t;
+  }
 
   function buildMenu() {
     const settings = getSettings();
@@ -198,6 +206,12 @@ function createMenu(deps) {
             click: () => openNoticeWindow(),
           },
         ],
+      },
+      // v0.9.5（T3.3，老大确认：公告条最右端，公告菜单之后）：
+      // 菜单栏常驻纯文字公告条（禁用态不可点），数据源 notice.json（独立下发，改内容不须发版）
+      {
+        label: '📢 ' + truncateMarquee(getMarquee()),
+        enabled: false, // 纯文字展示，不可点
       },
     ];
     return Menu.buildFromTemplate(template);

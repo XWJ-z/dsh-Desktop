@@ -9,6 +9,7 @@
     body {
       /* v0.8.7：搜索框 + 卡片展开 + 操作按钮 + 计数徽章 + 反馈横幅 */
       /* v0.8.8（T5）：body 固定高度 flex 列，让 .layout 的 flex:1 生效（左分类固定/右独立滚动） */
+      /* v0.9.5（T2）：双 tab（内置库/我的提示词）+ 新建/编辑弹窗 */
       align-items: stretch;
       padding: 18px 20px 20px;
       height: 100vh;
@@ -16,6 +17,21 @@
     }
     h1 { font-size: 18px; font-weight: 590; margin-bottom: 2px; }
     .subtitle { font-size: 12px; color: var(--text-quaternary); margin-bottom: 12px; }
+    /* v0.9.5：顶部 tab */
+    .tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+    .tab {
+      padding: 8px 16px; border-radius: var(--radius-btn); cursor: pointer;
+      font-size: 13px; color: var(--text-secondary);
+      background: transparent; border: 1px solid var(--border-standard);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .tab:hover { background: var(--bg-hover); }
+    .tab.active { background: var(--bg-surface); border-color: rgba(94,106,210,.55); color: var(--text-primary); font-weight: 590; }
+    .tab-add {
+      width: 20px; height: 20px; border-radius: 50%; text-align: center; line-height: 20px;
+      background: var(--brand); color: #fff; font-size: 13px; font-weight: 700; margin-left: 4px;
+    }
+    .tab-add:hover { background: var(--accent-hover); }
     /* 搜索框 */
     .search {
       width: 100%; padding: 9px 14px; margin-bottom: 12px;
@@ -48,7 +64,7 @@
       margin-left: auto; font-size: 11px; color: var(--text-quaternary);
       background: rgba(255,255,255,.05); border-radius: 999px; padding: 1px 7px;
     }
-    /* 右侧提示词卡片 */
+    /* 右侧提示词卡片（内置 + 自定义共用） */
     .items { flex: 1; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; min-width: 0; align-content: flex-start; }
     .item {
       background: var(--bg-surface); border: 1px solid var(--border-standard);
@@ -74,22 +90,98 @@
     }
     .act.use { background: var(--brand); color: #fff; }
     .act.use:hover { background: var(--accent-hover); }
-    .act.copy {
+    .act.copy, .act.edit {
       background: rgba(255,255,255,.03); color: var(--text-tertiary);
       border: 1px solid var(--border-standard);
     }
-    .act.copy:hover { color: var(--text-primary); border-color: rgba(255,255,255,.16); }
+    .act.copy:hover, .act.edit:hover { color: var(--text-primary); border-color: rgba(255,255,255,.16); }
+    .act.del { background: rgba(239,68,68,.1); color: #f87171; border: 1px solid rgba(239,68,68,.3); }
+    .act.del:hover { background: rgba(239,68,68,.2); }
+    .act.del.confirm { background: #ef4444; color: #fff; border-color: #ef4444; }
     .empty { color: var(--text-quaternary); text-align: center; padding: 40px 0; font-size: 13px; }
+    /* v0.9.5：新建/编辑弹窗 */
+    .modal-mask {
+      position: fixed; inset: 0; z-index: 100; display: none;
+      align-items: center; justify-content: center;
+      background: rgba(15,17,21,.65);
+    }
+    .modal-mask.show { display: flex; }
+    .modal {
+      width: 480px; max-width: 92vw; max-height: 88vh; overflow-y: auto;
+      background: var(--bg-surface); border: 1px solid var(--border-standard);
+      border-radius: var(--radius-card); padding: 18px 20px;
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    .modal-title { font-size: 15px; font-weight: 590; color: var(--text-primary); }
+    .modal label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--text-tertiary); }
+    .modal input, .modal select, .modal textarea {
+      background: var(--bg-input, #161a22); border: 1px solid var(--border-standard);
+      border-radius: var(--radius-btn); color: var(--text-primary);
+      font-size: 13px; padding: 8px 11px; outline: none; font-family: inherit;
+    }
+    .modal input:focus, .modal select:focus, .modal textarea:focus { border-color: rgba(94,106,210,.55); }
+    .modal textarea { min-height: 96px; resize: vertical; line-height: 1.6; }
+    .modal .row { display: flex; gap: 8px; }
+    .modal .row select { flex: 1; }
+    .modal .row input { flex: 1; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; }
+    .modal-actions button {
+      padding: 8px 20px; border-radius: var(--radius-btn); border: none;
+      font-size: 13px; font-weight: 590; cursor: pointer;
+    }
+    .modal-actions .primary { background: var(--brand); color: #fff; }
+    .modal-actions .primary:hover { background: var(--accent-hover); }
+    .modal-actions .plain { background: rgba(255,255,255,.05); color: var(--text-tertiary); }
+    .modal-actions .plain:hover { color: var(--text-primary); }
   </style>
 </head>
 <body>
   <h1>💡 提示词库</h1>
-  <div class="subtitle">点「使用」填入输入框，点卡片看完整内容和替换说明</div>
-  <input class="search" id="search" type="text" placeholder="🔍 搜索提示词…" autocomplete="off" />
-  <div class="banner" id="banner"></div>
-  <div class="layout">
-    <div class="cats" id="cats"><!-- 分类（JS 渲染） --></div>
-    <div class="items" id="items"><!-- 提示词卡片（JS 渲染） --></div>
+  <div class="tabs">
+    <div class="tab active" id="tab-builtin" data-tab="builtin">📚 内置库</div>
+    <div class="tab" id="tab-custom" data-tab="custom">✏️ 我的提示词<span class="tab-add" id="btn-add-custom" title="新建提示词">＋</span></div>
+  </div>
+
+  <!-- 内置库视图 -->
+  <div id="view-builtin" style="display:flex;flex-direction:column;flex:1;min-height:0;">
+    <div class="subtitle">点「使用」填入输入框，点卡片看完整内容和替换说明</div>
+    <input class="search" id="search" type="text" placeholder="🔍 搜索提示词…" autocomplete="off" />
+    <div class="banner" id="banner"></div>
+    <div class="layout">
+      <div class="cats" id="cats"><!-- 分类（JS 渲染） --></div>
+      <div class="items" id="items"><!-- 提示词卡片（JS 渲染） --></div>
+    </div>
+  </div>
+
+  <!-- 我的提示词视图（v0.9.6：像内置库一样左侧分组） -->
+  <div id="view-custom" style="display:none;flex-direction:column;flex:1;min-height:0;">
+    <div class="subtitle">自己收藏的提示词，点「使用」直接注入输入框</div>
+    <div class="banner" id="banner-custom"></div>
+    <div class="layout">
+      <div class="cats" id="custom-cats"><!-- 自定义分组（JS 渲染） --></div>
+      <div class="items" id="custom-items"><!-- 自定义卡片（JS 渲染） --></div>
+    </div>
+    <div class="empty" id="custom-empty" style="display:none;">点击右上角 ＋ 创建你的第一个提示词</div>
+  </div>
+
+  <!-- 新建/编辑弹窗（v0.9.5 T2） -->
+  <div class="modal-mask" id="modal-mask">
+    <div class="modal">
+      <div class="modal-title" id="modal-title">新建提示词</div>
+      <label>分类
+        <div class="row">
+          <select id="f-cat"></select>
+          <input id="f-cat-new" type="text" placeholder="新分类名（可选）" autocomplete="off" />
+        </div>
+      </label>
+      <label>名称 <input id="f-name" type="text" placeholder="如：周报生成" autocomplete="off" /></label>
+      <label>内容 <textarea id="f-content" placeholder="支持 [占位符]，如：根据以下信息生成周报：[工作内容]，要求：[格式要求]"></textarea></label>
+      <label>hint（可选，替换说明小字）<input id="f-hint" type="text" placeholder="如：把 [工作内容] 换成你本周做的事" autocomplete="off" /></label>
+      <div class="modal-actions">
+        <button class="plain" id="btn-cancel">取消</button>
+        <button class="primary" id="btn-save">保存</button>
+      </div>
+    </div>
   </div>
 
   <script src="promptlib.js"></script>
