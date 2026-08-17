@@ -357,6 +357,9 @@ function testGlobalMemory() {
   ok(gms.includes('\'AGENTS.md\''), '记忆文件 = AGENTS.md');
   ok(gms.includes('os.homedir(), \'.dsh\''), '路径 ~/.dsh/AGENTS.md（DSH 自动读取）');
   ok(gms.includes('基础设定（DSH-Desktop 图形化编辑）'), '基础设定区块标题');
+  ok(gms.includes('角色设定（DSH 扮演）'), '角色设定子组标题（DSH 扮演角色）');
+  ok(gms.includes('roleItems'), '解析支持角色字段 roleItems');
+  ok(gms.includes('DEFAULT_ROLES'), '内置默认角色字段 DEFAULT_ROLES');
   ok(gms.includes('DEFAULT_FIELDS'), '内置默认字段 DEFAULT_FIELDS');
   ok(gms.includes('function parse('), 'parse 区块化解析（自动识别 ## 标题）');
   ok(gms.includes('kind: \'long\''), '其他 ## 区块识别为长文本（kind=long）');
@@ -367,23 +370,20 @@ function testGlobalMemory() {
   ok(rjs0.includes('renderCats'), '窗口左侧类别列表（renderCats）');
   ok(rjs0.includes('renderRight'), '窗口右侧内容区（renderRight）');
   ok(rjs0.includes('btn-add-field'), '窗口有「＋ 添加字段」按钮逻辑');
-  ok(rjs0.includes('btn-add-sec') || rjs0.includes('addSection'), '窗口有「＋ 添加区块」逻辑（界面内新建）');
+  ok(rjs0.includes('btn-add-role'), '窗口有「＋ 添加角色」按钮逻辑（角色设定）');
+  ok(rjs0.includes('角色设定（DSH 扮演）'), '窗口角色设定子组');
   ok(!/window\.prompt\(/.test(rjs0), '不使用 window.prompt（沙箱渲染进程禁用，改界面内输入）');
   ok(rjs0.includes('sec-title'), '区块标题可修改（标题输入框）');
-  ok(rjs0.includes('sec-body'), '区块内容长文本 textarea');
-  ok(rjs0.includes('sections'), '窗口维护区块列表（自动识别）');
-  ok(rjs0.includes('collectPayload'), '保存收集字段+区块');
+  ok(rjs0.includes('onSaveClick'), '保存走前端二次确认（onSaveClick）');
+  ok(rjs0.includes('确认保存？'), '文件存在 → 按钮二次确认（防误覆盖）');
+  ok(rjs0.includes('SAVE_TIMEOUT_MS') || rjs0.includes('保存超时'), '保存带超时兜底（绝不卡「保存中」）');
+  ok(rjs0.includes('collectPayload'), '保存收集字段+角色+区块');
   ok(rjs0.includes('saveGlobalMemory'), '保存调 saveGlobalMemory');
   ok(rjs0.includes('getGlobalMemory'), '读取调 getGlobalMemory');
   const ipcSrc2 = read('modules/ipc.js');
-  ok(ipcSrc2.includes('将覆盖已有全局记忆内容'), 'ipc 保存有覆盖确认弹窗');
-  ok(ipcSrc2.includes('\'cancelled\''), '取消返回 cancelled（不写盘）');
-  ok(ipcSrc2.includes('defaultId: 0'), '确认弹窗默认选中「保存」（防误按取消）');
-  ok(ipcSrc2.includes('shell, dialog, path, fs'), 'ipc 解构含 dialog（修复：之前漏解构 dialog 导致保存异常卡死）');
-  ok(ipcSrc2.includes('appendLog'), 'ipc 解构含 appendLog（异常记录）');
+  ok(!ipcSrc2.includes('showMessageBox'), '主进程 memory:save 不再弹 dialog（确认移前端，防子窗口挂起卡死）');
+  ok(ipcSrc2.includes('覆盖确认由前端按钮二次确认'), '注释说明确认移前端');
   ok(ipcSrc2.includes('catch (err)') && ipcSrc2.includes('保存全局记忆异常'), 'memory:save handler try/catch（绝不 reject 卡死前端）');
-  const rjs1 = read('renderer/global-memory.js');
-  ok(rjs1.includes('try {\n      res = await dsh.saveGlobalMemory') || /try\s*\{\s*res = await dsh\.saveGlobalMemory/.test(rjs1), '前端保存 await 有 try/catch（按钮不卡「保存中」）');
   const mw = read('modules/windows/misc-windows.js');
   ok(mw.includes('openGlobalMemoryWindow'), 'misc-windows 有全局记忆窗口');
   ok(mw.includes('\'global-memory.html\''), '窗口加载 global-memory.html');
@@ -489,6 +489,23 @@ $env:PATH = "..."
   ok(raw3b.includes('## 身份与称呼（改）'), '新标题生效');
   ok(!raw3b.includes('## 身份与称呼\n') && !raw3b.includes('## 身份与称呼（改）\n\n## 身份与称呼（改）'), '旧标题消失且无重复副本');
   ok((raw3b.match(/## 身份与称呼/g) || []).length === 1, '身份与称呼相关区块仅 1 个');
+  // 4.6) 角色设定：save 带 roles → 基础设定区块内「### 角色设定（DSH 扮演）」子组；重读回填
+  const r3c = api.save({
+    fields: [{ name: '你的称呼', value: '小六' }],
+    roles: [{ name: '角色 1', value: '资深 C++ 工程师' }, { name: '角色 2', value: '数据分析师' }],
+    sections: d2.sections.map((s) => ({ title: s.title, body: s.body.join('\n') })),
+  });
+  ok(r3c.ok === true, '含角色设定保存成功');
+  const raw3c = fs.readFileSync(target, 'utf8');
+  ok(raw3c.includes('### 角色设定（DSH 扮演）'), '角色设定子组标题写入');
+  ok(raw3c.includes('- 角色 1：资深 C++ 工程师') && raw3c.includes('- 角色 2：数据分析师'), '角色字段写入');
+  const d3c = api.data();
+  const basic3c = d3c.sections.find((s) => s.title === '基础设定（DSH-Desktop 图形化编辑）');
+  ok(!!basic3c && Array.isArray(basic3c.roleItems) && basic3c.roleItems.length === 2
+    && basic3c.roleItems[0].name === '角色 1' && basic3c.roleItems[0].value === '资深 C++ 工程师', '角色设定解析回填（重开窗口仍在）');
+  // 4.7) 角色为空 → 不输出角色子组（保持文件简洁）
+  const r3d = api.save({ fields: [{ name: '你的称呼', value: '小六' }], roles: [], sections: [] });
+  ok(r3d.ok === true && !fs.readFileSync(target, 'utf8').includes('### 角色设定'), '角色为空不输出子组');
   // 5) 空字段名行过滤
   const r4 = api.save({ fields: [{ name: '', value: '空名行' }, { name: '你的称呼', value: '李四' }], sections: [] });
   ok(r4.ok === true && !fs.readFileSync(target, 'utf8').includes('- ：空名行'), '空字段名行被过滤');

@@ -1,12 +1,12 @@
 'use strict';
 
 /**
- * global-memory.js — 全局记忆窗口脚本（v0.9.12 左右分栏版）
+ * global-memory.js — 全局记忆窗口脚本（v0.9.12 角色设定 + 前端确认版）
  * 布局参考提示词库：左边选类别（基础设定 / 各 ## 记忆区块），右边编辑内容。
- *  - 基础设定 → 动态字段列表（可增删字段）；
+ *  - 基础设定 → 两组动态字段列表：「你的信息」+「角色设定（DSH 扮演）」（均可增删）；
  *  - 其他 ## 区块 → 标题可直接修改 + 长文本编辑（自动识别，格式原样保留）；
- *  - 「＋ 添加区块」在界面内新建（不用 prompt，沙箱渲染进程禁用）；
- *  - 保存调 saveGlobalMemory({ fields, sections })（覆盖确认弹窗在主进程）。
+ *  - 覆盖确认在**前端**（保存按钮二次确认）—— 主进程 dialog 在子窗口上会挂起
+ *    导致"保存中"卡死，故确认逻辑移到前端；保存带 8s 超时兜底，绝不卡按钮。
  */
 
 const el = (id) => document.getElementById(id);
@@ -15,6 +15,7 @@ const dsh = window.dshDesktop;
 const BASIC_KEY = '__basic__';
 const SECTION_FULL = '基础设定（DSH-Desktop 图形化编辑）';
 const DEFAULT_FIELDS = ['你的称呼', '你的身份/角色', '项目背景', '语言风格', '输出习惯', '常用约定'];
+const DEFAULT_ROLES = ['角色 1'];
 const VALUE_HINTS = {
   你的称呼: '例：老大 / 张三',
   你的身份角色: '例：技术总监 / 项目负责人',
@@ -24,19 +25,23 @@ const VALUE_HINTS = {
   常用约定: '例：有改必升版本号；开发日志必写',
 };
 const VALUE_HINT_FALLBACK = '填写内容…';
+const SAVE_TIMEOUT_MS = 8000; // 保存超时兜底（任何挂起 8s 必恢复按钮）
 
-let fields = [];   // 基础设定字段 [{name,value}]
-let sections = []; // 其他 ## 区块 [{title, body}]
+let fields = [];       // 你的信息 [{name,value}]
+let roleFields = [];   // 角色设定 [{name,value}]
+let sections = [];     // 其他 ## 区块 [{title, body}]
 let activeKey = BASIC_KEY;
+let fileExists = false;
 let filePath = '';
 let bannerTimer = null;
+let confirmTimer = null; // 保存二次确认计时
 
 function showBanner(text, ok) {
   const b = el('banner');
   b.textContent = text;
   b.className = 'banner show ' + (ok ? 'ok' : 'fail');
   clearTimeout(bannerTimer);
-  bannerTimer = setTimeout(() => { b.className = 'banner'; }, 2600);
+  bannerTimer = setTimeout(() => { b.className = 'banner'; }, 3000);
 }
 
 function escapeHtml(s) {
@@ -69,7 +74,6 @@ function renderCats() {
   if (addBtn) addBtn.addEventListener('click', addSection);
 }
 
-/** 区块的唯一键（按标题；标题修改后重新计算） */
 function secKey(s) {
   return 'sec:' + (s.title || '');
 }
@@ -79,11 +83,18 @@ function renderRight() {
   const head = el('right-head');
   const body = el('right-body');
   if (activeKey === BASIC_KEY) {
-    head.innerHTML = '基础设定 <span class="tag">字段列表 · 可增删</span>';
-    body.innerHTML = '<div class="fields" id="fields"></div>'
-      + '<button id="btn-add-field" class="add-field">＋ 添加字段</button>';
+    head.innerHTML = '基础设定 <span class="tag">你的信息 + 角色设定 · 可增删</span>';
+    body.innerHTML = `
+      <div class="group-label">你的信息</div>
+      <div class="fields" id="fields"></div>
+      <button id="btn-add-field" class="add-field">＋ 添加字段</button>
+      <div class="group-label role">角色设定（DSH 扮演）</div>
+      <div class="fields" id="role-fields"></div>
+      <button id="btn-add-role" class="add-field">＋ 添加角色</button>`;
     renderFields();
-    el('btn-add-field').addEventListener('click', addField);
+    renderRoleFields();
+    el('btn-add-field').addEventListener('click', () => addRow(fields, renderFields));
+    el('btn-add-role').addEventListener('click', () => addRow(roleFields, renderRoleFields));
     return;
   }
   const idx = sections.findIndex((s) => secKey(s) === activeKey);
@@ -98,11 +109,9 @@ function renderRight() {
     <textarea id="sec-body" class="sec-body" rows="10" placeholder="此区块内容…">${escapeHtml(s.body)}</textarea>`;
   el('sec-title').addEventListener('input', (e) => {
     const t = e.target.value.trim();
-    // 同步标题并更新左侧列表（保持选中）
     const old = s.title;
     s.title = t || old;
     renderCats();
-    // 重新选中该区块
     activeKey = secKey(s);
     document.querySelectorAll('.cat[data-key]').forEach((c) => {
       c.classList.toggle('active', c.dataset.key === activeKey);
@@ -116,11 +125,12 @@ function renderAll() {
   renderRight();
 }
 
-function renderFields() {
-  const wrap = el('fields');
-  wrap.innerHTML = fields.map((it, i) => `
+/** 通用字段行渲染（listElId：容器 id；arr：数据数组） */
+function renderRows(listElId, arr) {
+  const wrap = el(listElId);
+  wrap.innerHTML = arr.map((it, i) => `
     <div class="row" data-i="${i}">
-      <input class="f-name" placeholder="字段名（例：我的微信号）" value="${escapeHtml(it.name)}" />
+      <input class="f-name" placeholder="字段名" value="${escapeHtml(it.name)}" />
       <textarea class="f-value" rows="1" placeholder="${escapeHtml(valueHint(it.name))}">${escapeHtml(it.value)}</textarea>
       <button class="del" title="删除这一条">✕</button>
     </div>`).join('');
@@ -129,24 +139,24 @@ function renderFields() {
     const name = row.querySelector('.f-name');
     const value = row.querySelector('.f-value');
     name.addEventListener('input', () => {
-      fields[i].name = name.value;
+      arr[i].name = name.value;
       const ph = valueHint(name.value);
       if (value.placeholder !== ph) value.placeholder = ph;
     });
-    value.addEventListener('input', () => { fields[i].value = value.value; });
+    value.addEventListener('input', () => { arr[i].value = value.value; });
     row.querySelector('.del').addEventListener('click', () => {
-      fields.splice(i, 1);
-      renderFields();
+      arr.splice(i, 1);
+      renderRows(listElId, arr);
     });
   });
 }
 
-function addField() {
-  fields.push({ name: '', value: '' });
-  renderFields();
-  const rows = el('fields').querySelectorAll('.row');
-  const last = rows[rows.length - 1];
-  if (last) last.querySelector('.f-name').focus();
+function renderFields() { renderRows('fields', fields); }
+function renderRoleFields() { renderRows('role-fields', roleFields); }
+
+function addRow(arr, renderFn) {
+  arr.push({ name: '', value: '' });
+  renderFn();
 }
 
 /** 「＋ 添加区块」：界面内新建（不用 prompt —— 沙箱渲染进程禁用 window.prompt） */
@@ -157,16 +167,14 @@ function addSection() {
   sections.push({ title: name, body: '' });
   activeKey = secKey(sections[sections.length - 1]);
   renderAll();
-  // 聚焦标题输入框，用户直接改名
   const t = el('sec-title');
   if (t) { t.focus(); t.select(); }
 }
 
 function collectPayload() {
-  const cleanFields = fields
+  const clean = (arr) => arr
     .map((it) => ({ name: String(it.name || '').trim(), value: String(it.value || '').trim() }))
     .filter((it) => it.name !== '');
-  // 标题去重（重复标题仅保留第一个，避免保存时覆盖）
   const seen = new Set();
   const cleanSections = sections
     .map((s) => ({ title: String(s.title || '').trim(), body: s.body }))
@@ -175,19 +183,78 @@ function collectPayload() {
       seen.add(s.title);
       return true;
     });
-  return { fields: cleanFields, sections: cleanSections };
+  return { fields: clean(fields), roles: clean(roleFields), sections: cleanSections };
 }
 
-/** 加载数据（init 与保存成功后共用，保存后刷新界面展示最新文件内容） */
+/** 保存（覆盖确认在前端：文件已存在 → 按钮二次确认；首次直接保存） */
+async function doSave() {
+  const payload = collectPayload();
+  if (payload.fields.length === 0 && payload.roles.length === 0 && payload.sections.length === 0) {
+    showBanner('没有可保存的内容（至少保留一个字段）', false);
+    return;
+  }
+  const btn = el('btn-save');
+  btn.disabled = true;
+  btn.textContent = '保存中…';
+  let res;
+  try {
+    res = await Promise.race([
+      dsh.saveGlobalMemory(payload),
+      new Promise((resolve) => setTimeout(() => resolve({ ok: false, message: '保存超时，请重试' }), SAVE_TIMEOUT_MS)),
+    ]);
+  } catch (err) {
+    res = { ok: false, message: String((err && err.message) || err || '内部错误') };
+  }
+  btn.disabled = false;
+  btn.textContent = '保存';
+  if (res && res.ok) {
+    try { await loadData(); renderAll(); } catch { /* ignore */ }
+    showBanner('✅ 已保存（DSH 新会话自动生效）', true);
+  } else if (res && res.reason === 'cancelled') {
+    showBanner('已取消保存（未改动文件）', false);
+  } else {
+    showBanner('保存失败：' + ((res && res.message) || '未知错误'), false);
+  }
+}
+
+function onSaveClick() {
+  // 文件已存在 → 二次确认（避免误覆盖）
+  if (fileExists && !el('btn-save').dataset.confirm) {
+    const btn = el('btn-save');
+    btn.dataset.confirm = '1';
+    btn.textContent = '⚠ 确认保存？';
+    showBanner('将覆盖 ~/.dsh/AGENTS.md 已有内容，再次点击确认保存', false);
+    clearTimeout(confirmTimer);
+    confirmTimer = setTimeout(resetSaveBtn, 3000);
+    return;
+  }
+  resetSaveBtn();
+  doSave();
+}
+
+function resetSaveBtn() {
+  const btn = el('btn-save');
+  btn.dataset.confirm = '';
+  btn.textContent = '保存';
+  clearTimeout(confirmTimer);
+}
+
 async function loadData() {
   const data = await dsh.getGlobalMemory();
   filePath = (data && data.file) || '';
+  fileExists = !!(data && data.exists);
   const basic = data && data.sections.find((s) => s.title === SECTION_FULL);
   if (basic && Array.isArray(basic.items) && basic.items.length > 0) {
     fields = basic.items.map((it) => ({ name: it.name || '', value: it.value || '' }));
   } else {
     const defs = (data && Array.isArray(data.defaultFields)) ? data.defaultFields : DEFAULT_FIELDS;
     fields = defs.map((n) => ({ name: n, value: '' }));
+  }
+  if (basic && Array.isArray(basic.roleItems) && basic.roleItems.length > 0) {
+    roleFields = basic.roleItems.map((it) => ({ name: it.name || '', value: it.value || '' }));
+  } else {
+    const defs = (data && Array.isArray(data.defaultRoles)) ? data.defaultRoles : DEFAULT_ROLES;
+    roleFields = defs.map((n) => ({ name: n, value: '' }));
   }
   sections = (data && Array.isArray(data.sections) ? data.sections : [])
     .filter((s) => s.title !== SECTION_FULL)
@@ -201,38 +268,11 @@ async function init() {
     await loadData();
   } catch {
     fields = DEFAULT_FIELDS.map((n) => ({ name: n, value: '' }));
+    roleFields = DEFAULT_ROLES.map((n) => ({ name: n, value: '' }));
     sections = [];
   }
   renderAll();
-
-  el('btn-save').addEventListener('click', async () => {
-    const payload = collectPayload();
-    if (payload.fields.length === 0 && payload.sections.length === 0) {
-      showBanner('没有可保存的内容（至少保留一个字段）', false);
-      return;
-    }
-    const btn = el('btn-save');
-    btn.disabled = true;
-    btn.textContent = '保存中…';
-    let res;
-    try {
-      res = await dsh.saveGlobalMemory(payload);
-    } catch (err) {
-      // v0.9.12（老大反馈：点保存一直"保存中"）：IPC 异常必须恢复按钮，不能卡死
-      res = { ok: false, message: String((err && err.message) || err || '内部错误') };
-    }
-    btn.disabled = false;
-    btn.textContent = '保存';
-    if (res && res.ok) {
-      // v0.9.12（老大反馈：保存没写入）：保存成功后重新加载，界面即展示最新文件内容
-      try { await loadData(); renderAll(); } catch { /* ignore */ }
-      showBanner('✅ 已保存（DSH 新会话自动生效）', true);
-    } else if (res && res.reason === 'cancelled') {
-      showBanner('已取消保存（未改动文件）', false);
-    } else {
-      showBanner('保存失败：' + ((res && res.message) || '未知错误'), false);
-    }
-  });
+  el('btn-save').addEventListener('click', onSaveClick);
   el('btn-open-folder').addEventListener('click', () => {
     if (dsh && dsh.openGlobalMemoryFolder) dsh.openGlobalMemoryFolder();
   });

@@ -235,6 +235,7 @@ async function main() {
             expression: `(() => {
               const cats = Array.from(document.querySelectorAll('#cats .cat[data-key]'));
               const rows = Array.from(document.querySelectorAll('#fields .row'));
+              const roleRows = Array.from(document.querySelectorAll('#role-fields .row'));
               return {
                 hasCats: !!document.getElementById('cats'),
                 hasRight: !!document.getElementById('right-body'),
@@ -244,6 +245,9 @@ async function main() {
                 names: rows.map((r) => (r.querySelector('.f-name') || {}).value || '').filter(Boolean),
                 hasAddField: !!document.getElementById('btn-add-field'),
                 hasAddSec: !!document.getElementById('btn-add-sec'),
+                hasRoleGroup: !!document.getElementById('role-fields'),
+                roleCount: roleRows.length,
+                hasAddRole: !!document.getElementById('btn-add-role'),
                 path: (document.getElementById('path') || {}).textContent || '',
               };
             })()`,
@@ -258,6 +262,8 @@ async function main() {
         ok(!!fv && fv.catTexts.some((t) => t.includes('身份与称呼')), `自动识别出 身份与称呼 区块（${fv && fv.catTexts.join(' | ')}）`);
         ok(!!fv && fv.rowCount >= 6 && fv.names.includes('你的称呼'), '基础设定字段列表默认显示（含你的称呼）');
         ok(!!fv && fv.hasAddField && fv.hasAddSec, '有「＋ 添加字段」和「＋ 添加区块」按钮');
+        ok(!!fv && fv.hasRoleGroup && fv.roleCount >= 1, `角色设定子组存在（${fv && fv.roleCount} 个角色字段）`);
+        ok(!!fv && fv.hasAddRole, '有「＋ 添加角色」按钮');
         // 点击左侧区块 → 右侧显示标题输入框（可改）+ 长文本
         const sec = await memCdp.send('Runtime.evaluate', {
           expression: `(() => {

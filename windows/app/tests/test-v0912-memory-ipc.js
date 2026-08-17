@@ -3,13 +3,14 @@
 /**
  * test-v0912-memory-ipc.js — 全局记忆保存链路端到端测试（v0.9.12）
  *
- * 真实驱动 modules/ipc.js 的 registerIpc + memory:save handler（mock dialog/ipcMain），
+ * 真实驱动 modules/ipc.js 的 registerIpc + memory:save handler（mock ipcMain），
  * 验证（针对老大反馈「点保存一直保存中」的回归防护）：
- *  1. dialog 解构修复：文件存在 + 确认「保存」→ 写盘成功（此前 dialog 未解构
- *     抛 TypeError → IPC reject → 前端卡死"保存中…"）；
- *  2. 确认「取消」→ 返回 cancelled 且不写盘；
+ *  1. 主进程 memory:save 不再 await dialog（v0.9.12：确认移前端，主进程 dialog
+ *     在 modal:false 子窗口上可能不弹/挂起 → 卡死"保存中"）；
+ *  2. 文件存在 + 保存 → 直接写盘（前端已二次确认）；
  *  3. handler 内部异常 → 返回 {ok:false,message}（绝不 reject）；
- *  4. 文件不存在（首次）→ 不弹确认直接创建。
+ *  4. 首次（文件不存在）→ 直接创建；
+ *  5. 角色设定 roles 随保存写入。
  *
  * 用法：node tests/test-v0912-memory-ipc.js
  */
@@ -28,8 +29,8 @@ function ok(cond, name) {
   else { failed++; console.error(`  ✗ ${name}`); }
 }
 
-/** 构造 registerIpc 环境；dialogResponse 控制确认框返回（0=保存 1=取消） */
-function setup({ dialogResponse = 0, saveThrow = false } = {}) {
+/** 构造 registerIpc 环境；saveThrow 模拟写盘异常 */
+function setup({ saveThrow = false } = {}) {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-memipc-'));
   const ipcMain = new EventEmitter();
   const handlers = {};
@@ -43,7 +44,8 @@ function setup({ dialogResponse = 0, saveThrow = false } = {}) {
     ipcMain,
     app: { getVersion: () => '0.9.12', getPath: () => tmp },
     clipboard: {}, shell: { openPath: async () => '' },
-    dialog: { showMessageBox: async () => { calls.dialogs++; return { response: dialogResponse }; } },
+    // dialog 故意不传 —— memory:save 不得依赖 dialog（确认已移前端，防挂起卡死）
+    dialog: { showMessageBox: async () => { calls.dialogs++; return { response: 0 }; } },
     path, fs, appendLog: () => {},
     readShellConfig: () => ({}), installedDshVersion: () => null,
     fetchLatestDshVersion: async () => null, fetchLatestShellVersion: async () => null,
@@ -54,8 +56,7 @@ function setup({ dialogResponse = 0, saveThrow = false } = {}) {
     openPromptLibWindow: () => {}, openUpdateWindow: () => {}, getWebUrl: () => '',
     promptInject: {}, handleDropFiles: async () => ({}), getWorkspacePath: () => '',
     customPrompts: {}, noticeApi: {},
-    globalMemory, openGlobalMemoryWindow: () => {}, getGlobalMemoryWin: () => null,
-    appName: 'DSH-Desktop',
+    globalMemory, openGlobalMemoryWindow: () => {},
     getResolvedPort: () => 0, getCurrentStage: () => '',
   };
   registerIpc(deps);
@@ -63,52 +64,46 @@ function setup({ dialogResponse = 0, saveThrow = false } = {}) {
 }
 
 async function main() {
-  console.log('[1] 文件已存在 + 确认「保存」→ 写盘成功（回归：dialog 未解构卡死）');
+  console.log('[1] 文件已存在 + 保存 → 直接写盘（主进程不 await dialog，防挂起卡死）');
   {
-    const { handlers, target, tmp } = setup({ dialogResponse: 0 });
+    const { handlers, target, calls, tmp } = setup();
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, '# AGENTS.md\n\n## 身份与称呼\n\n- 我的姓名：**小六**\n', 'utf8');
     const r = await handlers['memory:save'](null, {
       fields: [{ name: '你的称呼', value: '老大' }],
+      roles: [{ name: '角色 1', value: '资深 C++ 工程师' }],
       sections: [{ title: '身份与称呼', body: '- 我的姓名：**小六**' }],
     });
     ok(r && r.ok === true, 'memory:save 返回 ok（不 reject、不卡死）');
+    ok(calls.dialogs === 0, '主进程不再弹 dialog（确认在前端）');
     const raw = fs.readFileSync(target, 'utf8');
     ok(raw.includes('- 你的称呼：老大'), '基础设定字段写入文件');
-    ok(raw.includes('## 身份与称呼'), '区块保留');
+    ok(raw.includes('### 角色设定（DSH 扮演）') && raw.includes('- 角色 1：资深 C++ 工程师'), '角色设定写入文件');
+    ok(raw.includes('## 身份与称呼'), '其他区块保留');
     fs.rmSync(tmp, { recursive: true, force: true });
   }
 
-  console.log('[2] 确认「取消」→ 返回 cancelled 且不写盘');
+  console.log('[2] handler 内部异常 → 返回 {ok:false,message}（绝不 reject 卡死前端）');
   {
-    const { handlers, target, calls, tmp } = setup({ dialogResponse: 1 });
-    fs.mkdirSync(path.dirname(target), { recursive: true });
-    const before = '# 原内容\n';
-    fs.writeFileSync(target, before, 'utf8');
-    const r = await handlers['memory:save'](null, { fields: [{ name: '你的称呼', value: '老大' }], sections: [] });
-    ok(r && r.ok === false && r.reason === 'cancelled', '取消返回 cancelled');
-    ok(fs.readFileSync(target, 'utf8') === before, '文件未被改动');
-    ok(calls.dialogs === 1, '确认弹窗弹出 1 次');
-    fs.rmSync(tmp, { recursive: true, force: true });
-  }
-
-  console.log('[3] handler 内部异常 → 返回 {ok:false,message}（绝不 reject 卡死前端）');
-  {
-    const { handlers, target, tmp } = setup({ dialogResponse: 0, saveThrow: true });
+    const { handlers, target, tmp } = setup({ saveThrow: true });
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, '# 原内容\n', 'utf8');
-    const r = await handlers['memory:save'](null, { fields: [{ name: 'a', value: 'b' }], sections: [] });
+    const r = await handlers['memory:save'](null, { fields: [{ name: 'a', value: 'b' }], roles: [], sections: [] });
     ok(r && r.ok === false && typeof r.message === 'string' && r.message.includes('模拟写盘失败'), '异常被捕获返回 message');
     fs.rmSync(tmp, { recursive: true, force: true });
   }
 
-  console.log('[4] 文件不存在（首次）→ 不弹确认直接创建');
+  console.log('[3] 文件不存在（首次）→ 直接创建（含角色设定）');
   {
-    const { handlers, target, calls, tmp } = setup({ dialogResponse: 0 });
-    const r = await handlers['memory:save'](null, { fields: [{ name: '你的称呼', value: '小六' }], sections: [] });
+    const { handlers, target, tmp } = setup();
+    const r = await handlers['memory:save'](null, {
+      fields: [{ name: '你的称呼', value: '小六' }],
+      roles: [{ name: '角色 1', value: '数据分析师' }],
+      sections: [],
+    });
     ok(r && r.ok === true, '首次保存成功');
-    ok(calls.dialogs === 0, '首次不弹确认框');
     ok(fs.existsSync(target) && fs.readFileSync(target, 'utf8').includes('- 你的称呼：小六'), '文件创建且字段写入');
+    ok(fs.readFileSync(target, 'utf8').includes('- 角色 1：数据分析师'), '角色设定随首次保存写入');
     fs.rmSync(tmp, { recursive: true, force: true });
   }
 

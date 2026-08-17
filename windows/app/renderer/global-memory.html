@@ -93,6 +93,13 @@
       font-size: 13px; font-weight: 590; align-self: flex-start;
     }
     .add-field:hover { color: var(--brand); border-color: rgba(94,106,210,.55); background: var(--bg-hover); }
+    /* 基础设定内的子组标签（你的信息 / 角色设定） */
+    .group-label {
+      font-size: 12.5px; font-weight: 590; color: var(--text-secondary);
+      margin: 4px 0 8px; padding-bottom: 4px; border-bottom: 1px solid var(--border-standard);
+    }
+    .group-label.role { margin-top: 14px; color: var(--brand); }
+    .group-label .hint { font-weight: 400; color: var(--text-quaternary); margin-left: 8px; font-size: 11px; }
     /* 其他区块：标题可改 + 长文本 */
     .sec-title-input {
       display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
@@ -132,7 +139,7 @@
 </head>
 <body>
   <h1>🧠 全局记忆</h1>
-  <div class="subtitle">写入 <code>~/.dsh/AGENTS.md</code>，DSH 启动时自动读取。左边选类别（自动识别基础设定 / 各记忆区块），右边编辑内容；区块标题可直接修改。覆盖已有内容保存时会弹窗确认。</div>
+  <div class="subtitle">写入 <code>~/.dsh/AGENTS.md</code>，DSH 启动时自动读取。左边选类别（自动识别基础设定 / 各记忆区块），右边编辑内容；基础设定含「角色设定」可设置 DSH 扮演角色；区块标题可直接修改。覆盖已有内容保存时需二次确认。</div>
   <div id="banner" class="banner"></div>
   <div class="layout">
     <div class="left" id="cats"></div>

@@ -11,7 +11,7 @@
 
 function registerIpc(deps) {
   const {
-    ipcMain, app, clipboard, shell, dialog, path, fs, // dialog/appName：memory:save 覆盖确认弹窗
+    ipcMain, app, clipboard, shell, path, fs,
     appendLog, // v0.9.12：memory:save 异常记录
     readShellConfig, installedDshVersion,
     fetchLatestDshVersion, fetchLatestShellVersion, compareSemver, effectiveLatest,
@@ -24,8 +24,7 @@ function registerIpc(deps) {
     // v0.9.5（T2）：自定义提示词 + （T3）公告条
     customPrompts, noticeApi,
     // v0.9.12（老大指令）：全局记忆（读写 ~/.dsh/AGENTS.md + 打开编辑窗口）
-    globalMemory, openGlobalMemoryWindow, getGlobalMemoryWin,
-    appName, // v0.9.12：覆盖确认弹窗标题
+    globalMemory, openGlobalMemoryWindow,
   } = deps;
   // P2-2（外审 zx(9)）：外部链接域名白名单 —— 渲染进程可达的 openExternal 一律过白名单
   const { isAllowedExternalUrl } = require('./external-links');
@@ -149,30 +148,16 @@ function registerIpc(deps) {
   });
   // v0.9.12（老大指令）：全局记忆 —— 读写 ~/.dsh/AGENTS.md（DSH 自动读取），
   // 图形化编辑：基础设定字段列表 + 自动识别所有 ## 区块长文本编辑
+  // v0.9.12（老大指令）：全局记忆 —— 读写 ~/.dsh/AGENTS.md（DSH 自动读取）
+  // 覆盖确认由前端按钮二次确认（v0.9.12 修复：主进程 dialog 在 modal:false 子窗口
+  // 上可能不弹/挂起导致"保存中"卡死 → 确认移前端，本 handler 只保存，绝不挂起）
   ipcMain.handle('memory:open-window', () => { openGlobalMemoryWindow(); return true; });
   ipcMain.handle('memory:data', () => globalMemory.data());
   ipcMain.handle('memory:save', async (_e, payload) => {
     try {
-      // 覆盖确认（老大指令）：文件已存在 → 弹窗确认后才写盘
-      const existing = globalMemory.data();
-      if (existing && existing.exists) {
-        const owner = getGlobalMemoryWin && getGlobalMemoryWin() && !getGlobalMemoryWin().isDestroyed()
-          ? getGlobalMemoryWin()
-          : (getMainWindow() && !getMainWindow().isDestroyed() ? getMainWindow() : undefined);
-        const { response } = await dialog.showMessageBox(owner, {
-          type: 'warning',
-          title: appName,
-          message: '将覆盖已有全局记忆内容？',
-          detail: '保存会用当前表单/区块内容覆盖 ~/.dsh/AGENTS.md 中展示的内容（其余未展示部分保持不变）。',
-          buttons: ['保存', '取消'],
-          defaultId: 0, cancelId: 1, noLink: true, // defaultId=保存（老大反馈：误按取消导致没写入）
-        });
-        if (response !== 0) return { ok: false, reason: 'cancelled' };
-      }
       return globalMemory.save(payload || {});
     } catch (err) {
-      // v0.9.12（老大反馈：点保存一直"保存中"）：handler 绝不 reject ——
-      // 之前 dialog 未解构抛 TypeError 导致 IPC reject，前端 await 无 catch 卡死按钮
+      // 绝不 reject（防前端"保存中"卡死）：异常返回 {ok:false,message}
       appendLog('error', `保存全局记忆异常：${err.message}`);
       return { ok: false, message: err.message };
     }
