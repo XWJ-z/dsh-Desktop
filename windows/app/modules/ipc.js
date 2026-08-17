@@ -52,7 +52,8 @@ function registerIpc(deps) {
       saveSettings();
       refreshMenus();
     }
-    return { notices, current: app.getVersion() };
+    // v0.9.7：附带完整 marquee —— 公告窗口顶部横幅显示全文（菜单栏公告条截断的内容这里看全）
+    return { notices, current: app.getVersion(), marquee: noticeApi.getMarquee() };
   });
   // v0.8.11（T5）/ v0.8.15：宠物隐藏状态（右键隐藏宠物 → 设置菜单勾选同步）
   // v0.8.15（真机修复）：隐藏/显示宠物由前端 injectPet 的 switchMode 同步切换形态

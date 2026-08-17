@@ -9,6 +9,7 @@
  *  - 拉取失败 → 保留上次缓存（菜单公告条不闪没）
  *  - 缓存落 userData/notice-cache.json（重启不丢）
  *  - 菜单栏公告条 marquee / 公告窗口 items 均来自本模块
+ *  - v0.9.7：定时轮询（main.js 10 分钟）—— 版本未变静默（不刷日志），变化才记录
  *
  * notice.json 结构：
  * {
@@ -40,6 +41,8 @@ function createNoticeModule(deps) {
   const { app, fs, path, appendLog, fetchJson } = deps;
 
   let cached = null; // { version, updated, marquee, items }
+  // v0.9.7：定时轮询时版本未变不刷日志（避免每 10 分钟一条噪音）；null = 尚未成功拉取过
+  let lastFetchedVersion = null;
 
   function cacheFile() {
     return path.join(app.getPath('userData'), 'notice-cache.json');
@@ -96,8 +99,12 @@ function createNoticeModule(deps) {
     const best = valid[0];
     cached = best;
     writeCache(best);
-    const detail = NOTICE_URLS.map((s, i) => `${s.name}=${results[i] ? results[i].version : '×'}`).join(', ');
-    appendLog('info', `公告拉取：${valid.length}/${NOTICE_URLS.length} 源可达（${detail}），取 v${best.version}`);
+    // v0.9.7：仅版本变化（或首次成功）记日志；定时轮询拉到相同版本静默
+    if (best.version !== lastFetchedVersion) {
+      const detail = NOTICE_URLS.map((s, i) => `${s.name}=${results[i] ? results[i].version : '×'}`).join(', ');
+      appendLog('info', `公告拉取：${valid.length}/${NOTICE_URLS.length} 源可达（${detail}），取 v${best.version}`);
+      lastFetchedVersion = best.version;
+    }
     return best;
   }
 

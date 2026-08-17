@@ -30,11 +30,27 @@
       white-space: pre-wrap; word-break: break-word;
     }
     .empty { color: var(--text-quaternary); text-align: center; padding: 40px 0; font-size: 13px; }
+    /* v0.9.7：最新公告全文横幅（菜单栏公告条只显示截断概要，这里看全） */
+    .marquee-card {
+      background: var(--bg-surface);
+      border: 1px solid rgba(94,106,210,0.45);
+      border-radius: var(--radius-card);
+      padding: 12px 16px;
+      margin-bottom: 14px;
+      font-size: 13px; line-height: 1.6; color: var(--text-primary);
+      white-space: pre-wrap; word-break: break-word;
+    }
+    .marquee-card .marquee-label {
+      display: inline-block; font-size: 11px; font-weight: 590;
+      color: var(--brand); border: 1px solid rgba(94,106,210,0.45);
+      border-radius: 4px; padding: 1px 6px; margin-right: 8px; vertical-align: 1px;
+    }
   </style>
 </head>
 <body>
   <h1>📢 公告</h1>
   <div class="subtitle">DSH-Desktop 项目公告（发布通知 / 紧急提醒 / 活动宣传）</div>
+  <div class="marquee-card" id="marquee" hidden></div>
   <div class="list" id="list"><!-- JS 渲染 --></div>
 
   <script src="notice.js"></script>

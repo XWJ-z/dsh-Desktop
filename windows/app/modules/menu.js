@@ -42,10 +42,14 @@ function createMenu(deps) {
     isTrayCreated, updateTrayMenu,
   } = deps;
 
-  /** v0.9.5（T3.3）：公告条截断 —— 超 40 字符 → 前 37 + '…'（菜单栏宽度有限） */
+  /**
+   * v0.9.5（T3.3）：公告条截断 —— 超 40 字符 → 前 37 + '…'（菜单栏宽度有限）
+   * v0.9.7（老大反馈：内容没显示全）：截断收紧到 30 字符（前 27 + '…'），
+   * 保证任意窗口宽度下菜单栏都能完整显示到省略号；完整内容点公告条打开公告窗口查看。
+   */
   function truncateMarquee(s) {
     const t = String(s || '');
-    return t.length > 40 ? `${t.slice(0, 37)}…` : t;
+    return t.length > 30 ? `${t.slice(0, 27)}…` : t;
   }
 
   function buildMenu() {
@@ -208,10 +212,11 @@ function createMenu(deps) {
         ],
       },
       // v0.9.5（T3.3，老大确认：公告条最右端，公告菜单之后）：
-      // 菜单栏常驻纯文字公告条（禁用态不可点），数据源 notice.json（独立下发，改内容不须发版）
+      // 菜单栏常驻公告条，数据源 notice.json（独立下发，改内容不须发版）
+      // v0.9.7（老大反馈：内容没显示全）：改可点击 —— 点击打开公告窗口查看完整公告
       {
         label: '📢 ' + truncateMarquee(getMarquee()),
-        enabled: false, // 纯文字展示，不可点
+        click: () => openNoticeWindow(),
       },
     ];
     return Menu.buildFromTemplate(template);

@@ -683,6 +683,23 @@ async function checkUpdatesOnStart() {
   if (dshHasUpdate || shellHasUpdate) Menu.setApplicationMenu(buildMenu());
 }
 
+/**
+ * v0.9.7（老大反馈：公告要重启应用才刷新）：运行中定时自动拉取公告源。
+ * 每 NOTICE_REFRESH_MS 拉一次 notice.json，拉到新内容 → 刷新菜单（公告条 + 「公告（新）」标记）；
+ * 版本未变时 notice.js 静默（不刷日志）；拉取失败沿用缓存（公告条不闪没）。
+ */
+const NOTICE_REFRESH_MS = 10 * 60 * 1000; // 10 分钟
+let noticeRefreshTimer = null;
+function startNoticeAutoRefresh() {
+  if (noticeRefreshTimer) return;
+  noticeRefreshTimer = setInterval(() => {
+    noticeApi.fetchLatest()
+      .then(() => refreshMenusRef())
+      .catch(() => { /* 拉取失败：沿用缓存，静默 */ });
+  }, NOTICE_REFRESH_MS);
+  appendLog('info', `公告自动刷新已启动（每 ${NOTICE_REFRESH_MS / 60000} 分钟）`);
+}
+
 /** 壳更新弹窗询问：立即更新（下载+校验+打开安装包）或稍后 */
 function promptShellUpdate(info) {
   const owner = mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined;
@@ -851,6 +868,8 @@ if (!gotLock) {
       // 任务B-B4 / G1 / v0.6.5（T-030）：启动时检查更新（DSH + 壳）——
       // 壳有新版且设置「启动时检查更新」开启（或 force 强制）时弹窗询问「立即更新 / 稍后」
       checkUpdatesOnStart();
+      // v0.9.7：公告定时自动刷新（运行中改公告不须重启）
+      startNoticeAutoRefresh();
     } catch (err) {
       appendLog('error', `启动失败：${err.message}`);
       if (loadingWindow && !loadingWindow.isDestroyed()) {
@@ -875,6 +894,8 @@ if (!gotLock) {
   app.on('before-quit', () => { isQuitting = true; stopServer(); });
   app.on('will-quit', () => {
     appendLog('info', '应用退出中…');
+    // v0.9.7：退出清理公告自动刷新定时器
+    if (noticeRefreshTimer) { clearInterval(noticeRefreshTimer); noticeRefreshTimer = null; }
     // v0.8.1（T4）：退出释放全局快捷键（防残留占用）
     hotkeyApi.unregisterAll();
     // 审查 v12 P1-2：SIGTERM 宽限期定时器可能随主进程退出被终止，导致残留子进程
