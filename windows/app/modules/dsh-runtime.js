@@ -6,9 +6,9 @@
  * 职责：壳配置读取（config.json）、DSH 运行时安装/版本检查（npx 机制）。
  *
  * 依赖注入（deps）：
- *  - app / fs / path / os         Node 与 Electron 模块
+ *  - app / fs / path             Node 与 Electron 模块
  *  - spawn                        node:child_process
- *  - appendLog / pushStage / pushProgress / dirSizeMB / logPath   日志模块
+ *  - appendLog / pushStage / pushProgress / dirSizeMBAsync / logPath   日志模块（v1.0.2：异步目录统计）
  *  - resolveRunner                Node 运行时解析（node-resolver 模块）
  *  - trackChild                   子进程跟踪（main.js 基础设施）
  *  - npmInstallTimeoutMs          安装超时上限（10 分钟）
@@ -26,8 +26,8 @@
 
 function createDshRuntime(deps) {
   const {
-    app, fs, path, os, spawn,
-    appendLog, pushStage, pushProgress, dirSizeMB, logPath,
+    app, fs, path, spawn,
+    appendLog, pushStage, pushProgress, dirSizeMBAsync, logPath, // v1.0.2：dirSizeMB → dirSizeMBAsync（异步不阻塞主进程）
     resolveRunner, trackChild, npmInstallTimeoutMs,
     fetchLatestDshInfo, // P1-2：晚绑定（main.js 组装，updaterApi 就绪后可调用）
   } = deps;
@@ -217,8 +217,10 @@ function createDshRuntime(deps) {
         // v0.7.3（T-034）：内置 Node 目录加入 PATH —— 无系统 Node 的机器上，
         // koffi 等依赖的 install 脚本（cmd /c node ./cnoke.cjs）才能找到 node 命令
         PATH: `${path.dirname(runner.execPath)}${path.delimiter}${process.env.PATH || ''}`,
-        // npm 需要知道用户级目录；确保缓存落在用户可写位置
-        npm_config_cache: path.join(os.homedir(), 'AppData', 'Local', 'npm-cache'),
+        // v1.0.2（老大反馈 1）：npm 缓存隔离到 <dshenv>/npm-cache —— 原用用户级
+        // AppData/Local/npm-cache（全局共享），进度统计会把用户其他项目的历史缓存
+        // 也算进去（显示 700+MB 虚高）；隔离后进度 = 本次安装真实占用。
+        npm_config_cache: path.join(dshRuntimeDir(), 'npm-cache'),
         npm_config_update_notifier: 'false',
       };
 
@@ -233,15 +235,17 @@ function createDshRuntime(deps) {
         return;
       }
 
-      // 任务D2：安装期间每 2 秒统计"dshenv + npm 缓存"总量并推送到加载页
-      // （下载进度可视化：npm 先写缓存、解压才写 dshenv，仅统计 dshenv 会恒为 0）
-      const npmCacheDir = process.env.npm_config_cache || path.join(os.homedir(), 'AppData', 'Local', 'npm-cache');
-      const installTotalMB = () =>
-        (parseFloat(dirSizeMB(dshRuntimeDir())) + parseFloat(dirSizeMB(npmCacheDir))).toFixed(1);
-      pushProgress(installTotalMB());
-      const progressTimer = setInterval(() => {
-        pushProgress(installTotalMB());
-      }, 2000);
+      // 任务D2：安装期间每 3 秒统计"dshenv（含隔离 npm 缓存）"总量并推送到加载页。
+      // v1.0.2（老大反馈 1）：
+      //  - 缓存已隔离在 <dshenv>/npm-cache，只统计运行时目录，不再混入用户历史 npm 缓存
+      //    （旧版显示 700+MB 虚高、与"首次约 200MB"文案矛盾）；
+      //  - 目录统计改异步（dirSizeMBAsync），不再每 2 秒同步遍历几万个小文件阻塞主进程（卡顿）。
+      const pushInstallProgress = async () => {
+        const mb = await dirSizeMBAsync(dshRuntimeDir());
+        pushProgress(mb);
+      };
+      pushInstallProgress();
+      const progressTimer = setInterval(pushInstallProgress, 3000);
 
       const onData = (label) => (chunk) => {
         for (const line of chunk.toString().split(/\r?\n/)) {

@@ -70,7 +70,7 @@ if (window.dshDesktop) {
   // 下载/安装进度（D2）
   if (window.dshDesktop.onProgress && dlProgressEl) {
     window.dshDesktop.onProgress(({ mb }) => {
-      dlProgressEl.textContent = `已下载 ${mb} MB…`;
+      dlProgressEl.textContent = `已下载 / 安装 ${mb} MB…`;
     });
   }
 

@@ -122,34 +122,32 @@
       color: #e5484d; font-size: 13px; font-weight: 590;
       margin-left: 2px;
     }
-    /* v1.0.1（老大指令）：角色页顶部 tab 选择 + 下方大输入区 */
-    .role-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
-    .role-tab {
-      display: flex; align-items: center; gap: 6px;
-      padding: 7px 12px; border: 1px solid var(--border-standard); border-radius: 999px;
-      cursor: pointer; font-size: 13px; color: var(--text-secondary); background: var(--bg-input);
+    /* v1.0.2（老大指令 2/3）：全局记忆区块 / DSH 角色 —— 卡片列表式（合并 ## 区块 / 角色文件全文） */
+    .memo-list, .role-cards {
+      display: flex; flex-direction: column; gap: 10px;
+      overflow-y: auto; flex: 1; min-height: 0; padding-right: 2px;
     }
-    .role-tab:hover { background: var(--bg-hover); }
-    .role-tab.active { background: var(--brand); color: #fff; border-color: var(--brand); }
-    .role-tab .rt-del {
-      border: none; background: transparent; color: inherit; cursor: pointer;
-      font-size: 12px; padding: 0 2px; opacity: .75;
+    .memo-card, .role-card {
+      background: var(--bg-input); border: 1px solid var(--border-standard);
+      border-radius: var(--radius-btn); padding: 8px 10px;
+      display: flex; flex-direction: column; gap: 8px; flex-shrink: 0;
     }
-    .role-tab .rt-del:hover { opacity: 1; }
-    .role-add {
-      padding: 7px 14px; border: 1px dashed var(--border-standard); border-radius: 999px;
-      background: transparent; color: var(--text-secondary); cursor: pointer;
-      font-size: 13px; font-weight: 590;
+    .memo-head, .role-card-head { display: flex; align-items: center; gap: 8px; }
+    .memo-head .hash { font: 600 15px Consolas, monospace; color: var(--brand); }
+    .memo-title, .role-card-name {
+      flex: 1; min-width: 0; padding: 7px 11px; font-size: 13.5px; font-weight: 590;
+      background: var(--bg-input); border: 1px solid var(--border-standard);
+      border-radius: 8px; color: var(--text-primary); outline: none;
     }
-    .role-add:hover { color: var(--brand); border-color: rgba(94,106,210,.55); }
-    .role-edit { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
-    .role-edit-name { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); }
-    .role-edit-name input {
-      flex: 1; max-width: 300px; padding: 7px 11px; font-size: 13.5px; font-weight: 590;
-      background: var(--bg-input); border: 1px solid var(--border-standard); border-radius: 8px;
-      color: var(--text-primary); outline: none;
+    .memo-title { font-family: Consolas, "Courier New", "Microsoft YaHei", sans-serif; font-size: 14px; }
+    .memo-title:focus, .role-card-name:focus { border-color: rgba(94,106,210,.55); }
+    .memo-card .fold {
+      width: 26px; height: 26px; flex-shrink: 0; border: none; background: transparent;
+      cursor: pointer; color: var(--text-quaternary); font-size: 13px; border-radius: 6px;
     }
-    .role-edit-name input:focus { border-color: rgba(94,106,210,.55); }
+    .memo-card .fold:hover { color: var(--text-primary); background: var(--bg-hover); }
+    .role-card .role-icon { font-size: 15px; }
+    .role-card-body { min-height: 120px; }
     /* v1.0.1（老大指令）：去掉左下角双路径显示（按钮直达目录即可） */
     .path {
       font-size: 11px; color: var(--text-quaternary); flex: 1; min-width: 0;
@@ -211,7 +209,7 @@
 </head>
 <body>
   <h1>🧠 全局记忆 <span class="dsh-view">(DSH 视角)</span></h1>
-  <div class="subtitle">写入 <code>~/.dsh/AGENTS.md</code>（DSH 的视角）：「用户设定」记用户是谁、「我的设定」记 DSH 自己（含默认角色下拉）、「DSH 角色」可切换角色，其他记忆区块自动识别。覆盖已有内容保存时需二次确认。</div>
+  <div class="subtitle">写入 <code>~/.dsh/AGENTS.md</code>（DSH 的视角）：「用户设定」记用户是谁、「我的设定」记 DSH 自己（含默认角色下拉）、「全局记忆区块」汇总其他 ## 区块、「DSH 角色」每个角色对应 <code>~/.dsh/roles/</code> 一个文件（输入框即文件全文，两边同步）。覆盖已有内容保存时需二次确认。</div>
   <!-- v0.9.16（老大指令）：红色提示移到全局记忆介绍下面（默认角色可改：在 DSH 角色中修改） -->
   <div class="tip-red">⚠️ 双击对话框选择角色，默认角色请在[DSH角色中修改]</div>
   <div id="banner" class="banner"></div>

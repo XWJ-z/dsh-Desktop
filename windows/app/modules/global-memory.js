@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * DSH-Desktop — 全局记忆模块（v0.9.14，区块化识别版）
+ * DSH-Desktop — 全局记忆模块（v1.0.2，区块化识别版）
  *
  * 全局记忆 = DSH 原生 `~/.dsh/AGENTS.md`（DSH 启动时自动读取，无需手动发送）。
  * 本模块提供图形化编辑：
@@ -12,6 +12,14 @@
  *  - 首次没有 AGENTS.md → 自动创建模板；
  *  - 区块级替换：文件头部（# 标题 + 说明）与各区块原样保留，只替换用户编辑过的内容；
  *  - 原子写盘（.tmp → rename）；覆盖已有内容由主进程弹窗确认（见 ipc.js）。
+ *
+ * v1.0.2（老大反馈 2026-08-18）角色文件全文同步：
+ *  - **UI 编辑框 = 角色 .md 文件全文**（含 # 角色 / ## 定位 / ## 详细记忆），
+ *    保存时全文写回 ~/.dsh/roles/<名>.md；AGENTS.md 的 DSH 角色区块行只存
+ *    「角色名：定位」（定位 = 全文 ## 定位 节第一行，extractRoleDesc）；
+ *  - **改名/删除文件同步**：保存时对比 AGENTS.md 旧角色名与新提交角色名，
+ *    消失的角色删除其 .md（内容由窗口内存携带，无需真 rename）；
+ *  - data() 返回 mtime 供窗口聚焦自动刷新（外部修改文件立即同步）。
  *
  * 依赖注入（deps）：
  *  - fs / os / path           Node 模块（路径 ~/.dsh/AGENTS.md 经 os.homedir()）
@@ -283,27 +291,88 @@ function createGlobalMemory(deps) {
     return path.join(os.homedir(), '.dsh', ROLES_DIR, `${safeRoleFileName(name)}.md`);
   }
 
+  /** 读取角色文件全文；不存在/读失败返回 ''（v1.0.2：UI 编辑框 = 文件全文） */
+  function readRoleFile(name) {
+    try {
+      return fs.readFileSync(roleFile(name), 'utf8');
+    } catch {
+      return '';
+    }
+  }
+
   /** 角色文件模板（首次创建；详细记忆写入对应角色文件，避免 AGENTS.md 过大） */
   function roleFileTemplate(name, desc) {
     return `# 角色：${String(name || '').trim()}\n\n## 定位\n\n${String(desc || '').trim()}\n\n## 详细记忆\n\n（此角色的详细记忆写在这里，DSH 切换到此角色时按本文件内容扮演。）\n`;
   }
 
-  /** 确保每个角色的角色文件存在（不存在则创建模板；v0.9.13 老大方案 2） */
-  function ensureRoleFiles(roles) {
-    (roles || []).forEach((r) => {
-      const name = String(r.name || '').trim();
-      if (!name) return;
+  /**
+   * 从角色文件全文提取「定位」（AGENTS.md 角色行只存短定位）：
+   *  - 优先取 `## 定位` 节第一个非空行；
+   *  - 无 ## 定位 节 → 取全文第一个非空且非 `# ` 标题行。
+   */
+  function extractRoleDesc(content) {
+    const c = String(content || '');
+    const m = /##\s*定位\s*\n+([\s\S]*?)(?=\n##\s|\s*$)/.exec(c);
+    const section = m ? m[1] : '';
+    const firstLine = section.split(/\r?\n/).map((s) => s.trim()).find((s) => s !== '');
+    if (firstLine) return firstLine;
+    const fallback = c.split(/\r?\n/).map((s) => s.trim()).find((s) => s !== '' && !/^#\s/.test(s));
+    return fallback || '';
+  }
+
+  /** 保证角色文件首行标题与角色名一致（`# 角色：<名>`；无标题行则插入） */
+  function ensureRoleTitle(content, name) {
+    const lines = String(content || '').split('\n');
+    const head = `# 角色：${String(name || '').trim()}`;
+    if (lines[0] && /^#\s*角色/.test(lines[0])) lines[0] = head;
+    else lines.unshift(head);
+    return lines.join('\n');
+  }
+
+  /**
+   * 角色文件同步（v1.0.2 老大反馈：改名残留旧文件 / 文件全文不同步）：
+   * 保存后角色文件目录状态 = UI 角色列表状态：
+   *  - 消失的角色（旧名不在新集合）→ 删除其 .md（改名场景内容由窗口内存携带，
+   *    写回新文件时 ensureRoleTitle 保持标题一致，无需真 rename）；
+   *  - 每个新角色 → 全文写回（空内容 → 模板）。
+   * @param {Array} prevRoles 旧角色名列表（AGENTS.md 解析；[{name}] 或 [name]）
+   * @param {Array} roles     新角色 [{ name, value: 全文 }]
+   */
+  function syncRoleFiles(prevRoles, roles) {
+    const next = new Set((roles || []).map((r) => String((r && r.name) || '').trim()).filter(Boolean));
+    (prevRoles || []).forEach((r) => {
+      const name = String((r && r.name) || r || '').trim();
+      if (!name || next.has(name)) return;
       const f = roleFile(name);
-      if (!fs.existsSync(f)) {
-        try {
-          fs.mkdirSync(path.dirname(f), { recursive: true });
-          fs.writeFileSync(f, roleFileTemplate(name, r.value), 'utf8');
-          appendLog('info', `角色文件已创建：${f}`);
-        } catch (err) {
-          appendLog('warn', `创建角色文件失败（${name}）：${err.message}`);
+      try {
+        if (fs.existsSync(f)) {
+          fs.unlinkSync(f);
+          appendLog('info', `角色文件已删除（角色移除/改名）：${f}`);
         }
+      } catch (err) {
+        appendLog('warn', `删除角色文件失败（${name}）：${err.message}`);
       }
     });
+    (roles || []).forEach((r) => {
+      const name = String((r && r.name) || '').trim();
+      if (!name) return;
+      const f = roleFile(name);
+      const content = String((r && r.value) || '');
+      const finalContent = content.trim()
+        ? ensureRoleTitle(content, name)
+        : roleFileTemplate(name, extractRoleDesc(content));
+      try {
+        fs.mkdirSync(path.dirname(f), { recursive: true });
+        fs.writeFileSync(f, finalContent, 'utf8');
+      } catch (err) {
+        appendLog('warn', `写入角色文件失败（${name}）：${err.message}`);
+      }
+    });
+  }
+
+  /** 确保每个角色的角色文件存在（v0.9.13 老大方案 2；v1.0.2 起 = 仅创建不删除的兼容封装） */
+  function ensureRoleFiles(roles) {
+    syncRoleFiles([], roles);
   }
 
   /** 渲染长文本区块（## 标题 + 原格式内容） */
@@ -363,9 +432,10 @@ function createGlobalMemory(deps) {
     // 兼容旧 payload 字段名（fields/roles → users/dsh）
     const users = clean(p.users !== undefined ? p.users : p.fields);
     const dsh = clean(p.dsh !== undefined ? p.dsh : p.roles);
-    const roles = clean(p.roles);
-    // v0.9.13（老大方案 2）：保存时确保每个角色的角色文件存在（~/.dsh/roles/）
-    ensureRoleFiles(roles);
+    // v1.0.2（老大反馈）：角色 value = 角色 .md 全文 —— 不能过 clean（换行→空格会毁全文），单独处理
+    const roles = (Array.isArray(p.roles) ? p.roles : [])
+      .map((it) => ({ name: String((it && it.name) || '').trim(), value: String((it && it.value) || '') }))
+      .filter((it) => it.name !== '');
     // 配置完成判定：用户设定有非空值 → 不输出引导句
     const configured = users.some((it) => it.value !== '');
     const guide = !configured;
@@ -374,11 +444,18 @@ function createGlobalMemory(deps) {
       .map((s) => ({ title: String((s && s.title) || '').trim(), body: String((s && s.body) || '') }))
       .filter((s) => s.title !== '');
     const raw = readRaw();
+    // v1.0.2（老大反馈 5①）：改名/删除 → 角色 .md 文件同步（旧文件不再残留堆积）
+    const prevParsed = raw === null ? parse(TEMPLATE) : parse(raw);
+    const prevRolesSec = prevParsed.sections.find((s) => s.kind === 'roles');
+    const prevRoles = prevRolesSec ? (prevRolesSec.fields || []).map((f) => ({ name: f.name })) : [];
+    syncRoleFiles(prevRoles, roles);
     // 重组：首次用完整模板解析，已有文件保留原头部与区块（旧「基础设定」容器自动迁移）
     const { head, sections } = raw === null ? parse(TEMPLATE) : parse(raw);
     // v0.9.12（老大反馈：保存没写入）：按序覆盖 —— 窗口区块顺序 = 原文件区块顺序，
     // 第 i 个长区块用窗口第 i 个提交值（标题与内容都可修改生效），原文件没有的新区块追加末尾。
     const merged = [];
+    // v1.0.2：AGENTS.md 角色行只存短定位（desc），全文在 ~/.dsh/roles/ 文件
+    const roleLines = roles.map((r) => ({ name: r.name, value: extractRoleDesc(r.value) }));
     let usersPlaced = false;
     let dshPlaced = false;
     let rolesPlaced = false;
@@ -391,7 +468,7 @@ function createGlobalMemory(deps) {
         merged.push({ title: DSH_SECTION, kind: 'dsh', fields: dsh });
         dshPlaced = true;
       } else if (s.kind === 'roles') {
-        merged.push({ title: ROLES_SECTION, kind: 'roles', fields: roles });
+        merged.push({ title: ROLES_SECTION, kind: 'roles', fields: roleLines });
         rolesPlaced = true;
       } else {
         const incoming = longSections[li] || null;
@@ -404,7 +481,7 @@ function createGlobalMemory(deps) {
       }
     }
     if (!usersPlaced) merged.unshift({ title: USER_SECTION, kind: 'users', fields: users, guide });
-    if (!rolesPlaced) merged.push({ title: ROLES_SECTION, kind: 'roles', fields: roles });
+    if (!rolesPlaced) merged.push({ title: ROLES_SECTION, kind: 'roles', fields: roleLines });
     if (!dshPlaced) merged.splice(merged.findIndex((s) => s.kind === 'users') + 1, 0, { title: DSH_SECTION, kind: 'dsh', fields: dsh });
     // 窗口新增区块（原文件区块数之后）追加末尾
     const originalLong = sections.filter((s) => s.kind === 'long').length;
@@ -473,25 +550,41 @@ function createGlobalMemory(deps) {
     }
   }
 
-  /** 读取窗口数据：头部 + 全部区块（用户/DSH/角色/长文本）+ 默认字段 + 文件路径 + 角色目录 */
+  /**
+   * 读取窗口数据：头部 + 全部区块 + 默认字段 + 文件路径 + 角色目录。
+   * v1.0.2（老大反馈 5②）：DSH 角色 fields 的 value = 角色 .md 文件全文，desc = 定位；返回 mtime 供聚焦刷新。
+   */
   function data() {
     const raw = readRaw();
     const parsed = raw === null ? parse('') : parse(raw);
+    const rolesSec = parsed.sections.find((s) => s.kind === 'roles');
+    const roleNames = rolesSec && rolesSec.fields.length > 0
+      ? rolesSec.fields.map((f) => f.name)
+      : DEFAULT_ROLES.slice();
+    const rolesFields = roleNames
+      .map((name) => String(name || '').trim())
+      .filter(Boolean)
+      .map((name) => {
+        const content = readRoleFile(name);
+        return { name, value: content, desc: extractRoleDesc(content) };
+      });
     return {
       exists: raw !== null,
       head: parsed.head,
-      sections: parsed.sections,
+      sections: parsed.sections.map((s) => (s.kind === 'roles' ? { ...s, fields: rolesFields } : s)),
       defaultFields: DEFAULT_FIELDS.slice(),
       defaultDshFields: DEFAULT_DSH_FIELDS.slice(),
       defaultRoles: DEFAULT_ROLES.slice(),
       file: file(),
       rolesDir: path.join(os.homedir(), '.dsh', ROLES_DIR), // v1.0.1（老大指令）：窗口左下角显示角色文件目录
+      mtime: (() => { try { return raw === null ? null : fs.statSync(file()).mtimeMs; } catch { return null; } })(),
     };
   }
 
   return {
     file, data, save, parse, ensureGuide,
     roleFile, roleFileTemplate, ensureRoleFiles, safeRoleFileName,
+    readRoleFile, extractRoleDesc, ensureRoleTitle, syncRoleFiles, // v1.0.2：角色文件全文同步
     DEFAULT_FIELDS, DEFAULT_DSH_FIELDS, DEFAULT_ROLES, USER_SECTION, DSH_SECTION, ROLES_SECTION,
     GUIDE_FIELD, GUIDE_TEXT, FORMAT_TIDY_PROMPT,
   };

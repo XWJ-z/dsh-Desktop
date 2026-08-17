@@ -40,7 +40,7 @@ function createRoleSelector(deps) {
       type: 'question',
       title: appName,
       message: '本次对话使用哪个角色？',
-      detail: roles.map((r) => `${r.name}：${String(r.value || '').split('（')[0]}`).join('\n'),
+      detail: roles.map((r) => `${r.name}：${String(r.desc != null ? r.desc : (r.value || '')).split('（')[0]}`).join('\n'),
       buttons: [...buttons, '不选择'],
       defaultId: 0, cancelId: buttons.length, noLink: true,
     });

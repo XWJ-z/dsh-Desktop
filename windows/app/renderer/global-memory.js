@@ -1,19 +1,23 @@
 'use strict';
 
 /**
- * global-memory.js — 全局记忆窗口脚本（v0.9.12 用户/DSH 独立区块版）
- * 布局参考提示词库：左边选类别（用户设定 / DSH 设定 / 各 ## 记忆区块），右边编辑内容。
- *  - 用户设定 / DSH 设定 是两个独立顶层区块（老大指令：删除"基础设定"容器），字段列表可增删；
- *  - 其他 ## 区块 → 标题可直接修改 + 长文本编辑（自动识别，格式原样保留）；
- *  - 覆盖确认在**前端**（保存按钮二次确认）+ 8s 超时兜底；保存后可选让 DSH 整理记忆。
+ * global-memory.js — 全局记忆窗口脚本（v1.0.2 四区块版）
+ * 布局：左侧固定 4 个类别（老大指令 2026-08-18）——
+ *  👤 用户设定 / 🤖 我的设定 / 🧠 全局记忆区块 / 🎭 DSH 角色
+ *  - 用户设定 / 我的设定：字段列表可增删（默认角色为下拉选择）；
+ *  - 全局记忆区块：合并展示所有 `## xxxx` 其他区块（卡片列表，标题可改 + 长文本可折叠）；
+ *  - DSH 角色：卡片列表式 —— 每个角色一张卡（角色名 + 角色 .md 文件全文大输入框），
+ *    与 ~/.dsh/roles/ 文件双向同步（v1.0.2 老大反馈 5②）；
+ *  - 窗口聚焦时若 AGENTS.md mtime 变化 → 自动重新加载（外部修改立即同步）；
+ *  - 覆盖确认在前端（二次确认）+ 8s 超时兜底；保存后可选让 DSH 整理记忆。
  */
 
 const el = (id) => document.getElementById(id);
 const dsh = window.dshDesktop;
 
-// v0.9.13（老大方案）：用户设定 / 我的设定 / DSH 角色 三个独立顶层区块（DSH 视角）
 const USERS_KEY = '__users__';
 const DSH_KEY = '__dsh__';
+const MEMO_KEY = '__memo__';    // v1.0.2（老大指令 2）：全局记忆区块（合并所有 ## 区块）
 const ROLES_KEY = '__roles__';
 const DEFAULT_FIELDS = ['用户的称呼', '用户的身份/角色', '当前项目', '常用约定'];
 const DEFAULT_DSH_FIELDS = ['我的名字', '语气风格', '输出习惯', '默认角色'];
@@ -37,12 +41,12 @@ const SAVE_TIMEOUT_MS = 8000; // 保存超时兜底（任何挂起 8s 必恢复�
 
 let userFields = [];   // 用户设定 [{name,value}]
 let dshFields = [];    // DSH 设定 [{name,value}]
-let roleFields = [];   // DSH 角色 [{name,value}]（新对话时选择）
-let activeRole = 0;    // v1.0.1（老大指令）：DSH 角色页顶部 tab 当前选中
-let sections = [];     // 其他 ## 区块 [{title, body}]
+let roleFields = [];   // DSH 角色 [{name, value: 角色 .md 全文, desc}]（v1.0.2：value=全文）
+let sections = [];     // 其他 ## 区块 [{title, body}]（全局记忆区块类别下展示）
 let activeKey = USERS_KEY;
 let fileExists = false;
 let filePath = '';
+let fileMtime = null;  // v1.0.2：聚焦时对比 mtime 自动刷新（外部修改立即同步）
 let guidePending = false; // 未配置引导标记（文件用户设定区有引导句）
 let bannerTimer = null;
 let confirmTimer = null; // 保存二次确认计时
@@ -68,27 +72,17 @@ function valueHint(name) {
   return VALUE_HINTS[n] || VALUE_HINTS[n.replace(/\//g, '')] || VALUE_HINT_FALLBACK;
 }
 
-// ── 左侧类别列表 ──
+// ── 左侧类别列表（v1.0.2 老大指令：4 个固定类别，全局记忆区块/DSH 角色不再各自展开）──
 function renderCats() {
   const cats = el('cats');
   let html = `<div class="cat ${activeKey === USERS_KEY ? 'active' : ''}" data-key="${USERS_KEY}">👤 用户设定<span class="tag">字段</span></div>`;
   html += `<div class="cat ${activeKey === DSH_KEY ? 'active' : ''}" data-key="${DSH_KEY}">🤖 我的设定<span class="tag">字段</span></div>`;
-  html += `<div class="cat ${activeKey === ROLES_KEY ? 'active' : ''}" data-key="${ROLES_KEY}">🎭 DSH 角色<span class="tag">双击切换</span></div>`;
-  html += sections.map((s) => {
-    const key = secKey(s);
-    return `<div class="cat ${activeKey === key ? 'active' : ''}" data-key="${escapeHtml(key)}"><span class="sec-title">## ${escapeHtml(s.title || '未命名')}</span></div>`;
-  }).join('');
-  html += '<div class="cat-add" id="btn-add-sec">＋ 添加区块</div>';
+  html += `<div class="cat ${activeKey === MEMO_KEY ? 'active' : ''}" data-key="${MEMO_KEY}">🧠 全局记忆区块<span class="tag">## 汇总</span></div>`;
+  html += `<div class="cat ${activeKey === ROLES_KEY ? 'active' : ''}" data-key="${ROLES_KEY}">🎭 DSH 角色<span class="tag">文件同步</span></div>`;
   cats.innerHTML = html;
   cats.querySelectorAll('.cat[data-key]').forEach((c) => {
     c.addEventListener('click', () => { activeKey = c.dataset.key; renderAll(); });
   });
-  const addBtn = el('btn-add-sec');
-  if (addBtn) addBtn.addEventListener('click', addSection);
-}
-
-function secKey(s) {
-  return 'sec:' + (s.title || '');
 }
 
 // ── 右侧内容 ──
@@ -114,41 +108,33 @@ function renderRight() {
     el('btn-add-dsh').addEventListener('click', () => addRow(dshFields, renderDshFields));
     return;
   }
-  if (activeKey === ROLES_KEY) {
-    // v1.0.1（老大指令）：顶部 tab 选角色（角色1/2/3/＋添加角色），下方全是输入位置（角色名 + 定位/详细记忆），不再拥挤
-    head.innerHTML = 'DSH 角色 <span class="tag">顶部选择 · 下方输入 · 可增删</span>';
+  if (activeKey === MEMO_KEY) {
+    // v1.0.2（老大指令 2）：所有 ## 区块合并到一个「全局记忆区块」类别，内部卡片列表
+    head.innerHTML = '全局记忆区块 <span class="tag">## 标题可改 · 长文本 · 可折叠</span>';
     body.innerHTML = `
-      <div class="guide-tip">💡 每个角色保存后自动建立角色文件（~/.dsh/roles/）；「我的设定 → 默认角色」选默认角色；双击 DSH 输入框可随时切换角色。</div>
-      <div class="role-tabs" id="role-tabs"></div>
-      <div class="role-edit">
-        <div class="role-edit-name"><span>角色名</span><input id="role-name" placeholder="如：学习导师" /></div>
-        <textarea id="role-body" class="sec-body" rows="12" placeholder="角色定位 / 详细记忆（保存后写入 ~/.dsh/roles/ 角色文件，DSH 切到此角色时按此扮演）…"></textarea>
-      </div>`;
-    renderRoleTabs();
-    renderRoleEdit();
+      <div class="guide-tip">💡 这里汇总 AGENTS.md 里除 用户设定 / 我的设定 / DSH 角色 外的全部 ## 区块，各自独立保存，内容格式原样保留。</div>
+      <div class="memo-list" id="memo-list"></div>
+      <button id="btn-add-sec" class="add-field">＋ 添加区块</button>`;
+    renderMemoList();
+    const addBtn = el('btn-add-sec');
+    if (addBtn) addBtn.addEventListener('click', addSection);
     return;
   }
-  const idx = sections.findIndex((s) => secKey(s) === activeKey);
-  if (idx < 0) { activeKey = USERS_KEY; renderRight(); return; }
-  const s = sections[idx];
-  head.innerHTML = '记忆区块 <span class="tag">## 标题可改 · 长文本</span>';
-  body.innerHTML = `
-    <div class="sec-title-input">
-      <span class="hash">##</span>
-      <input id="sec-title" value="${escapeHtml(s.title)}" placeholder="区块标题（如：项目备忘）" />
-    </div>
-    <textarea id="sec-body" class="sec-body" rows="10" placeholder="此区块内容…">${escapeHtml(s.body)}</textarea>`;
-  el('sec-title').addEventListener('input', (e) => {
-    const t = e.target.value.trim();
-    const old = s.title;
-    s.title = t || old;
-    renderCats();
-    activeKey = secKey(s);
-    document.querySelectorAll('.cat[data-key]').forEach((c) => {
-      c.classList.toggle('active', c.dataset.key === activeKey);
-    });
-  });
-  el('sec-body').addEventListener('input', (e) => { s.body = e.target.value; });
+  if (activeKey === ROLES_KEY) {
+    // v1.0.2（老大指令 3）：DSH 角色 = 卡片列表式（参考全局记忆区块），排在全局记忆区块后面
+    head.innerHTML = 'DSH 角色 <span class="tag">每个角色一个文件 · 可增删</span>';
+    body.innerHTML = `
+      <div class="guide-tip">💡 每个角色的输入框 = 该角色文件（~/.dsh/roles/）全部内容，两边同步；「我的设定 → 默认角色」选默认角色；双击 DSH 输入框可随时切换角色。</div>
+      <div class="role-cards" id="role-cards"></div>
+      <button id="btn-add-role" class="add-field">＋ 添加角色</button>`;
+    renderRoleCards();
+    const addBtn = el('btn-add-role');
+    if (addBtn) addBtn.addEventListener('click', addRole);
+    return;
+  }
+  // 兼容旧 activeKey（sec:xxx）→ 回落到全局记忆区块
+  activeKey = MEMO_KEY;
+  renderRight();
 }
 
 function renderAll() {
@@ -200,67 +186,42 @@ function renderRows(listElId, arr) {
 function renderFields() { renderRows('fields', userFields); }
 function renderDshFields() { renderRows('dsh-fields', dshFields); }
 
-// ── v1.0.1（老大指令）：DSH 角色页 = 顶部 tab 选择角色 + 下方大输入区（不拥挤）──
-function renderRoleTabs() {
-  const tabs = el('role-tabs');
-  if (!tabs) return;
-  tabs.innerHTML = roleFields.map((r, i) => `
-    <div class="role-tab ${i === activeRole ? 'active' : ''}" data-i="${i}" title="点击选择此角色">
-      <span class="rt-name">${escapeHtml(r.name || '未命名')}</span>
-      <button class="rt-del" data-i="${i}" title="删除此角色">✕</button>
+// ── v1.0.2（老大指令 2）：全局记忆区块 —— 所有 ## 区块的卡片列表（可折叠）──
+function renderMemoList() {
+  const list = el('memo-list');
+  if (!list) return;
+  list.innerHTML = sections.map((s, i) => `
+    <div class="memo-card" data-i="${i}">
+      <div class="memo-head">
+        <span class="hash">##</span>
+        <input class="memo-title" value="${escapeHtml(s.title)}" placeholder="区块标题（如：项目备忘）" />
+        <button class="fold" data-i="${i}" title="折叠/展开">${s.collapsed ? '▸' : '▾'}</button>
+        <button class="del" data-i="${i}" title="删除此区块">✕</button>
+      </div>
+      <textarea class="memo-body sec-body" rows="4" placeholder="此区块内容…" ${s.collapsed ? 'style="display:none"' : ''}>${escapeHtml(s.body)}</textarea>
     </div>`).join('')
-    + `<button class="role-add" id="btn-add-role">＋ 添加角色</button>`;
-  tabs.querySelectorAll('.role-tab').forEach((t) => {
-    const i = Number(t.dataset.i);
-    t.addEventListener('click', (e) => {
-      if (e.target.closest('.rt-del')) return; // 删除按钮单独处理
-      activeRole = i;
-      renderRoleTabs();
-      renderRoleEdit();
+    + (sections.length === 0 ? '<div class="sec-empty">还没有 ## 区块 —— 点下方「＋ 添加区块」新建，或直接编辑保存后自动识别</div>' : '');
+  list.querySelectorAll('.memo-title').forEach((t) => {
+    const i = Number(t.closest('.memo-card').dataset.i);
+    t.addEventListener('input', () => { sections[i].title = t.value; });
+  });
+  list.querySelectorAll('.memo-body').forEach((b) => {
+    const i = Number(b.closest('.memo-card').dataset.i);
+    b.addEventListener('input', () => { sections[i].body = b.value; });
+  });
+  list.querySelectorAll('.memo-card .fold').forEach((b) => {
+    b.addEventListener('click', () => {
+      const i = Number(b.closest('.memo-card').dataset.i);
+      sections[i].collapsed = !sections[i].collapsed;
+      renderMemoList();
     });
   });
-  tabs.querySelectorAll('.rt-del').forEach((b) => {
-    b.addEventListener('click', (e) => {
-      e.stopPropagation();
-      roleFields.splice(Number(b.dataset.i), 1);
-      if (activeRole >= roleFields.length) activeRole = Math.max(0, roleFields.length - 1);
-      renderRoleTabs();
-      renderRoleEdit();
+  list.querySelectorAll('.memo-card .del').forEach((b) => {
+    b.addEventListener('click', () => {
+      sections.splice(Number(b.closest('.memo-card').dataset.i), 1);
+      renderMemoList();
     });
   });
-  const add = el('btn-add-role');
-  if (add) add.addEventListener('click', addRole);
-}
-
-function addRole() {
-  let n = `角色 ${roleFields.length + 1}`;
-  let i = 1;
-  while (roleFields.some((r) => r.name === n)) { i++; n = `角色 ${i}`; }
-  roleFields.push({ name: n, value: '' });
-  activeRole = roleFields.length - 1;
-  renderRoleTabs();
-  renderRoleEdit();
-  const ni = el('role-name');
-  if (ni) { ni.focus(); ni.select(); }
-}
-
-function renderRoleEdit() {
-  const r = roleFields[activeRole];
-  const nameEl = el('role-name');
-  const bodyEl = el('role-body');
-  if (!nameEl || !bodyEl) return;
-  if (!r) { nameEl.value = ''; bodyEl.value = ''; nameEl.disabled = true; bodyEl.disabled = true; return; }
-  nameEl.disabled = false;
-  bodyEl.disabled = false;
-  nameEl.value = r.name || '';
-  bodyEl.value = r.value || '';
-  nameEl.oninput = () => { r.name = nameEl.value; renderRoleTabs(); };
-  bodyEl.oninput = () => { r.value = bodyEl.value; };
-}
-
-function addRow(arr, renderFn) {
-  arr.push({ name: '', value: '' });
-  renderFn();
 }
 
 /** 「＋ 添加区块」：界面内新建（不用 prompt —— 沙箱渲染进程禁用 window.prompt） */
@@ -268,11 +229,57 @@ function addSection() {
   let name = '新区块';
   let i = 1;
   while (sections.some((s) => s.title === name)) { i++; name = `新区块${i}`; }
-  sections.push({ title: name, body: '' });
-  activeKey = secKey(sections[sections.length - 1]);
-  renderAll();
-  const t = el('sec-title');
+  sections.push({ title: name, body: '', collapsed: false });
+  renderMemoList();
+  const cards = document.querySelectorAll('.memo-card .memo-title');
+  const t = cards[cards.length - 1];
   if (t) { t.focus(); t.select(); }
+}
+
+// ── v1.0.2（老大指令 3）：DSH 角色 —— 卡片列表式（每角色 = 角色名 + 文件全文大输入框）──
+function renderRoleCards() {
+  const list = el('role-cards');
+  if (!list) return;
+  list.innerHTML = roleFields.map((r, i) => `
+    <div class="role-card" data-i="${i}">
+      <div class="role-card-head">
+        <span class="role-icon">🎭</span>
+        <input class="role-card-name" value="${escapeHtml(r.name || '')}" placeholder="角色名（如：学习导师）" />
+        <button class="del" data-i="${i}" title="删除此角色（同时删除 ~/.dsh/roles/ 角色文件）">✕</button>
+      </div>
+      <textarea class="role-card-body sec-body" rows="10" placeholder="角色文件全文（# 角色：… / ## 定位 / ## 详细记忆），保存后写入 ~/.dsh/roles/ 对应文件，两边同步…">${escapeHtml(r.value || '')}</textarea>
+    </div>`).join('')
+    + (roleFields.length === 0 ? '<div class="sec-empty">还没有角色 —— 点下方「＋ 添加角色」新建</div>' : '');
+  list.querySelectorAll('.role-card-name').forEach((n) => {
+    const i = Number(n.closest('.role-card').dataset.i);
+    n.addEventListener('input', () => { roleFields[i].name = n.value; });
+  });
+  list.querySelectorAll('.role-card-body').forEach((b) => {
+    const i = Number(b.closest('.role-card').dataset.i);
+    b.addEventListener('input', () => { roleFields[i].value = b.value; });
+  });
+  list.querySelectorAll('.role-card .del').forEach((b) => {
+    b.addEventListener('click', () => {
+      roleFields.splice(Number(b.closest('.role-card').dataset.i), 1);
+      renderRoleCards();
+    });
+  });
+}
+
+function addRole() {
+  let n = `角色 ${roleFields.length + 1}`;
+  let i = 1;
+  while (roleFields.some((r) => r.name === n)) { i++; n = `角色 ${i}`; }
+  roleFields.push({ name: n, value: '' });
+  renderRoleCards();
+  const cards = document.querySelectorAll('.role-card .role-card-name');
+  const ni = cards[cards.length - 1];
+  if (ni) { ni.focus(); ni.select(); }
+}
+
+function addRow(arr, renderFn) {
+  arr.push({ name: '', value: '' });
+  renderFn();
 }
 
 function collectPayload() {
@@ -287,7 +294,11 @@ function collectPayload() {
       seen.add(s.title);
       return true;
     });
-  return { users: clean(userFields), dsh: clean(dshFields), roles: clean(roleFields), sections: cleanSections };
+  // v1.0.2：角色 value = 角色 .md 全文（保留格式，不做 trim/换行替换）
+  const cleanRoles = roleFields
+    .map((it) => ({ name: String(it.name || '').trim(), value: String(it.value || '') }))
+    .filter((it) => it.name !== '');
+  return { users: clean(userFields), dsh: clean(dshFields), roles: cleanRoles, sections: cleanSections };
 }
 
 /** 保存（覆盖确认在前端：文件已存在 → 按钮二次确认；首次直接保存） */
@@ -375,6 +386,7 @@ async function loadData() {
   const data = await dsh.getGlobalMemory();
   filePath = (data && data.file) || '';
   fileExists = !!(data && data.exists);
+  fileMtime = (data && data.mtime) || null; // v1.0.2：聚焦自动刷新依据
   const list = (data && Array.isArray(data.sections)) ? data.sections : [];
   // 用户设定 / DSH 设定 / DSH 角色 三个独立顶层区块
   const usersSec = list.find((s) => s.kind === 'users');
@@ -393,15 +405,16 @@ async function loadData() {
     dshFields = defs.map((n) => ({ name: n, value: '' }));
   }
   if (rolesSec && Array.isArray(rolesSec.fields) && rolesSec.fields.length > 0) {
-    roleFields = rolesSec.fields.map((it) => ({ name: it.name || '', value: it.value || '' }));
+    // v1.0.2：value = 角色 .md 全文（data() 已注入），desc = 定位
+    roleFields = rolesSec.fields.map((it) => ({ name: it.name || '', value: it.value || '', desc: it.desc || '' }));
   } else {
     const defs = (data && Array.isArray(data.defaultRoles)) ? data.defaultRoles : DEFAULT_ROLES;
-    roleFields = defs.map((n) => ({ name: n, value: '' }));
+    roleFields = defs.map((n) => ({ name: n, value: '', desc: '' }));
   }
   guidePending = !!(usersSec && usersSec.guide);
   sections = list
     .filter((s) => s.kind === 'long')
-    .map((s) => ({ title: s.title, body: (s.body || []).join('\n') }));
+    .map((s) => ({ title: s.title, body: (s.body || []).join('\n'), collapsed: false }));
   // v1.0.1（老大指令）：左下角不再显示双路径（按钮直达目录即可）
   el('path').textContent = filePath;
 }
@@ -424,6 +437,19 @@ async function init() {
   });
   el('btn-open-roles').addEventListener('click', () => {
     if (dsh && dsh.openGlobalMemoryRoles) dsh.openGlobalMemoryRoles();
+  });
+  // v1.0.2（老大反馈 5②）：窗口聚焦时 AGENTS.md/角色文件被外部修改 → 自动同步最新内容
+  window.addEventListener('focus', async () => {
+    try {
+      const data = await dsh.getGlobalMemory();
+      const m = (data && data.mtime) || null;
+      if (m != null && m !== fileMtime) {
+        fileMtime = m;
+        await loadData();
+        renderAll();
+        showBanner('检测到记忆文件已变更，已同步最新内容', true);
+      }
+    } catch { /* ignore */ }
   });
   // 保存后整理记忆确认条
   const tidyYes = el('tidy-yes');

@@ -18,6 +18,8 @@
 /** 已发布版本 → 安装包 SHA256（hex，小写）。发布时追加新版本。 */
 const KNOWN_SHELL_HASHES = Object.freeze({
   '0.9.6': '23b984d4e57e0d6b506cae48ba82d6aeae041fd7cfad5580a6b7bf170c6fe910',
+  // v1.0.2（老大指令 2026-08-17）：台账补齐 1.0.1 实测 hash（S12 外审 zx29 遗留，随本次壳一起分发）
+  '1.0.1': '07b376bb6a9d59068c1b048a5fdcbc7d6c6d122894f71a6cdfe03705ba0e92da',
 });
 
 /**

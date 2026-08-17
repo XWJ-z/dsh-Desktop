@@ -128,7 +128,7 @@ const loggerApi = createLogger({
   app, fs, os, path,
   getLoadingWindow: () => loadingWindow, // 仅启动加载窗口广播日志/阶段/进度
 });
-const { localTimestamp, localDate, logPath, appendLog, pushStage, pushProgress, dirSizeMB } = loggerApi;
+const { localTimestamp, localDate, logPath, appendLog, pushStage, pushProgress, dirSizeMBAsync } = loggerApi; // v1.0.2：dirSizeMBAsync 异步统计（启动下载不卡 UI）
 const { getLogLines, getCurrentStage } = loggerApi;
 
 const nodeResolverApi = createNodeResolver({ app, fs, path, execFileSync });
@@ -139,7 +139,7 @@ const { pickPort, waitForServer, parsePortArg } = portApi;
 
 const runtimeApi = createDshRuntime({
   app, fs, path, os, spawn,
-  appendLog, pushStage, pushProgress, dirSizeMB, logPath,
+  appendLog, pushStage, pushProgress, dirSizeMBAsync, logPath, // v1.0.2：异步统计（缓存隔离+不卡 UI）
   resolveRunner, trackChild,
   npmInstallTimeoutMs: NPM_INSTALL_TIMEOUT_MS,
   // P1-2（外审 zx(9)）：晚绑定 updaterApi —— ensureDshRuntime 在启动时调用，

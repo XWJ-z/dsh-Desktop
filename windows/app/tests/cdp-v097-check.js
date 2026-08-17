@@ -293,12 +293,13 @@ async function main() {
           await sleep(500);
         }
         ok(!!fv && fv.hasCats && fv.hasRight, '窗口左右分栏（左类别 / 右内容）');
-        ok(!!fv && fv.catCount >= 4, `左侧类别列表（${fv && fv.catCount} 项：用户/我的/角色/区块）`);
-        ok(!!fv && fv.catTexts.some((t) => t.includes('用户设定')) && fv.catTexts.some((t) => t.includes('我的设定')) && fv.catTexts.some((t) => t.includes('DSH 角色')),
-          `左侧含 用户设定/我的设定/DSH 角色 三个独立类别（${fv && fv.catTexts.join(' | ')}）`);
-        ok(!!fv && fv.catTexts.some((t) => t.includes('其他记忆')), '自动识别出 其他记忆 区块');
+        ok(!!fv && fv.catCount >= 4, `左侧类别列表（${fv && fv.catCount} 项：用户/我的/区块/角色）`);
+        ok(!!fv && fv.catTexts.some((t) => t.includes('用户设定')) && fv.catTexts.some((t) => t.includes('我的设定'))
+          && fv.catTexts.some((t) => t.includes('全局记忆区块')) && fv.catTexts.some((t) => t.includes('DSH 角色')),
+          `左侧 4 个固定类别：用户设定/我的设定/全局记忆区块/DSH 角色（v1.0.2 老大指令，实际 ${fv && fv.catTexts.join(' | ')}）`);
+        ok(!!fv && !fv.catTexts.some((t) => t.includes('其他记忆')), '其他 ## 区块不再各自显示为左侧类别（合并进「全局记忆区块」，v1.0.2）');
         ok(!!fv && fv.rowCount >= 4 && fv.names.includes('用户的称呼'), '用户设定字段列表默认显示（含用户的称呼）');
-        ok(!!fv && fv.hasAddField && fv.hasAddSec, '有「＋ 添加字段」和「＋ 添加区块」按钮');
+        ok(!!fv && fv.hasAddField, '有「＋ 添加字段」按钮（「＋ 添加区块」已移到全局记忆区块内，v1.0.2）');
         ok(!!fv && fv.hasGuideTip, '未配置引导提示条显示（引导用户配置全局记忆）');
         // 点击「我的设定」类别 → 右侧显示 我的设定 字段列表（含默认角色下拉）
         const dshCat = await memCdp.send('Runtime.evaluate', {
@@ -338,7 +339,7 @@ async function main() {
         ok(!!dv && dv.dshNames.includes('我的名字') && dv.dshNames.includes('默认角色'), '我的设定默认字段（我的名字/默认角色）');
         ok(!!dv && dv.hasDefaultRoleSelect, '默认角色为下拉选择（select）');
         ok(!!dv && dv.hasAddDsh, '有「＋ 添加 DSH 设定」按钮');
-        // 点击「DSH 角色」类别 → 角色字段列表 + 添加角色按钮
+        // 点击「DSH 角色」类别 → 卡片列表式（每角色 = 角色名 + 文件全文大输入框，v1.0.2 老大指令 3）
         const roleCat = await memCdp.send('Runtime.evaluate', {
           expression: `(() => {
             const cat = Array.from(document.querySelectorAll('#cats .cat[data-key]'))
@@ -355,26 +356,26 @@ async function main() {
         while (Date.now() - tr < 5000) {
           const s = await memCdp.send('Runtime.evaluate', {
             expression: `(() => {
-              const tabs = Array.from(document.querySelectorAll('#role-tabs .role-tab'));
+              const cards = Array.from(document.querySelectorAll('#role-cards .role-card'));
               return {
-                hasRoleTabs: !!document.getElementById('role-tabs'),
-                roleCount: tabs.length,
-                roleNames: tabs.map((t) => (t.querySelector('.rt-name') || {}).textContent || '').filter(Boolean),
+                hasRoleCards: !!document.getElementById('role-cards'),
+                roleCount: cards.length,
+                roleNames: cards.map((c) => (c.querySelector('.role-card-name') || {}).value || '').filter(Boolean),
                 hasAddRole: !!document.getElementById('btn-add-role'),
-                hasRoleName: !!document.getElementById('role-name'),
-                hasRoleBody: !!document.getElementById('role-body'),
+                hasRoleName: !!document.querySelector('.role-card-name'),
+                hasRoleBody: !!document.querySelector('.role-card-body'),
               };
             })()`,
             returnByValue: true,
           });
           rv = s.result && s.result.value;
-          if (rv && rv.hasRoleTabs && rv.roleCount >= 1) break;
+          if (rv && rv.hasRoleCards && rv.roleCount >= 1) break;
           await sleep(400);
         }
-        ok(!!rv && rv.hasRoleTabs && rv.roleCount >= 1, `DSH 角色 tab 视图（${rv && rv.roleCount} 个角色，v1.0.1）`);
-        ok(!!rv && rv.roleNames.includes('角色 1') && rv.roleNames.includes('角色 3'), '默认角色 tab：角色 1/2/3');
+        ok(!!rv && rv.hasRoleCards && rv.roleCount >= 1, `DSH 角色卡片列表视图（${rv && rv.roleCount} 个角色，v1.0.2）`);
+        ok(!!rv && rv.roleNames.includes('角色 1') && rv.roleNames.includes('角色 3'), '默认角色卡片：角色 1/2/3');
         ok(!!rv && rv.hasAddRole, '有「＋ 添加角色」按钮');
-        ok(!!rv && rv.hasRoleName && rv.hasRoleBody, '下方大输入区（角色名 + 定位/详细记忆 textarea，v1.0.1）');
+        ok(!!rv && rv.hasRoleName && rv.hasRoleBody, '每张角色卡：角色名输入 + 文件全文大输入框（v1.0.2）');
         // v0.9.16（老大指令）：标题红色标注（DSH 视角）+ 红色提示移到窗口介绍下方、文案更新
         const tip = await memCdp.send('Runtime.evaluate', {
           expression: `(() => {
@@ -394,35 +395,43 @@ async function main() {
           `全局红色提示（介绍下方）：双击对话框选择角色，默认角色请在[DSH角色中修改]（v0.9.16，实际 ${tipV && tipV.tipText}）`);
         ok(!!tipV && tipV.title.includes('(DSH 视角)'), `标题红色标注（DSH 视角）（v0.9.16，实际 ${tipV && tipV.title}）`);
         ok(!!tipV && !tipV.bodyHasTip, 'DSH 角色页不再内嵌红色提示（已移到窗口介绍下方全局显示）');
-        // 点击左侧区块 → 右侧显示标题输入框（可改）+ 长文本
+        // v1.0.2（老大指令 2）：点击「全局记忆区块」→ 内部列出所有 ## 区块卡片（可折叠）
         const sec = await memCdp.send('Runtime.evaluate', {
           expression: `(() => {
             const cat = Array.from(document.querySelectorAll('#cats .cat[data-key]'))
-              .find((c) => (c.textContent || '').includes('其他记忆'));
+              .find((c) => (c.textContent || '').includes('全局记忆区块'));
             if (!cat) return { ok: false };
             cat.click();
             return { ok: true };
           })()`,
           returnByValue: true,
         });
-        ok(!!(sec.result && sec.result.value && sec.result.value.ok), '点击「其他记忆」类别');
+        ok(!!(sec.result && sec.result.value && sec.result.value.ok), '点击「全局记忆区块」类别');
         let sv = null;
         const t2 = Date.now();
         while (Date.now() - t2 < 5000) {
           const s = await memCdp.send('Runtime.evaluate', {
             expression: `(() => {
-              const t = document.getElementById('sec-title');
-              const b = document.getElementById('sec-body');
-              return { hasTitle: !!t, title: t ? t.value : '', hasBody: !!b };
+              const cards = Array.from(document.querySelectorAll('#memo-list .memo-card'));
+              const t = cards[0] ? cards[0].querySelector('.memo-title') : null;
+              return {
+                hasMemoList: !!document.getElementById('memo-list'),
+                hasAddSec: !!document.getElementById('btn-add-sec'),
+                cardCount: cards.length,
+                title: t ? t.value : '',
+                hasBody: !!(cards[0] && cards[0].querySelector('.memo-body')),
+                hasFold: !!(cards[0] && cards[0].querySelector('.fold')),
+              };
             })()`,
             returnByValue: true,
           });
           sv = s.result && s.result.value;
-          if (sv && sv.hasTitle && sv.hasBody) break;
+          if (sv && sv.hasMemoList && sv.hasAddSec && sv.cardCount >= 1) break;
           await sleep(400);
         }
-        ok(!!sv && sv.hasTitle && sv.hasBody, '右侧显示区块标题输入框（可修改）+ 长文本内容');
-        ok(!!sv && sv.title === '其他记忆', `标题可编辑且已回填（${sv && sv.title}）`);
+        ok(!!sv && sv.hasMemoList && sv.hasAddSec, '全局记忆区块：区块卡片列表 + 「＋ 添加区块」按钮（v1.0.2）');
+        ok(!!sv && sv.cardCount >= 1 && sv.hasBody && sv.hasFold, `全局记忆区块列出全部 ## 区块卡片（可折叠，${sv && sv.cardCount} 个）`);
+        ok(!!sv && sv.title === '其他记忆', `其他记忆 区块已回填到卡片（标题可编辑，实际 ${sv && sv.title}）`);
         ok(!!fv && !fv.hasPathMem, '左下角不再显示双路径（v1.0.1 老大反馈）');
         ok(!!fv && fv.hasBtnMem && fv.hasBtnRoles, '两个按钮：记忆文件位置(AGENTS) / 角色文件位置（v1.0.1）');
         ok(!!fv && (fv.btnMemText || '').includes('记忆文件位置(AGENTS)'), `按钮文案：记忆文件位置(AGENTS)（实际 ${fv && fv.btnMemText}）`);

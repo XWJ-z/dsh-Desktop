@@ -146,7 +146,7 @@ function testChangelog() {
 
   // v0.9.9（老大指令）：released 标记 —— 已发布 12 版，内部版本 false
   const releasedCount = cl.versions.filter((v) => v.released === true).length;
-  ok(releasedCount === 12, `released=true 共 12 个已发布版本（实际 ${releasedCount}）`);
+  ok(releasedCount === 13, `released=true 共 13 个已发布版本（含 1.0.1，实际 ${releasedCount}）`);
   ok(cl.versions.find((v) => v.version === '0.9.6').released === true, '0.9.6 released=true');
   ok(cl.versions.find((v) => v.version === '0.8.30').released === true, '0.8.30 released=true');
   ok(cl.versions.find((v) => v.version === '0.9.8').released === false, '0.9.8（内部）released=false');
@@ -170,13 +170,15 @@ function testChangelog() {
   const v096 = cl.versions.find((v) => v.version === '0.9.6');
   ok(!!v096 && Array.isArray(v096.notes) && v096.notes.length === 12,
     `0.9.6 条目 12 条（实际 ${v096 ? v096.notes.length : 0}）`);
-  // v1.0.1（外审终审 v28.0）：version.json 三处一致 + CHANGELOG 1.0.1 条目
-  ok(vj.version === '1.0.1', `version.json version = 1.0.1（实际 ${vj.version}）`);
+  // v1.0.2（老大反馈 5 项修复）：version.json 三处一致 + CHANGELOG 1.0.2 条目 + 1.0.1 已发布
+  ok(vj.version === '1.0.2', `version.json version = 1.0.2（实际 ${vj.version}）`);
   ok(vj.hash && /^[0-9a-f]{64}$/.test(vj.hash), 'version.json hash 为 64 位 SHA256');
-  ok(Array.isArray(vj.download_urls) && vj.download_urls.length >= 1 && vj.download_urls.every((u) => u.includes('v1.0.1')), 'version.json download_urls 指向 v1.0.1 资产');
-  const v101 = cl.versions.find((v) => v.version === '1.0.1');
-  ok(!!v101 && Array.isArray(v101.notes) && v101.notes.length >= 1 && v101.released === false,
-    'CHANGELOG 1.0.1 条目存在（released:false，待发布）');
+  ok(Array.isArray(vj.download_urls) && vj.download_urls.length >= 1 && vj.download_urls.every((u) => u.includes('v1.0.2')), 'version.json download_urls 指向 v1.0.2 资产');
+  const v102 = cl.versions.find((v) => v.version === '1.0.2');
+  ok(!!v102 && Array.isArray(v102.notes) && v102.notes.length >= 1 && v102.released === false,
+    'CHANGELOG 1.0.2 条目存在（released:false，待发布）');
+  const v101b = cl.versions.find((v) => v.version === '1.0.1');
+  ok(!!v101b && v101b.released === true, 'CHANGELOG 1.0.1 released=true（已发布）');
   // 开发视角技术细节已从 CHANGELOG 移除（移入开发日志）
   const all = JSON.stringify(cl);
   ok(!all.includes('builder-debug.yml'), '开发视角技术细节（builder-debug.yml）已移除');
@@ -396,13 +398,18 @@ function testGlobalMemory() {
   const rjs0 = read('renderer/global-memory.js');
   ok(rjs0.includes('renderCats'), '窗口左侧类别列表（renderCats）');
   ok(rjs0.includes('renderRight'), '窗口右侧内容区（renderRight）');
-  ok(rjs0.includes('👤 用户设定') && rjs0.includes('🤖 我的设定') && rjs0.includes('🎭 DSH 角色'), '左侧 用户设定/我的设定/DSH 角色 三个独立类别');
+  ok(rjs0.includes('👤 用户设定') && rjs0.includes('🤖 我的设定') && rjs0.includes('🧠 全局记忆区块') && rjs0.includes('🎭 DSH 角色'),
+    '左侧 4 个固定类别：用户设定/我的设定/全局记忆区块/DSH 角色（v1.0.2 老大指令）');
+  ok(rjs0.includes('renderMemoList') && rjs0.includes('memo-list') && rjs0.includes('MEMO_KEY'),
+    '全局记忆区块：合并所有 ## 区块的卡片列表（v1.0.2 老大指令 2）');
   ok(rjs0.includes('默认角色') && rjs0.includes('f-select'), '默认角色字段为下拉选择（f-select）');
   ok(rjs0.includes('btn-add-field'), '窗口有「＋ 添加字段」按钮逻辑');
   ok(rjs0.includes('btn-add-dsh'), '窗口有「＋ 添加 DSH 设定」按钮逻辑');
-  ok(rjs0.includes('btn-add-role') && rjs0.includes('role-tabs') && rjs0.includes('role-name') && rjs0.includes('role-body'),
-    'DSH 角色页：顶部 tab 选择（角色1/2/3/＋添加角色）+ 下方大输入区（v1.0.1 老大指令）');
-  ok(!rjs0.includes('role-fields') && !rjs0.includes('renderRoleFields'), '角色页不再用紧凑字段列表（v1.0.1 改 tab+大输入区）');
+  ok(rjs0.includes('btn-add-role') && rjs0.includes('role-cards') && rjs0.includes('role-card-name') && rjs0.includes('role-card-body'),
+    'DSH 角色页：卡片列表式（每角色 = 角色名 + 文件全文大输入框，v1.0.2 老大指令 3）');
+  ok(!rjs0.includes('role-tabs') && !rjs0.includes('renderRoleTabs') && !rjs0.includes('activeRole'),
+    '角色页不再用顶部 tab / activeRole 状态（v1.0.2 改卡片列表）');
+  ok(rjs0.includes('addEventListener(\'focus\'') && rjs0.includes('mtime'), '窗口聚焦时按 mtime 自动刷新（外部修改文件立即同步，v1.0.2 老大反馈 5②）');
   ok(!rjs0.includes('path-memory') && !rjs0.includes('path-roles'), '去掉左下角双路径显示（v1.0.1 老大反馈）');
   ok(rjs0.includes('btn-open-memory') && rjs0.includes('btn-open-roles') && rjs0.includes('openGlobalMemoryRoles'),
     '两个按钮：记忆文件位置(AGENTS) / 角色文件位置（v1.0.1 老大指令）');
@@ -429,13 +436,13 @@ function testGlobalMemory() {
   const ipcSrc3 = read('modules/ipc.js');
   ok(ipcSrc3.includes('memory:open-roles') && ipcSrc3.includes('roles'), 'IPC：memory:open-roles 打开角色目录（v1.0.1）');
   const menuSrc = read('modules/menu.js');
-  ok(menuSrc.includes('打开记忆目录') && menuSrc.includes("app.getPath('home'), '.dsh'"), '文件菜单「打开记忆目录」→ ~/.dsh（v1.0.1 老大指令）');
+  ok(menuSrc.includes('打开记忆目录') && menuSrc.includes('app.getPath(\'home\'), \'.dsh\''), '文件菜单「打开记忆目录」→ ~/.dsh（v1.0.1 老大指令）');
   ok(rjs0.includes('guide-tip'), '窗口显示未配置引导提示条');
   ok(rjs0.includes('TIDY_PROMPT') && rjs0.includes('整理你的全局记忆，不要改变原意'), '保存后整理记忆提示词');
   ok(rjs0.includes('tidy-bar') && rjs0.includes('showTidyBar'), '保存后询问是否让 DSH 整理记忆');
   ok(rjs0.includes('injectPrompt'), '整理提示词经注入链路进 DSH 输入框');
   ok(!/window\.prompt\(/.test(rjs0), '不使用 window.prompt（沙箱渲染进程禁用，改界面内输入）');
-  ok(rjs0.includes('sec-title'), '区块标题可修改（标题输入框）');
+  ok(rjs0.includes('memo-title'), '区块标题可修改（全局记忆区块卡片标题输入框，v1.0.2）');
   ok(rjs0.includes('onSaveClick'), '保存走前端二次确认（onSaveClick）');
   ok(rjs0.includes('确认保存？'), '文件存在 → 按钮二次确认（防误覆盖）');
   ok(rjs0.includes('SAVE_TIMEOUT_MS') || rjs0.includes('保存超时'), '保存带超时兜底（绝不卡「保存中」）');
@@ -458,7 +465,7 @@ function testGlobalMemory() {
   const html0 = read('renderer/global-memory.html');
   ok(html0.includes('id="cats"') && html0.includes('id="right-body"'), '左右分栏布局（左类别 / 右内容）');
   ok(html0.includes('参考提示词库') || html0.includes('左边'), '布局说明');
-  ok(html0.includes('自动识别'), '窗口说明自动识别 ## 区块');
+  ok(html0.includes('全局记忆区块') && html0.includes('文件全文'), '窗口说明：全局记忆区块汇总 ## 区块、DSH 角色输入框即文件全文（v1.0.2）');
   ok(html0.includes('tidy-bar'), 'html 有整理记忆确认条容器');
   const loadHtml = read('renderer/loading.html');
   ok(loadHtml.includes('① 检查 DSH 组件'), '启动阶段①文案：检查 DSH 组件（老大反馈：运行时表述不清）');
@@ -673,28 +680,53 @@ $env:PATH = "..."
   const g4 = api.ensureGuide();
   ok(g4.formatMismatch === true, '旧格式记忆（无用户/DSH 设定区块）→ formatMismatch=true（待整理）');
   ok(!fs.readFileSync(target, 'utf8').includes('引导提示'), '无用户设定区块 → 不插引导句（由注入整理提示接管）');
-  // 9) v0.9.13 角色设定（老大方案）：DSH 角色 独立区块 + 角色文件自动建立
+  // 9) v0.9.13 角色设定（老大方案）+ v1.0.2 全文语义：角色 value = 角色 .md 全文
   fs.rmSync(target, { force: true });
+  const full1 = '# 角色：角色 1\n\n## 定位\n\n工作编程助手（文件：~/.dsh/roles/角色 1.md）\n\n## 详细记忆\n\n详细记忆内容A';
+  const full2 = '# 角色：角色 2\n\n## 定位\n\n闲聊伙伴（文件：~/.dsh/roles/角色 2.md）\n\n## 详细记忆\n\n详细记忆内容B';
   const r9 = api.save({
     users: [{ name: '用户的称呼', value: '小六' }],
     dsh: [{ name: '我的名字', value: '小鲸鱼' }],
     roles: [
-      { name: '角色 1', value: '工作编程助手（文件：~/.dsh/roles/角色 1.md）' },
-      { name: '角色 2', value: '闲聊伙伴（文件：~/.dsh/roles/角色 2.md）' },
+      { name: '角色 1', value: full1 },
+      { name: '角色 2', value: full2 },
     ],
     sections: [],
   });
   ok(r9.ok === true, '含角色保存成功');
   const raw9 = fs.readFileSync(target, 'utf8');
-  ok(raw9.includes('## DSH 角色') && raw9.includes('- 角色 1：工作编程助手（文件：~/.dsh/roles/角色 1.md）'), 'DSH 角色 独立区块写入（与用户/DSH 同级）');
+  ok(raw9.includes('## DSH 角色') && raw9.includes('- 角色 1：工作编程助手（文件：~/.dsh/roles/角色 1.md）'),
+    'v1.0.2：AGENTS.md 角色行只存定位（从全文 ## 定位 节提取，不写全文）');
   const roleFile1 = path.join(tmp, '.dsh', 'roles', '角色-1.md'); // 文件名安全化：空格 → -
   const roleFile2 = path.join(tmp, '.dsh', 'roles', '角色-2.md');
   ok(fs.existsSync(roleFile1) && fs.existsSync(roleFile2), '角色文件自动建立（~/.dsh/roles/）');
-  ok(fs.readFileSync(roleFile1, 'utf8').includes('# 角色：角色 1') && fs.readFileSync(roleFile1, 'utf8').includes('## 详细记忆'),
-    '角色文件含 定位 + 详细记忆 模板');
+  ok(fs.readFileSync(roleFile1, 'utf8').includes('# 角色：角色 1') && fs.readFileSync(roleFile1, 'utf8').includes('详细记忆内容A'),
+    'v1.0.2：角色文件 = UI 提交全文（## 定位 / ## 详细记忆 原样保留）');
   const d9 = api.data();
   const rolesSec9 = d9.sections.find((s) => s.kind === 'roles');
   ok(!!rolesSec9 && rolesSec9.fields.length === 2 && rolesSec9.fields[1].name === '角色 2', 'DSH 角色解析回填（重开窗口仍在）');
+  ok(!!rolesSec9 && rolesSec9.fields[0].value === full1 && rolesSec9.fields[0].desc === '工作编程助手（文件：~/.dsh/roles/角色 1.md）',
+    'v1.0.2：data() 角色 value = 文件全文、desc = 定位（UI 编辑框与文件一致，老大反馈 5②）');
+  ok(typeof d9.mtime === 'number' && d9.mtime > 0, 'v1.0.2：data() 返回 mtime（窗口聚焦自动刷新依据）');
+  // 10) v1.0.2（老大反馈 5①）：角色改名 → 旧文件删除 + 新文件建立（内容保留、标题更新）；删除角色 → 文件同步删除
+  const r10a = api.save({
+    users: [{ name: '用户的称呼', value: '小六' }], dsh: [],
+    roles: [{ name: '学习导师', value: full1 }, { name: '角色 2', value: full2 }], // 角色 1 → 学习导师（UI 内存携带旧全文）
+    sections: [],
+  });
+  ok(r10a.ok === true, '角色改名保存成功');
+  ok(!fs.existsSync(roleFile1) && fs.existsSync(path.join(tmp, '.dsh', 'roles', '学习导师.md')),
+    'v1.0.2：改名后旧角色文件删除、新文件建立（不再每次改名堆积新文件）');
+  const renamed = fs.readFileSync(path.join(tmp, '.dsh', 'roles', '学习导师.md'), 'utf8');
+  ok(renamed.includes('# 角色：学习导师') && renamed.includes('详细记忆内容A'),
+    'v1.0.2：改名后文件标题更新为「# 角色：学习导师」，详细记忆内容保留');
+  const r10b = api.save({
+    users: [{ name: '用户的称呼', value: '小六' }], dsh: [],
+    roles: [{ name: '学习导师', value: renamed }],
+    sections: [],
+  });
+  ok(r10b.ok === true && !fs.existsSync(path.join(tmp, '.dsh', 'roles', '角色-2.md')),
+    'v1.0.2：删除角色 → 其 .md 文件同步删除');
   // 角色文件安全名：非法字符（空格/斜杠）替换为 -（防路径穿越）
   const r10 = api.save({ users: [{ name: '用户的称呼', value: '小六' }], dsh: [], roles: [{ name: '角色 A/B', value: '测试' }], sections: [] });
   ok(r10.ok === true && fs.existsSync(path.join(tmp, '.dsh', 'roles', '角色-A-B.md')), '角色文件名非法字符安全化（空格/斜杠 → -）');
@@ -707,7 +739,7 @@ $env:PATH = "..."
 function testVersion() {
   console.log('[7] package.json 版本');
   const pkg = JSON.parse(fs.readFileSync(path.join(APP, 'package.json'), 'utf8'));
-  ok(pkg.version === '1.0.1', `version = 1.0.1（实际 ${pkg.version}）`);
+  ok(pkg.version === '1.0.2', `version = 1.0.2（实际 ${pkg.version}）`);
 }
 
 // ---------------------------------------------------------------------------

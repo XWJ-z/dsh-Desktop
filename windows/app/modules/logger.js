@@ -117,6 +117,23 @@ function createLogger(deps) {
     } catch { return '0.0'; }
   }
 
+  /** v1.0.2（老大反馈 1）：异步统计目录体积（不阻塞主进程；启动下载阶段每 3 秒调用，
+   *  同步版遍历 node_modules 几万文件会卡 UI）。失败返回 '0.0'。 */
+  async function dirSizeMBAsync(dir) {
+    try {
+      let total = 0;
+      const walk = async (d) => {
+        for (const e of await fs.promises.readdir(d, { withFileTypes: true })) {
+          const p = path.join(d, e.name);
+          if (e.isDirectory()) await walk(p);
+          else total += (await fs.promises.stat(p)).size;
+        }
+      };
+      await walk(dir);
+      return (total / 1024 / 1024).toFixed(1);
+    } catch { return '0.0'; }
+  }
+
   return {
     localTimestamp,
     localDate,
@@ -125,6 +142,7 @@ function createLogger(deps) {
     pushStage,
     pushProgress,
     dirSizeMB,
+    dirSizeMBAsync, // v1.0.2
     getLogLines: () => logLines,
     getCurrentStage: () => currentStage,
   };
