@@ -402,9 +402,8 @@ async function loadData() {
   sections = list
     .filter((s) => s.kind === 'long')
     .map((s) => ({ title: s.title, body: (s.body || []).join('\n') }));
-  // v1.0.1（老大指令）：左下角显示 记忆文件 + 角色文件 两个路径
-  el('path-memory').textContent = filePath;
-  el('path-roles').textContent = (data && data.rolesDir) || '';
+  // v1.0.1（老大指令）：左下角不再显示双路径（按钮直达目录即可）
+  el('path').textContent = filePath;
 }
 
 async function init() {

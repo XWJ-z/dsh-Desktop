@@ -165,18 +165,18 @@ function testChangelog() {
   ok(css.includes('@media (prefers-color-scheme: light)'), 'shared.css 浅色主题 media query');
   ok(css.includes('--bg-input: #f2f4f7'), 'shared.css 浅色 --bg-input');
 
-  // v0.9.6 条目 = version.json release_notes（GitHub Release body 同源）
+  // v0.9.6 条目固定 12 条（与 GitHub Release body 同源；v1.0.1 起 version.json 跟踪 1.0.1，
+  // 不再交叉引用 0.9.6 —— 外审终审 v28.0 P2-1 修复）
   const v096 = cl.versions.find((v) => v.version === '0.9.6');
-  const expected = vj.release_notes.split('\n').filter(Boolean);
-  ok(!!v096 && Array.isArray(v096.notes) && v096.notes.length === expected.length,
-    `0.9.6 条目 ${v096 ? v096.notes.length : 0} 条 = version.json ${expected.length} 条`);
-  if (v096 && expected.length === v096.notes.length) {
-    let same = true;
-    for (let i = 0; i < expected.length; i++) {
-      if (v096.notes[i] !== expected[i]) { same = false; console.error(`    ✗ 第 ${i + 1} 条不一致：\n      CL: ${v096.notes[i]}\n      VJ: ${expected[i]}`); }
-    }
-    ok(same, '0.9.6 条目与 version.json release_notes 逐条一致');
-  }
+  ok(!!v096 && Array.isArray(v096.notes) && v096.notes.length === 12,
+    `0.9.6 条目 12 条（实际 ${v096 ? v096.notes.length : 0}）`);
+  // v1.0.1（外审终审 v28.0）：version.json 三处一致 + CHANGELOG 1.0.1 条目
+  ok(vj.version === '1.0.1', `version.json version = 1.0.1（实际 ${vj.version}）`);
+  ok(vj.hash && /^[0-9a-f]{64}$/.test(vj.hash), 'version.json hash 为 64 位 SHA256');
+  ok(Array.isArray(vj.download_urls) && vj.download_urls.length >= 1 && vj.download_urls.every((u) => u.includes('v1.0.1')), 'version.json download_urls 指向 v1.0.1 资产');
+  const v101 = cl.versions.find((v) => v.version === '1.0.1');
+  ok(!!v101 && Array.isArray(v101.notes) && v101.notes.length >= 1 && v101.released === false,
+    'CHANGELOG 1.0.1 条目存在（released:false，待发布）');
   // 开发视角技术细节已从 CHANGELOG 移除（移入开发日志）
   const all = JSON.stringify(cl);
   ok(!all.includes('builder-debug.yml'), '开发视角技术细节（builder-debug.yml）已移除');
@@ -403,11 +403,12 @@ function testGlobalMemory() {
   ok(rjs0.includes('btn-add-role') && rjs0.includes('role-tabs') && rjs0.includes('role-name') && rjs0.includes('role-body'),
     'DSH 角色页：顶部 tab 选择（角色1/2/3/＋添加角色）+ 下方大输入区（v1.0.1 老大指令）');
   ok(!rjs0.includes('role-fields') && !rjs0.includes('renderRoleFields'), '角色页不再用紧凑字段列表（v1.0.1 改 tab+大输入区）');
-  ok(rjs0.includes('path-memory') && rjs0.includes('path-roles'), '窗口左下角显示 记忆文件 + 角色文件 两个路径（v1.0.1）');
+  ok(!rjs0.includes('path-memory') && !rjs0.includes('path-roles'), '去掉左下角双路径显示（v1.0.1 老大反馈）');
   ok(rjs0.includes('btn-open-memory') && rjs0.includes('btn-open-roles') && rjs0.includes('openGlobalMemoryRoles'),
-    '两个按钮：记忆文件位置 / 角色文件位置（v1.0.1 老大指令）');
+    '两个按钮：记忆文件位置(AGENTS) / 角色文件位置（v1.0.1 老大指令）');
   const ghtml = read('renderer/global-memory.html');
   ok(ghtml.includes('dsh-view') && ghtml.includes('(DSH 视角)'), '标题红色标注（DSH 视角）（v0.9.16 老大指令）');
+  ok(ghtml.includes('记忆文件位置(AGENTS)'), '按钮文案：记忆文件位置(AGENTS)（v1.0.1 老大指令）');
   ok(ghtml.includes('tip-red') && ghtml.includes('双击对话框选择角色') && ghtml.includes('默认角色请在[DSH角色中修改]'),
     '红色提示在全局记忆介绍下方、文案完整：双击对话框选择角色，默认角色请在[DSH角色中修改]（v0.9.16）');
   ok(!rjs0.includes('tip-red'), 'DSH 角色页不再内嵌红色提示（已移到窗口介绍下方全局显示）');
@@ -427,6 +428,8 @@ function testGlobalMemory() {
   ok(preloadSrc.includes('openGlobalMemoryRoles'), 'preload：openGlobalMemoryRoles API（v1.0.1：角色文件位置）');
   const ipcSrc3 = read('modules/ipc.js');
   ok(ipcSrc3.includes('memory:open-roles') && ipcSrc3.includes('roles'), 'IPC：memory:open-roles 打开角色目录（v1.0.1）');
+  const menuSrc = read('modules/menu.js');
+  ok(menuSrc.includes('打开记忆目录') && menuSrc.includes("app.getPath('home'), '.dsh'"), '文件菜单「打开记忆目录」→ ~/.dsh（v1.0.1 老大指令）');
   ok(rjs0.includes('guide-tip'), '窗口显示未配置引导提示条');
   ok(rjs0.includes('TIDY_PROMPT') && rjs0.includes('整理你的全局记忆，不要改变原意'), '保存后整理记忆提示词');
   ok(rjs0.includes('tidy-bar') && rjs0.includes('showTidyBar'), '保存后询问是否让 DSH 整理记忆');

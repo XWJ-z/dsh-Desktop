@@ -150,14 +150,9 @@
       color: var(--text-primary); outline: none;
     }
     .role-edit-name input:focus { border-color: rgba(94,106,210,.55); }
-    /* v1.0.1（老大指令）：窗口左下角显示两个路径（记忆文件 / 角色文件） */
-    .paths { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-    .path-line {
-      font-size: 11px; color: var(--text-quaternary);
-      display: flex; align-items: center; gap: 4px; min-width: 0;
-    }
-    .path-line code {
-      background: var(--bg-hover); padding: 0 4px; border-radius: 4px; font-size: 10.5px;
+    /* v1.0.1（老大指令）：去掉左下角双路径显示（按钮直达目录即可） */
+    .path {
+      font-size: 11px; color: var(--text-quaternary); flex: 1; min-width: 0;
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
     /* 保存后整理记忆确认条 */
@@ -228,12 +223,9 @@
     </div>
   </div>
   <div class="foot">
-    <!-- v1.0.1（老大指令）：左下角显示 记忆文件 + 角色文件 两个路径，按钮拆为两个 -->
-    <div class="paths">
-      <div class="path-line">记忆文件：<code id="path-memory"></code></div>
-      <div class="path-line">角色文件：<code id="path-roles"></code></div>
-    </div>
-    <button id="btn-open-memory" class="btn ghost">记忆文件位置</button>
+    <!-- v1.0.1（老大指令）：去掉左下角双路径显示；按钮改名「记忆文件位置(AGENTS)」+「角色文件位置」 -->
+    <span id="path" class="path"></span>
+    <button id="btn-open-memory" class="btn ghost">记忆文件位置(AGENTS)</button>
     <button id="btn-open-roles" class="btn ghost">角色文件位置</button>
     <button id="btn-save" class="btn">保存</button>
   </div>

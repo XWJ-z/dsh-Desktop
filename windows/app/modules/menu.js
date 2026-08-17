@@ -68,6 +68,11 @@ function createMenu(deps) {
             label: '打开数据目录',
             click: () => { shell.openPath(app.getPath('userData')); },
           },
+          // v1.0.1（老大指令）：打开记忆目录 —— ~/.dsh（全局记忆 AGENTS.md 与角色文件所在目录）
+          {
+            label: '打开记忆目录',
+            click: () => { shell.openPath(path.join(app.getPath('home'), '.dsh')); },
+          },
           { type: 'separator' },
           // v0.7.0（T2/T3）：数据备份 / 恢复（打包 ~/.dsh + 设置；恢复校验 manifest 后固定路径还原）
           { label: '备份数据…', click: () => backupUserData() },

@@ -280,10 +280,10 @@ async function main() {
                 dshCount: dshRows.length,
                 hasAddDsh: !!document.getElementById('btn-add-dsh'),
                 hasGuideTip: !!document.querySelector('.guide-tip'),
-                pathMemory: (document.getElementById('path-memory') || {}).textContent || '',
-                pathRoles: (document.getElementById('path-roles') || {}).textContent || '',
+                hasPathMem: (document.getElementById('path-memory') || null) !== null,
                 hasBtnMem: !!document.getElementById('btn-open-memory'),
                 hasBtnRoles: !!document.getElementById('btn-open-roles'),
+                btnMemText: (document.getElementById('btn-open-memory') || {}).textContent || '',
               };
             })()`,
             returnByValue: true,
@@ -423,9 +423,9 @@ async function main() {
         }
         ok(!!sv && sv.hasTitle && sv.hasBody, '右侧显示区块标题输入框（可修改）+ 长文本内容');
         ok(!!sv && sv.title === '其他记忆', `标题可编辑且已回填（${sv && sv.title}）`);
-        ok(!!fv && /AGENTS\.md$/.test(fv.pathMemory), `窗口左下角显示记忆文件路径（${fv && fv.pathMemory}）`);
-        ok(!!fv && /roles$/.test(fv.pathRoles || ''), `窗口左下角显示角色文件路径（${fv && fv.pathRoles}，v1.0.1）`);
-        ok(!!fv && fv.hasBtnMem && fv.hasBtnRoles, '两个按钮：记忆文件位置 / 角色文件位置（v1.0.1 老大指令）');
+        ok(!!fv && !fv.hasPathMem, '左下角不再显示双路径（v1.0.1 老大反馈）');
+        ok(!!fv && fv.hasBtnMem && fv.hasBtnRoles, '两个按钮：记忆文件位置(AGENTS) / 角色文件位置（v1.0.1）');
+        ok(!!fv && (fv.btnMemText || '').includes('记忆文件位置(AGENTS)'), `按钮文案：记忆文件位置(AGENTS)（实际 ${fv && fv.btnMemText}）`);
       } catch (err) {
         ok(false, '全局记忆窗口内容断言异常：' + err.message);
       } finally {

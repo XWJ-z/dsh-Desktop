@@ -4,7 +4,7 @@
   "author": "zx(xwj)",
   "release_notes": "🎉 v1.0.1（首个正式大版本）—— 全局记忆 + DSH 角色 + 大量体验与安全升级\n1. 新增（全局记忆系统）：宠物/工具箱菜单「🧠 全局记忆」—— 图形化编辑 DSH 全局记忆（~/.dsh/AGENTS.md，DSH 自动读取无需手动发送）：用户设定 / 我的设定（含默认角色下拉）/ DSH 角色 / 其他记忆区块自动识别原样保留；窗口标题标注「(DSH 视角)」；底部「记忆文件位置」「角色文件位置」两个按钮直达目录\n2. 新增（DSH 角色系统）：角色 1/2/3 可增删（顶部角色 tab + 下方大输入区配置，不拥挤）；角色文件 ~/.dsh/roles/ 独立存储；双击 DSH 输入框随时切换角色并注入「本次对话角色为…」；新建对话不再弹窗打扰\n3. 修复：宠物眨眼不再跑到头顶（几何化闭眼）；气泡文字横排每行约 8 字；关闭到托盘后双击桌面图标直接显示界面（去掉「已在运行中」弹框）\n4. 安全加固：壳更新三源多数一致 + hash 台账防投毒；DSH 运行时固定版本安装；外部链接白名单；下载/重定向强制 https；恢复防解压炸弹；自定义提示词长度上限；全局记忆 1MB 上限\n5. 体验：公告条可点击 + 运行中自动刷新；更新日志只显示已发布版本；外观同步更快（400ms）；界面主题跟随系统（浅色/深色）",
   "force": false,
-  "hash": "7e9de721d2366cdc4ee33da043df3e825b4d568c4fdce2b1c814a5deba1325de",
+  "hash": "07b376bb6a9d59068c1b048a5fdcbc7d6c6d122894f71a6cdfe03705ba0e92da",
   "download_urls": [
     "https://ghfast.top/https://github.com/XWJ-z/dsh-Desktop/releases/download/v1.0.1/DSH-Desktop-Setup-1.0.1.exe",
     "https://gh-proxy.com/https://github.com/XWJ-z/dsh-Desktop/releases/download/v1.0.1/DSH-Desktop-Setup-1.0.1.exe"
