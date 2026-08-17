@@ -244,7 +244,7 @@ async function main() {
           await sleep(500);
         }
         ok(!!fv && fv.hasForm && fv.fields.length >= 6, `全局记忆窗口含表单输入框（${fv && fv.fields && fv.fields.length} 个）`);
-        ok(!!fv && fv.fields.includes('我的姓名') && fv.fields.includes('项目背景'), '表单字段含我的姓名/项目背景');
+        ok(!!fv && fv.fields.includes('你的称呼') && fv.fields.includes('项目背景'), '表单字段含你的称呼/项目背景');
         ok(!!fv && /AGENTS\.md$/.test(fv.path), `窗口显示记忆文件路径（${fv && fv.path}）`);
       } catch (err) {
         ok(false, '全局记忆窗口内容断言异常：' + err.message);

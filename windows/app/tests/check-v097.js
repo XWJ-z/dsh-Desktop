@@ -357,10 +357,13 @@ function testGlobalMemory() {
   ok(gms.includes('\'AGENTS.md\''), '记忆文件 = AGENTS.md');
   ok(gms.includes('os.homedir(), \'.dsh\''), '路径 ~/.dsh/AGENTS.md（DSH 自动读取）');
   ok(gms.includes('基础设定（DSH-Desktop 图形化编辑）'), '基础设定区块标题');
-  ok(gms.includes('我的姓名'), '表单字段含我的姓名');
+  ok(gms.includes('你的称呼'), '表单字段含你的称呼（用户视角，消除归属歧义）');
   ok(gms.includes('项目背景'), '表单字段含项目背景');
   ok(gms.includes('区块级'), '注释说明区块级写回');
   ok(gms.includes('replaceSection'), '区块替换函数存在');
+  const rjs0 = read('renderer/global-memory.js');
+  ok(rjs0.includes('你的信息'), '表单分组「你的信息」（DSH 记住你是谁）');
+  ok(rjs0.includes('你希望 DSH 的方式'), '表单分组「你希望 DSH 的方式」（DSH 怎么配合你）');
   const mw = read('modules/windows/misc-windows.js');
   ok(mw.includes('openGlobalMemoryWindow'), 'misc-windows 有全局记忆窗口');
   ok(mw.includes('\'global-memory.html\''), '窗口加载 global-memory.html');
@@ -390,20 +393,20 @@ async function testGlobalMemoryBehavior() {
   // 1) 首次：data 返回 exists=false，save 自动创建
   const d0 = api.data();
   ok(d0.exists === false, '首次 data.exists=false');
-  const r1 = api.save({ 我的姓名: '小六', '身份/角色': '开发助手', 语言风格: '简洁', 输出习惯: '', 项目背景: '', 常用约定: '' });
+  const r1 = api.save({ '你的称呼': '小六', '你的身份/角色': '开发助手', 语言风格: '简洁', 输出习惯: '', 项目背景: '', 常用约定: '' });
   ok(r1.ok === true && fs.existsSync(target), 'save 自动创建 AGENTS.md');
   const raw1 = fs.readFileSync(target, 'utf8');
   ok(raw1.includes('# AGENTS.md（全局记忆）'), '模板标题正确');
-  ok(raw1.includes('- 我的姓名：小六'), '我的姓名写入区块');
-  ok(raw1.includes('- 身份/角色：开发助手'), '身份角色写入区块');
+  ok(raw1.includes('- 你的称呼：小六'), '你的称呼写入区块');
+  ok(raw1.includes('- 你的身份/角色：开发助手'), '身份角色写入区块');
   ok(raw1.includes('## 其他记忆'), '模板含其他记忆区');
   // 2) 解析回填：data.form 读回
   const d1 = api.data();
   ok(d1.exists === true && d1.hasSection === true, '保存后 data.exists=true / hasSection=true');
-  ok(d1.form['我的姓名'] === '小六' && d1.form['身份/角色'] === '开发助手', '解析回填表单正确');
+  ok(d1.form['你的称呼'] === '小六' && d1.form['你的身份/角色'] === '开发助手', '解析回填表单正确');
   // 3) 区块替换：更新一个字段，其他记忆区内容保留
   fs.appendFileSync(target, '\n## 我的私有笔记\n\n- 只能我自己看的内容\n');
-  const r2 = api.save({ 我的姓名: '小六', '身份/角色': '开发助手', 语言风格: '专业', 输出习惯: '', 项目背景: '', 常用约定: '' });
+  const r2 = api.save({ '你的称呼': '小六', '你的身份/角色': '开发助手', 语言风格: '专业', 输出习惯: '', 项目背景: '', 常用约定: '' });
   ok(r2.ok === true, '二次保存成功');
   const raw2 = fs.readFileSync(target, 'utf8');
   ok(raw2.includes('- 语言风格：专业'), '字段更新生效');
@@ -411,15 +414,15 @@ async function testGlobalMemoryBehavior() {
   // 4) 追加：文件无基础设定区块时 → 追加末尾
   const custom = '# 用户自定义文件\n\n- 已有内容\n';
   fs.writeFileSync(target, custom, 'utf8');
-  const r3 = api.save({ 我的姓名: '张三', '身份/角色': '', 语言风格: '', 输出习惯: '', 项目背景: '', 常用约定: '' });
+  const r3 = api.save({ '你的称呼': '张三', '你的身份/角色': '', 语言风格: '', 输出习惯: '', 项目背景: '', 常用约定: '' });
   ok(r3.ok === true, '追加模式保存成功');
   const raw3 = fs.readFileSync(target, 'utf8');
   ok(raw3.startsWith('# 用户自定义文件') && raw3.includes('- 已有内容'), '原文件内容保留在开头');
-  ok(raw3.includes('- 我的姓名：张三'), '基础设定区块追加到末尾');
+  ok(raw3.includes('- 你的称呼：张三'), '基础设定区块追加到末尾');
   // 5) 不存在的区块标题（非本模块管理的 ## 标题）不影响解析
   fs.writeFileSync(target, '## 身份与称呼\n\n- 我的姓名：**小六**\n', 'utf8');
   const d2 = api.data();
-  ok(d2.form['我的姓名'] === '', '其他 ## 区块（身份与称呼）不被误解析为基础设定');
+  ok(d2.form['你的称呼'] === '', '其他 ## 区块（身份与称呼）不被误解析为基础设定');
   fs.rmSync(tmp, { recursive: true, force: true });
 }
 
