@@ -208,7 +208,8 @@ function testPet() {
   ok(src.includes('pet.matches(\':hover\')'), '表情结束后鼠标悬停恢复抬头（防眼睛突兀）');
   // v0.9.13（老大反馈：句子太长）：气泡自动换行
   ok(src.includes('white-space:normal') && src.includes('word-break:keep-all'), '气泡自动换行（keep-all，不字级乱断）');
-  ok(src.includes('max-width:8em'), '气泡每行约 8 字换行（8em = 8 全角字符宽）');
+  ok(src.includes('max-width:120px'), '气泡固定像素宽 120px（横排约 8 字/行，防 em 计算异常竖排）');
+  ok(!src.includes('overflow-wrap:anywhere;'), '不再用 overflow-wrap:anywhere（曾致一个字就换行的竖排）');
 }
 
 // ---------------------------------------------------------------------------
@@ -364,8 +365,12 @@ function testGlobalMemory() {
   const gms = read('modules/global-memory.js');
   ok(gms.includes('\'AGENTS.md\''), '记忆文件 = AGENTS.md');
   ok(gms.includes('os.homedir(), \'.dsh\''), '路径 ~/.dsh/AGENTS.md（DSH 自动读取）');
-  ok(gms.includes('用户设定') && gms.includes('DSH 设定'), '两个独立顶层区块：用户设定 / DSH 设定');
-  ok(gms.includes('LEGACY_SECTION'), '兼容旧「基础设定」容器（迁移为两个独立区块）');
+  ok(gms.includes('用户设定') && gms.includes('DSH 设定') && gms.includes('DSH 角色'), '三个独立顶层区块：用户设定 / DSH 设定 / DSH 角色');
+  ok(gms.includes('kind: \'roles\''), 'DSH 角色独立 kind（与用户/DSH 同级）');
+  ok(gms.includes('ROLES_DIR') && gms.includes('roleFile'), '角色文件目录 ~/.dsh/roles/（AGENTS.md 只记定位+文件名）');
+  ok(gms.includes('ensureRoleFiles'), '保存时自动建立角色文件');
+  ok(gms.includes('DEFAULT_ROLES') && gms.includes('\'角色 3\''), '内置默认角色 1/2/3');
+  ok(gms.includes('LEGACY_SECTION'), '兼容旧「基础设定」容器（迁移为独立区块）');
   ok(gms.includes('LEGACY_ROLE_TITLE'), '兼容旧「角色设定」子组（归入 DSH 设定）');
   ok(gms.includes('kind: \'users\'') && gms.includes('kind: \'dsh\''), '用户/DSH 设定各自独立 kind');
   ok(gms.includes('GUIDE_FIELD') && gms.includes('GUIDE_TEXT'), '未配置引导句定义（引导用户配置全局记忆）');
@@ -386,9 +391,18 @@ function testGlobalMemory() {
   const rjs0 = read('renderer/global-memory.js');
   ok(rjs0.includes('renderCats'), '窗口左侧类别列表（renderCats）');
   ok(rjs0.includes('renderRight'), '窗口右侧内容区（renderRight）');
-  ok(rjs0.includes('👤 用户设定') && rjs0.includes('🤖 DSH 设定'), '左侧 用户设定/DSH 设定 两个独立类别');
+  ok(rjs0.includes('👤 用户设定') && rjs0.includes('🤖 DSH 设定') && rjs0.includes('🎭 DSH 角色'), '左侧 用户设定/DSH 设定/DSH 角色 三个独立类别');
   ok(rjs0.includes('btn-add-field'), '窗口有「＋ 添加字段」按钮逻辑');
   ok(rjs0.includes('btn-add-dsh'), '窗口有「＋ 添加 DSH 设定」按钮逻辑');
+  ok(rjs0.includes('btn-add-role') && rjs0.includes('role-fields'), '窗口有 DSH 角色列表 + 添加角色按钮');
+  ok(rjs0.includes('新对话时会弹窗选择角色'), '窗口说明新对话选择角色');
+  const rsel = read('modules/role-selector.js');
+  ok(rsel.includes('dsh.sessions.current'), '角色选择轮询 DSH 会话切换（localStorage）');
+  ok(rsel.includes('本次对话角色为'), '选定角色后注入「本次对话角色为 xxxx，角色定义文件为 xxxx」');
+  ok(rsel.includes('不选择') || rsel.includes('取消'), '弹窗支持不选择');
+  const mainSrc1 = read('main.js');
+  ok(mainSrc1.includes('roleSelectorApi.start()'), '主窗口就绪后启动角色选择轮询');
+  ok(mainSrc1.includes('roleSelectorApi.stop()'), '退出时停止轮询');
   ok(rjs0.includes('guide-tip'), '窗口显示未配置引导提示条');
   ok(rjs0.includes('TIDY_PROMPT') && rjs0.includes('整理你的全局记忆，不要改变原意'), '保存后整理记忆提示词');
   ok(rjs0.includes('tidy-bar') && rjs0.includes('showTidyBar'), '保存后询问是否让 DSH 整理记忆');
@@ -576,6 +590,31 @@ $env:PATH = "..."
   const g4 = api.ensureGuide();
   ok(g4.formatMismatch === true, '旧格式记忆（无用户/DSH 设定区块）→ formatMismatch=true（待整理）');
   ok(!fs.readFileSync(target, 'utf8').includes('引导提示'), '无用户设定区块 → 不插引导句（由注入整理提示接管）');
+  // 9) v0.9.13 角色设定（老大方案）：DSH 角色 独立区块 + 角色文件自动建立
+  fs.rmSync(target, { force: true });
+  const r9 = api.save({
+    users: [{ name: '你的称呼', value: '小六' }],
+    dsh: [{ name: 'DSH 的名字', value: '小鲸鱼' }],
+    roles: [
+      { name: '角色 1', value: '工作编程助手（文件：~/.dsh/roles/角色 1.md）' },
+      { name: '角色 2', value: '闲聊伙伴（文件：~/.dsh/roles/角色 2.md）' },
+    ],
+    sections: [],
+  });
+  ok(r9.ok === true, '含角色保存成功');
+  const raw9 = fs.readFileSync(target, 'utf8');
+  ok(raw9.includes('## DSH 角色') && raw9.includes('- 角色 1：工作编程助手（文件：~/.dsh/roles/角色 1.md）'), 'DSH 角色 独立区块写入（与用户/DSH 同级）');
+  const roleFile1 = path.join(tmp, '.dsh', 'roles', '角色-1.md'); // 文件名安全化：空格 → -
+  const roleFile2 = path.join(tmp, '.dsh', 'roles', '角色-2.md');
+  ok(fs.existsSync(roleFile1) && fs.existsSync(roleFile2), '角色文件自动建立（~/.dsh/roles/）');
+  ok(fs.readFileSync(roleFile1, 'utf8').includes('# 角色：角色 1') && fs.readFileSync(roleFile1, 'utf8').includes('## 详细记忆'),
+    '角色文件含 定位 + 详细记忆 模板');
+  const d9 = api.data();
+  const rolesSec9 = d9.sections.find((s) => s.kind === 'roles');
+  ok(!!rolesSec9 && rolesSec9.fields.length === 2 && rolesSec9.fields[1].name === '角色 2', 'DSH 角色解析回填（重开窗口仍在）');
+  // 角色文件安全名：非法字符（空格/斜杠）替换为 -（防路径穿越）
+  const r10 = api.save({ users: [{ name: '你的称呼', value: '小六' }], dsh: [], roles: [{ name: '角色 A/B', value: '测试' }], sections: [] });
+  ok(r10.ok === true && fs.existsSync(path.join(tmp, '.dsh', 'roles', '角色-A-B.md')), '角色文件名非法字符安全化（空格/斜杠 → -）');
   fs.rmSync(tmp, { recursive: true, force: true });
 }
 

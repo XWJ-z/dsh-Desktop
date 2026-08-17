@@ -43,6 +43,7 @@ const { createDragDrop } = require('./modules/drag-drop');          // v0.9（T3
 const { createDropFiles } = require('./modules/drop-files');        // v0.9（T4/T5）：拖文件处理
 const { createCustomPrompts } = require('./modules/custom-prompts'); // v0.9.5（T2）：自定义提示词
 const { createGlobalMemory } = require('./modules/global-memory');   // v0.9.12：全局记忆（宠物菜单）
+const { createRoleSelector } = require('./modules/role-selector');   // v0.9.13：新对话选择角色
 const { createNoticeModule } = require('./modules/notice');          // v0.9.5（T3）：公告条/公告源
 const { createMenu } = require('./modules/menu');
 const { registerIpc } = require('./modules/ipc');
@@ -371,6 +372,20 @@ const customPromptsApi = createCustomPrompts({ fs, path, app, appendLog });
 // v0.9.12（老大指令）：全局记忆 —— 读写 DSH 原生 ~/.dsh/AGENTS.md（DSH 自动读取，
 // 无需手动发送）；图形化表单编辑基础设定（区块级写回，不破坏其他内容）
 const globalMemoryApi = createGlobalMemory({ app, fs, os, path, appendLog });
+
+// v0.9.13（老大方案）：新对话选择角色 —— 轮询 DSH 会话切换，有角色配置则弹窗选角色并注入
+const roleSelectorApi = createRoleSelector({
+  dialog, appName: APP_NAME, appendLog,
+  getMainWindow: () => mainWindow,
+  getRoles: () => {
+    const d = globalMemoryApi.data();
+    const sec = d && d.sections && d.sections.find((s) => s.kind === 'roles');
+    return sec ? (sec.fields || []) : [];
+  },
+  roleFilePath: (name) => globalMemoryApi.roleFile(name),
+  injectText: (win, text, opts) => promptInject.injectTextIntoInput(win, text, opts),
+  currentSessionIdFromPage: (win) => workspaceApi.currentSessionIdFromPage(win),
+});
 
 // ----
 // 更新检查/下载（v0.8.12：逻辑已移入 modules/updater.js）
@@ -880,6 +895,8 @@ if (!gotLock) {
         if (loadingWindow && !loadingWindow.isDestroyed()) loadingWindow.close();
         loadingWindow = null;
         createMainWindow();
+        // v0.9.13：新对话角色选择轮询（有角色配置时，会话切换弹窗选角色并注入）
+        roleSelectorApi.start();
         // v0.9.13（老大指令）：记忆格式不符标准 → 主窗口加载完成后注入整理提示词
         // （让 DSH 按标准格式整理现有记忆，不改变原意）
         if (memoryFormatMismatch) {
@@ -930,6 +947,8 @@ if (!gotLock) {
   app.on('before-quit', () => { isQuitting = true; stopServer(); });
   app.on('will-quit', () => {
     appendLog('info', '应用退出中…');
+    // v0.9.13：停止角色选择轮询
+    roleSelectorApi.stop();
     // v0.9.7：退出清理公告自动刷新定时器
     if (noticeRefreshTimer) { clearInterval(noticeRefreshTimer); noticeRefreshTimer = null; }
     // v0.8.1（T4）：退出释放全局快捷键（防残留占用）

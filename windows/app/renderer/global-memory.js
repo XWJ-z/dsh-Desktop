@@ -11,11 +11,13 @@
 const el = (id) => document.getElementById(id);
 const dsh = window.dshDesktop;
 
-// v0.9.12（老大指令）：用户设定 / DSH 设定 两个独立顶层区块（删除"基础设定"容器）
+// v0.9.13（老大方案）：用户设定 / DSH 设定 / DSH 角色 三个独立顶层区块
 const USERS_KEY = '__users__';
 const DSH_KEY = '__dsh__';
+const ROLES_KEY = '__roles__';
 const DEFAULT_FIELDS = ['你的称呼', '你的身份/角色', '项目背景', '常用约定'];
-const DEFAULT_DSH_FIELDS = ['DSH 的名字', '语气风格', '输出习惯', '角色 1'];
+const DEFAULT_DSH_FIELDS = ['DSH 的名字', '语气风格', '输出习惯'];
+const DEFAULT_ROLES = ['角色 1', '角色 2', '角色 3'];
 const VALUE_HINTS = {
   你的称呼: '例：老大 / 张三',
   你的身份角色: '例：技术总监 / 项目负责人',
@@ -24,7 +26,9 @@ const VALUE_HINTS = {
   'DSH 的名字': '例：小鲸鱼',
   语气风格: '例：专业、简洁、中文',
   输出习惯: '例：代码带注释、结论先行',
-  '角色 1': '例：资深 C++ 工程师',
+  '角色 1': '角色定位（文件：~/.dsh/roles/角色 1.md）',
+  '角色 2': '角色定位（文件：~/.dsh/roles/角色 2.md）',
+  '角色 3': '角色定位（文件：~/.dsh/roles/角色 3.md）',
 };
 const VALUE_HINT_FALLBACK = '填写内容…';
 const TIDY_PROMPT = '整理你的全局记忆，不要改变原意'; // v0.9.12：保存后可选让 DSH 整理记忆
@@ -32,6 +36,7 @@ const SAVE_TIMEOUT_MS = 8000; // 保存超时兜底（任何挂起 8s 必恢复�
 
 let userFields = [];   // 用户设定 [{name,value}]
 let dshFields = [];    // DSH 设定 [{name,value}]
+let roleFields = [];   // DSH 角色 [{name,value}]（新对话时选择）
 let sections = [];     // 其他 ## 区块 [{title, body}]
 let activeKey = USERS_KEY;
 let fileExists = false;
@@ -66,6 +71,7 @@ function renderCats() {
   const cats = el('cats');
   let html = `<div class="cat ${activeKey === USERS_KEY ? 'active' : ''}" data-key="${USERS_KEY}">👤 用户设定<span class="tag">字段</span></div>`;
   html += `<div class="cat ${activeKey === DSH_KEY ? 'active' : ''}" data-key="${DSH_KEY}">🤖 DSH 设定<span class="tag">字段</span></div>`;
+  html += `<div class="cat ${activeKey === ROLES_KEY ? 'active' : ''}" data-key="${ROLES_KEY}">🎭 DSH 角色<span class="tag">新对话选择</span></div>`;
   html += sections.map((s) => {
     const key = secKey(s);
     return `<div class="cat ${activeKey === key ? 'active' : ''}" data-key="${escapeHtml(key)}"><span class="sec-title">## ${escapeHtml(s.title || '未命名')}</span></div>`;
@@ -98,12 +104,22 @@ function renderRight() {
     return;
   }
   if (activeKey === DSH_KEY) {
-    head.innerHTML = 'DSH 设定 <span class="tag">DSH 的名字 / 语气 / 角色 · 可增删</span>';
+    head.innerHTML = 'DSH 设定 <span class="tag">DSH 的名字 / 语气 / 输出习惯 · 可增删</span>';
     body.innerHTML = `
       <div class="fields" id="dsh-fields"></div>
       <button id="btn-add-dsh" class="add-field">＋ 添加 DSH 设定</button>`;
     renderDshFields();
     el('btn-add-dsh').addEventListener('click', () => addRow(dshFields, renderDshFields));
+    return;
+  }
+  if (activeKey === ROLES_KEY) {
+    head.innerHTML = 'DSH 角色 <span class="tag">角色 1/2/3 · 新对话选择 · 可增删</span>';
+    body.innerHTML = `
+      <div class="guide-tip">💡 每个角色保存后会自动建立角色文件（~/.dsh/roles/），详细记忆写入角色文件避免 AGENTS.md 过大；新对话时会弹窗选择角色。</div>
+      <div class="fields" id="role-fields"></div>
+      <button id="btn-add-role" class="add-field">＋ 添加角色</button>`;
+    renderRoleFields();
+    el('btn-add-role').addEventListener('click', () => addRow(roleFields, renderRoleFields));
     return;
   }
   const idx = sections.findIndex((s) => secKey(s) === activeKey);
@@ -162,6 +178,7 @@ function renderRows(listElId, arr) {
 
 function renderFields() { renderRows('fields', userFields); }
 function renderDshFields() { renderRows('dsh-fields', dshFields); }
+function renderRoleFields() { renderRows('role-fields', roleFields); }
 
 function addRow(arr, renderFn) {
   arr.push({ name: '', value: '' });
@@ -192,7 +209,7 @@ function collectPayload() {
       seen.add(s.title);
       return true;
     });
-  return { users: clean(userFields), dsh: clean(dshFields), sections: cleanSections };
+  return { users: clean(userFields), dsh: clean(dshFields), roles: clean(roleFields), sections: cleanSections };
 }
 
 /** 保存（覆盖确认在前端：文件已存在 → 按钮二次确认；首次直接保存） */
@@ -281,9 +298,10 @@ async function loadData() {
   filePath = (data && data.file) || '';
   fileExists = !!(data && data.exists);
   const list = (data && Array.isArray(data.sections)) ? data.sections : [];
-  // 用户设定 / DSH 设定 两个独立顶层区块
+  // 用户设定 / DSH 设定 / DSH 角色 三个独立顶层区块
   const usersSec = list.find((s) => s.kind === 'users');
   const dshSec = list.find((s) => s.kind === 'dsh');
+  const rolesSec = list.find((s) => s.kind === 'roles');
   if (usersSec && Array.isArray(usersSec.fields) && usersSec.fields.length > 0) {
     userFields = usersSec.fields.map((it) => ({ name: it.name || '', value: it.value || '' }));
   } else {
@@ -295,6 +313,12 @@ async function loadData() {
   } else {
     const defs = (data && Array.isArray(data.defaultDshFields)) ? data.defaultDshFields : DEFAULT_DSH_FIELDS;
     dshFields = defs.map((n) => ({ name: n, value: '' }));
+  }
+  if (rolesSec && Array.isArray(rolesSec.fields) && rolesSec.fields.length > 0) {
+    roleFields = rolesSec.fields.map((it) => ({ name: it.name || '', value: it.value || '' }));
+  } else {
+    const defs = (data && Array.isArray(data.defaultRoles)) ? data.defaultRoles : DEFAULT_ROLES;
+    roleFields = defs.map((n) => ({ name: n, value: '' }));
   }
   guidePending = !!(usersSec && usersSec.guide);
   sections = list
@@ -310,6 +334,7 @@ async function init() {
   } catch {
     userFields = DEFAULT_FIELDS.map((n) => ({ name: n, value: '' }));
     dshFields = DEFAULT_DSH_FIELDS.map((n) => ({ name: n, value: '' }));
+    roleFields = DEFAULT_ROLES.map((n) => ({ name: n, value: '' }));
     sections = [];
   }
   renderAll();

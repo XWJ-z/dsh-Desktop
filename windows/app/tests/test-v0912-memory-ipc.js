@@ -21,6 +21,7 @@ const path = require('node:path');
 const { EventEmitter } = require('node:events');
 const { createGlobalMemory } = require('../modules/global-memory');
 const { registerIpc } = require('../modules/ipc');
+const { createRoleSelector } = require('../modules/role-selector');
 
 let passed = 0;
 let failed = 0;
@@ -106,9 +107,68 @@ async function main() {
     ok(fs.readFileSync(target, 'utf8').includes('- DSH 的名字：小鲸鱼'), 'DSH 设定随首次保存写入');
     fs.rmSync(tmp, { recursive: true, force: true });
   }
-
-  console.log(`\n结果：${passed} 通过 / ${failed} 失败`);
-  process.exit(failed === 0 ? 0 : 1);
 }
 
-main();
+// ── 附加段：role-selector 行为（v0.9.13 老大方案 3/4）──
+async function testRoleSelector() {
+  console.log('[4] role-selector：会话切换 → 选角色 → 注入（老大方案）');
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const mkRole = (opts = {}) => {
+    const calls = { dialogs: 0, injects: [] };
+    const api = createRoleSelector({
+      dialog: { showMessageBox: async () => { calls.dialogs++; return { response: opts.dialogResponse ?? 0 }; } },
+      appName: 'DSH-Desktop',
+      appendLog: () => {},
+      getMainWindow: () => ({ isDestroyed: () => false }),
+      getRoles: opts.rolesFn || (() => [{ name: '角色 1', value: '工作' }, { name: '角色 2', value: '闲聊' }]),
+      roleFilePath: (name) => `~/.dsh/roles/${name}.md`,
+      injectText: async (_w, text, _o) => { calls.injects.push(text); return { ok: true }; },
+      currentSessionIdFromPage: opts.sessionFn || (async () => null),
+      pollMs: 50,
+    });
+    return { api, calls };
+  };
+  // ① 会话从 sid1 → sid2：弹窗选角色 1 → 注入提示词
+  {
+    let seq = ['sid-1', 'sid-1', 'sid-2', 'sid-2'];
+    const { api, calls } = mkRole({ sessionFn: async () => seq.shift() || 'sid-2' });
+    api.start();
+    await sleep(220); // 4 次轮询
+    api.stop();
+    ok(calls.dialogs === 1, '会话切换触发 1 次弹窗');
+    ok(calls.injects.length === 1 && calls.injects[0].includes('本次对话角色为 角色 1') && calls.injects[0].includes('角色定义文件为 ~/.dsh/roles/角色 1.md'),
+      `注入提示词正确（${calls.injects[0]}）`);
+  }
+  // ② 会话不变 → 不弹窗
+  {
+    const { api, calls } = mkRole({ sessionFn: async () => 'same-session' });
+    api.start();
+    await sleep(150);
+    api.stop();
+    ok(calls.dialogs === 0, '会话不变 → 不弹窗');
+  }
+  // ③ 未配置角色 → 不弹窗（老大方案 3）
+  {
+    const { api, calls } = mkRole({ rolesFn: () => [], sessionFn: async () => { const s = Math.random(); return s > 0.5 ? 'a' : 'b'; } });
+    api.start();
+    await sleep(200);
+    api.stop();
+    ok(calls.dialogs === 0, '未配置角色 → 不弹窗');
+  }
+  // ④ 弹窗选「不选择」→ 不注入
+  {
+    let seq = ['s1', 's2'];
+    const { api, calls } = mkRole({ dialogResponse: 2, sessionFn: async () => seq.shift() || 's2' });
+    api.start();
+    await sleep(180);
+    api.stop();
+    ok(calls.dialogs === 1 && calls.injects.length === 0, '选「不选择」→ 弹窗但不注入');
+  }
+}
+
+main().then(() => {
+  testRoleSelector().then(() => {
+    console.log(`\n结果：${passed} 通过 / ${failed} 失败`);
+    process.exit(failed === 0 ? 0 : 1);
+  });
+});

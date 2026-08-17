@@ -278,9 +278,9 @@ async function main() {
           await sleep(500);
         }
         ok(!!fv && fv.hasCats && fv.hasRight, '窗口左右分栏（左类别 / 右内容）');
-        ok(!!fv && fv.catCount >= 3, `左侧类别列表（${fv && fv.catCount} 项：用户/DSH/区块）`);
-        ok(!!fv && fv.catTexts.some((t) => t.includes('用户设定')) && fv.catTexts.some((t) => t.includes('DSH 设定')),
-          `左侧含 用户设定 / DSH 设定 两个独立类别（${fv && fv.catTexts.join(' | ')}）`);
+        ok(!!fv && fv.catCount >= 4, `左侧类别列表（${fv && fv.catCount} 项：用户/DSH/角色/区块）`);
+        ok(!!fv && fv.catTexts.some((t) => t.includes('用户设定')) && fv.catTexts.some((t) => t.includes('DSH 设定')) && fv.catTexts.some((t) => t.includes('DSH 角色')),
+          `左侧含 用户设定/DSH 设定/DSH 角色 三个独立类别（${fv && fv.catTexts.join(' | ')}）`);
         ok(!!fv && fv.catTexts.some((t) => t.includes('其他记忆')), '自动识别出 其他记忆 区块');
         ok(!!fv && fv.rowCount >= 4 && fv.names.includes('你的称呼'), '用户设定字段列表默认显示（含你的称呼）');
         ok(!!fv && fv.hasAddField && fv.hasAddSec, '有「＋ 添加字段」和「＋ 添加区块」按钮');
@@ -317,8 +317,42 @@ async function main() {
           await sleep(400);
         }
         ok(!!dv && dv.hasDshFields && dv.dshCount >= 1, `DSH 设定独立区块视图（${dv && dv.dshCount} 个字段）`);
-        ok(!!dv && dv.dshNames.includes('DSH 的名字') && dv.dshNames.includes('角色 1'), 'DSH 设定默认字段（DSH 的名字/角色）');
+        ok(!!dv && dv.dshNames.includes('DSH 的名字') && dv.dshNames.includes('语气风格'), 'DSH 设定默认字段（DSH 的名字/语气）');
         ok(!!dv && dv.hasAddDsh, '有「＋ 添加 DSH 设定」按钮');
+        // 点击「DSH 角色」类别 → 角色字段列表 + 添加角色按钮
+        const roleCat = await memCdp.send('Runtime.evaluate', {
+          expression: `(() => {
+            const cat = Array.from(document.querySelectorAll('#cats .cat[data-key]'))
+              .find((c) => (c.textContent || '').includes('DSH 角色'));
+            if (!cat) return { ok: false };
+            cat.click();
+            return { ok: true };
+          })()`,
+          returnByValue: true,
+        });
+        ok(!!(roleCat.result && roleCat.result.value && roleCat.result.value.ok), '点击「DSH 角色」类别');
+        let rv = null;
+        const tr = Date.now();
+        while (Date.now() - tr < 5000) {
+          const s = await memCdp.send('Runtime.evaluate', {
+            expression: `(() => {
+              const rows = Array.from(document.querySelectorAll('#role-fields .row'));
+              return {
+                hasRoleFields: !!document.getElementById('role-fields'),
+                roleCount: rows.length,
+                roleNames: rows.map((r) => (r.querySelector('.f-name') || {}).value || '').filter(Boolean),
+                hasAddRole: !!document.getElementById('btn-add-role'),
+              };
+            })()`,
+            returnByValue: true,
+          });
+          rv = s.result && s.result.value;
+          if (rv && rv.hasRoleFields && rv.roleCount >= 1) break;
+          await sleep(400);
+        }
+        ok(!!rv && rv.hasRoleFields && rv.roleCount >= 1, `DSH 角色独立区块视图（${rv && rv.roleCount} 个角色）`);
+        ok(!!rv && rv.roleNames.includes('角色 1') && rv.roleNames.includes('角色 3'), '默认角色 1/2/3');
+        ok(!!rv && rv.hasAddRole, '有「＋ 添加角色」按钮');
         // 点击左侧区块 → 右侧显示标题输入框（可改）+ 长文本
         const sec = await memCdp.send('Runtime.evaluate', {
           expression: `(() => {
@@ -361,7 +395,7 @@ async function main() {
       if (fs.existsSync(simAgents)) {
         const simText = fs.readFileSync(simAgents, 'utf8');
         ok(simText.includes('请在对话中引导用户点击宠物/工具箱图标'), '引导句已插入（v0.9.13 文案：引导点击宠物/工具箱配置）');
-        ok(simText.includes('## 用户设定') && simText.includes('## DSH 设定'), '用户设定 / DSH 设定 两个独立顶层区块');
+        ok(simText.includes('## 用户设定') && simText.includes('## DSH 设定') && simText.includes('## DSH 角色'), '用户设定 / DSH 设定 / DSH 角色 三个独立顶层区块');
         ok(!simText.includes('基础设定（DSH-Desktop 图形化编辑）'), '无旧「基础设定」容器');
       }
     }

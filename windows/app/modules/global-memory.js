@@ -20,15 +20,19 @@
 
 const FILE_NAME = 'AGENTS.md';
 
-/** 两个独立顶层区块（v0.9.12 老大指令：用户设定 / DSH 设定 平级，删除"基础设定"容器） */
+/** 三个独立顶层区块（v0.9.13 老大指令：DSH 角色 与 用户设定/DSH 设定 同级） */
 const USER_SECTION = '用户设定';
 const DSH_SECTION = 'DSH 设定';
+const ROLES_SECTION = 'DSH 角色';
 
-/** 旧版「基础设定」容器标题（兼容迁移：解析时拆成 用户设定/DSH 设定 两个独立区块） */
+/** 旧版「基础设定」容器标题（兼容迁移：解析时拆成独立区块） */
 const LEGACY_SECTION = '基础设定（DSH-Desktop 图形化编辑）';
 
 /** 旧版角色设定子标题（兼容迁移：归入 DSH 设定） */
 const LEGACY_ROLE_TITLE = '角色设定（DSH 扮演）';
+
+/** 角色文件目录（~/.dsh/roles/，每个角色一个 md；AGENTS.md 只记录定位+文件名，避免文档过大） */
+const ROLES_DIR = 'roles';
 
 /** 未配置引导句的字段名与内容（老大指令 2026-08-17：第一次对话引导用户配置全局记忆） */
 const GUIDE_FIELD = '引导提示';
@@ -54,25 +58,31 @@ const FORMAT_TIDY_PROMPT = `请按照以下标准格式整理你的全局记忆�
 - DSH 的名字：
 - 语气风格：
 - 输出习惯：
-- 角色 1：
-- 角色 2：
-- 角色 3：
+
+## DSH 角色
+
+- 角色 1：角色定位（文件：~/.dsh/roles/角色 1.md）
+- 角色 2：角色定位（文件：~/.dsh/roles/角色 2.md）
+- 角色 3：角色定位（文件：~/.dsh/roles/角色 3.md）
 
 ## 其他记忆
 
-（其他原有内容放在这里）`;
+（其他原有内容放在这里；各角色的详细记忆写入 ~/.dsh/roles/ 下对应角色文件）`;
 
 /** 内置默认用户设定字段（首次/空区块时窗口初始行） */
 const DEFAULT_FIELDS = ['你的称呼', '你的身份/角色', '项目背景', '常用约定'];
 
 /** 内置默认 DSH 设定字段（名字/语气/输出习惯/角色，可增删） */
-const DEFAULT_DSH_FIELDS = ['DSH 的名字', '语气风格', '输出习惯', '角色 1'];
+const DEFAULT_DSH_FIELDS = ['DSH 的名字', '语气风格', '输出习惯'];
 
-/** 首次创建时的模板（头部 + 用户设定 + DSH 设定 + 其他记忆区） */
+/** 内置默认角色字段（v0.9.13：角色 1/2/3，值 = 定位 + 角色文件名；可增删） */
+const DEFAULT_ROLES = ['角色 1', '角色 2', '角色 3'];
+
+/** 首次创建时的模板（头部 + 用户设定 + DSH 设定 + DSH 角色 + 其他记忆区） */
 const TEMPLATE = `# AGENTS.md（全局记忆）
 
 > 此文件由 DSH-Desktop「全局记忆」窗口维护，DSH 会自动读取其中的内容作为长期记忆（无需手动发送）。
-> 「用户设定」与「DSH 设定」请用窗口中的表单编辑；其他内容可自行追加到「其他记忆」区。
+> 「用户设定」「DSH 设定」「DSH 角色」请用窗口中的表单编辑；其他内容可自行追加到「其他记忆」区。
 
 ## ${USER_SECTION}
 
@@ -81,6 +91,10 @@ ${DEFAULT_FIELDS.map((f) => `- ${f}：`).join('\n')}
 ## ${DSH_SECTION}
 
 ${DEFAULT_DSH_FIELDS.map((f) => `- ${f}：`).join('\n')}
+
+## ${ROLES_SECTION}
+
+${DEFAULT_ROLES.map((f) => `- ${f}：`).join('\n')}
 
 ## 其他记忆
 
@@ -142,6 +156,9 @@ function createGlobalMemory(deps) {
         } else if (title === DSH_SECTION) {
           sections.push({ title, kind: 'dsh', fields: [] });
           cur = sections[sections.length - 1];
+        } else if (title === ROLES_SECTION) {
+          sections.push({ title, kind: 'roles', fields: [] });
+          cur = sections[sections.length - 1];
         } else if (title === LEGACY_SECTION) {
           // 旧容器：拆成 用户设定 + DSH 设定 两个独立区块（内部 ### 子组路由）
           legacy = {
@@ -178,7 +195,7 @@ function createGlobalMemory(deps) {
             if (legacy.group === 'dsh') legacy.d.fields.push(item);
             else legacy.u.fields.push(item);
           }
-        } else if (cur.kind === 'users' || cur.kind === 'dsh') {
+        } else if (cur.kind === 'users' || cur.kind === 'dsh' || cur.kind === 'roles') {
           const m = /^-\s*([^：:]+)[：:]\s*(.*)$/.exec(line);
           if (m) {
             const name = m[1].trim();
@@ -219,6 +236,51 @@ function createGlobalMemory(deps) {
     return lines.join('\n');
   }
 
+  /** 渲染 DSH 角色区块（字段行；始终输出区块标题，保证标准格式完整） */
+  function renderRoles(fields) {
+    const lines = [`## ${ROLES_SECTION}`, ''];
+    (fields || []).forEach((it) => {
+      const name = String(it.name || '').trim();
+      if (!name) return;
+      lines.push(`- ${name}：${String(it.value || '').trim()}`);
+    });
+    return lines.join('\n');
+  }
+
+  /** 角色文件名安全化（非法字符 → '-'，防路径穿越） */
+  function safeRoleFileName(name) {
+    const n = String(name || '').trim().replace(/[\\/:*?"<>|\s]+/g, '-');
+    return n || 'role';
+  }
+
+  /** 角色文件路径：~/.dsh/roles/<安全名>.md */
+  function roleFile(name) {
+    return path.join(os.homedir(), '.dsh', ROLES_DIR, `${safeRoleFileName(name)}.md`);
+  }
+
+  /** 角色文件模板（首次创建；详细记忆写入对应角色文件，避免 AGENTS.md 过大） */
+  function roleFileTemplate(name, desc) {
+    return `# 角色：${String(name || '').trim()}\n\n## 定位\n\n${String(desc || '').trim()}\n\n## 详细记忆\n\n（此角色的详细记忆写在这里，DSH 切换到此角色时按本文件内容扮演。）\n`;
+  }
+
+  /** 确保每个角色的角色文件存在（不存在则创建模板；v0.9.13 老大方案 2） */
+  function ensureRoleFiles(roles) {
+    (roles || []).forEach((r) => {
+      const name = String(r.name || '').trim();
+      if (!name) return;
+      const f = roleFile(name);
+      if (!fs.existsSync(f)) {
+        try {
+          fs.mkdirSync(path.dirname(f), { recursive: true });
+          fs.writeFileSync(f, roleFileTemplate(name, r.value), 'utf8');
+          appendLog('info', `角色文件已创建：${f}`);
+        } catch (err) {
+          appendLog('warn', `创建角色文件失败（${name}）：${err.message}`);
+        }
+      }
+    });
+  }
+
   /** 渲染长文本区块（## 标题 + 原格式内容） */
   function renderLong(title, body) {
     // 防御：body 可能是数组（解析产物）或字符串（窗口提交），统一为字符串
@@ -228,24 +290,28 @@ function createGlobalMemory(deps) {
   }
 
   /**
-   * 重组完整文件：head + 用户设定 + DSH 设定（两个独立顶层区块）+ 其他区块（按序）。
+   * 重组完整文件：head + 用户设定 + DSH 设定 + DSH 角色 + 其他区块（按序）。
    * @param {string} head
-   * @param {Array} sections [{ title, kind: 'users'|'dsh'|'long', fields?|guide?|body? }]
+   * @param {Array} sections [{ title, kind: 'users'|'dsh'|'roles'|'long', fields?|guide?|body? }]
    */
   function render(head, sections) {
     const blocks = [];
     let usersBlock = null;
     let dshBlock = null;
+    let rolesBlock = null;
     const others = [];
     for (const s of sections) {
       if (s.kind === 'users') usersBlock = renderUsers(s.fields || [], !!s.guide);
       else if (s.kind === 'dsh') dshBlock = renderDsh(s.fields || []);
+      else if (s.kind === 'roles') rolesBlock = renderRoles(s.fields || []);
       else if (s.kind === 'long') others.push(renderLong(s.title, s.body));
     }
     if (usersBlock === null) usersBlock = renderUsers([], false);
+    if (rolesBlock === null) rolesBlock = renderRoles([]); // 角色区块始终输出（标准格式完整）
     const headText = String(head || '').trim() || templateHead().trim();
     blocks.push(headText, usersBlock);
     if (dshBlock) blocks.push(dshBlock);
+    blocks.push(rolesBlock);
     blocks.push(...others);
     return blocks.join('\n\n') + '\n';
   }
@@ -264,6 +330,9 @@ function createGlobalMemory(deps) {
     // 兼容旧 payload 字段名（fields/roles → users/dsh）
     const users = clean(p.users !== undefined ? p.users : p.fields);
     const dsh = clean(p.dsh !== undefined ? p.dsh : p.roles);
+    const roles = clean(p.roles);
+    // v0.9.13（老大方案 2）：保存时确保每个角色的角色文件存在（~/.dsh/roles/）
+    ensureRoleFiles(roles);
     // 配置完成判定：用户设定有非空值 → 不输出引导句
     const configured = users.some((it) => it.value !== '');
     const guide = !configured;
@@ -279,6 +348,7 @@ function createGlobalMemory(deps) {
     const merged = [];
     let usersPlaced = false;
     let dshPlaced = false;
+    let rolesPlaced = false;
     let li = 0;
     for (const s of sections) {
       if (s.kind === 'users') {
@@ -287,6 +357,9 @@ function createGlobalMemory(deps) {
       } else if (s.kind === 'dsh') {
         merged.push({ title: DSH_SECTION, kind: 'dsh', fields: dsh });
         dshPlaced = true;
+      } else if (s.kind === 'roles') {
+        merged.push({ title: ROLES_SECTION, kind: 'roles', fields: roles });
+        rolesPlaced = true;
       } else {
         const incoming = longSections[li] || null;
         li++;
@@ -298,6 +371,7 @@ function createGlobalMemory(deps) {
       }
     }
     if (!usersPlaced) merged.unshift({ title: USER_SECTION, kind: 'users', fields: users, guide });
+    if (!rolesPlaced) merged.push({ title: ROLES_SECTION, kind: 'roles', fields: roles });
     if (!dshPlaced) merged.splice(merged.findIndex((s) => s.kind === 'users') + 1, 0, { title: DSH_SECTION, kind: 'dsh', fields: dsh });
     // 窗口新增区块（原文件区块数之后）追加末尾
     const originalLong = sections.filter((s) => s.kind === 'long').length;
@@ -366,7 +440,7 @@ function createGlobalMemory(deps) {
     }
   }
 
-  /** 读取窗口数据：头部 + 全部区块（用户/DSH/长文本）+ 默认字段 + 文件路径 */
+  /** 读取窗口数据：头部 + 全部区块（用户/DSH/角色/长文本）+ 默认字段 + 文件路径 */
   function data() {
     const raw = readRaw();
     const parsed = raw === null ? parse('') : parse(raw);
@@ -376,17 +450,20 @@ function createGlobalMemory(deps) {
       sections: parsed.sections,
       defaultFields: DEFAULT_FIELDS.slice(),
       defaultDshFields: DEFAULT_DSH_FIELDS.slice(),
+      defaultRoles: DEFAULT_ROLES.slice(),
       file: file(),
     };
   }
 
   return {
     file, data, save, parse, ensureGuide,
-    DEFAULT_FIELDS, DEFAULT_DSH_FIELDS, USER_SECTION, DSH_SECTION, GUIDE_FIELD, GUIDE_TEXT, FORMAT_TIDY_PROMPT,
+    roleFile, roleFileTemplate, ensureRoleFiles, safeRoleFileName,
+    DEFAULT_FIELDS, DEFAULT_DSH_FIELDS, DEFAULT_ROLES, USER_SECTION, DSH_SECTION, ROLES_SECTION,
+    GUIDE_FIELD, GUIDE_TEXT, FORMAT_TIDY_PROMPT,
   };
 }
 
 module.exports = {
-  createGlobalMemory, FILE_NAME, USER_SECTION, DSH_SECTION, LEGACY_SECTION, LEGACY_ROLE_TITLE,
-  GUIDE_FIELD, GUIDE_TEXT, FORMAT_TIDY_PROMPT, DEFAULT_FIELDS, DEFAULT_DSH_FIELDS, TEMPLATE,
+  createGlobalMemory, FILE_NAME, USER_SECTION, DSH_SECTION, ROLES_SECTION, LEGACY_SECTION, LEGACY_ROLE_TITLE,
+  GUIDE_FIELD, GUIDE_TEXT, FORMAT_TIDY_PROMPT, DEFAULT_FIELDS, DEFAULT_DSH_FIELDS, DEFAULT_ROLES, TEMPLATE,
 };
