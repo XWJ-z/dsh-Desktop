@@ -171,11 +171,33 @@ async function main() {
     ok(dshReady, 'preload dshDesktop 已注入');
     if (!dshReady) throw new Error('dshDesktop 注入超时');
 
-    // ① 版本 0.9.9
+    // ① 版本 0.9.10
     const ver = await cdp.send('Runtime.evaluate', {
       expression: 'window.dshDesktop.getVersion()', returnByValue: true, awaitPromise: true,
     });
-    ok(ver.result && ver.result.value === '0.9.9', `壳版本 = 0.9.9（实际 ${ver.result && ver.result.value}）`);
+    ok(ver.result && ver.result.value === '0.9.10', `壳版本 = 0.9.10（实际 ${ver.result && ver.result.value}）`);
+
+    // ①.5 宠物注入正常（v0.9.10 间歇提示改动不破坏注入）+ 气泡元素存在
+    // 注：injectPet 在 did-finish-load 后执行，需轮询等待注入完成
+    let pv = null;
+    const pt0 = Date.now();
+    while (Date.now() - pt0 < 30_000) {
+      try {
+        const r = await cdp.send('Runtime.evaluate', {
+          expression: `(() => {
+            const p = document.getElementById('dsh-pet');
+            return { hasPet: !!p, hasBubble: !!(p && p.querySelector('.pet-bubble')), hasMenu: !!(p && p.querySelector('.pet-menu')) };
+          })()`,
+          returnByValue: true,
+        });
+        pv = r.result && r.result.value;
+        if (pv && pv.hasPet) break;
+      } catch { /* ignore */ }
+      await sleep(700);
+    }
+    ok(!!pv && pv.hasPet, '桌面宠物已注入（#dsh-pet）');
+    ok(!!pv && pv.hasBubble, '宠物气泡元素存在');
+    ok(!!pv && pv.hasMenu, '宠物菜单元素存在');
 
     // ② 公告：notice:data 附带完整 marquee（v0.9.7 新字段）
     const notice = await cdp.send('Runtime.evaluate', {

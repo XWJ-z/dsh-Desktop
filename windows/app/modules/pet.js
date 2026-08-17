@@ -9,7 +9,9 @@
  *  - injectPet：主窗口注入鲸鱼宠物或工具箱图标（v0.8.15：双形态切换 ——
  *    petHidden=false 注入宠物，petHidden=true 注入工具箱；二者共享位置记忆
  *    与拖拽逻辑，工具箱菜单保留「提示词库/网页打开」入口 + 「显示宠物」；
- *    v0.8.17：默认位置底部居中）
+ *    v0.8.17：默认位置底部居中；
+ *    v0.9.10：间歇性功能提示 —— 启动 30s 后每 5 分钟随机弹功能引导气泡，
+ *    洗牌队列一轮不重复，工具箱形态/页面隐藏/气泡显示中跳过）
  *  - resetWebOpenBtnLayout：恢复默认布局（宠物/工具箱回底部居中）
  *
  * 依赖注入（deps）：
@@ -100,6 +102,7 @@ function createPet(deps) {
               r.right > -10 && r.bottom > -10 &&
               r.left < window.innerWidth + 10 && r.top < window.innerHeight + 10;
             if (vis) return;      // 存在且可见：不动
+            if (exist._tipCleanup) exist._tipCleanup(); // v0.9.10：清理间歇提示定时器
             exist.remove();       // 残留不可见节点：移除重建
           }
 
@@ -223,21 +226,38 @@ function createPet(deps) {
 
         // ── 气泡文案库（26 提供，见方案 2.4）──
         const LINES = {
-          welcome: ['嗨！我是小鲸鱼，有事儿叫我就行～', '欢迎回来！想聊点啥？'],
+          welcome: ['嗨！我是小鲸鱼，有事儿叫我就行～', '欢迎回来！想聊点啥？',
+                    '欢迎回来！把文件拖进来就能让我分析～'],
           hover: ['需要帮忙吗？点上面的菜单看看～', '找不到入口？我在这儿呢！'],
           click: ['有什么想问的？试试提示词库～', '点我可以和你玩哦！', '今天也要加油呀！🐋',
-                  '嘘——我在认真看你干活呢', '要我帮你打开网页版吗？'],
+                  '嘘——我在认真看你干活呢', '要我帮你打开网页版吗？',
+                  '把文件拖进来，我帮你放进工作区～', '悬停看看菜单，有惊喜～'],
           done: ['搞定！去发送吧～', '填好了，快试试！'],
           copied: ['复制好啦，去输入框粘贴吧（Ctrl+V）'],
           egg: ['嘿嘿，被你发现啦！', '哇哦！喷水庆祝！'],
           hide: ['那我先休息啦，右键可以叫我回来～'],
           sleepy: ['这么晚还不睡呀…', '夜猫子！明天还要上课呢'],
+          // v0.9.10（老大反馈：交互词少，间歇性提示功能）：
+          // 功能引导词库 —— 间歇定时器随机弹出，覆盖主要功能入口
+          tips: [
+            '把文件直接拖进窗口，发送消息我就能帮你分析～',
+            '悬停点「提示词库」，101 条模板直接套用～',
+            '常用套路存成自己的提示词，重启不丢～',
+            '菜单栏最右端 📢 公告条，最新消息一眼看到～',
+            '按 Ctrl+Alt+D 随时呼出/隐藏窗口（设置里可改）～',
+            '重要数据记得备份：文件 → 备份数据～',
+            '遇到问题「帮助 → 生成诊断报告」，我们好排查～',
+            '文件夹也能拖进来，整目录一起复制进工作区～',
+            '设置 → 外观 可切换浅色/深色，跟着感觉走～',
+            '有问题进 QQ 群 916607090，随时来找我玩～',
+          ],
         };
-        const say = (arr) => {
+        // v0.9.10：say 支持自定义显示时长（功能提示文字较长，默认 2200ms）
+        const say = (arr, ms) => {
           bubble.textContent = arr[Math.floor(Math.random() * arr.length)];
           bubble.style.display = 'block';
           clearTimeout(pet._bt);
-          pet._bt = setTimeout(() => { bubble.style.display = 'none'; }, 2200);
+          pet._bt = setTimeout(() => { bubble.style.display = 'none'; }, ms || 2200);
         };
         const showMenu = (v) => { menu.style.display = v ? 'block' : 'none'; };
 
@@ -373,6 +393,28 @@ function createPet(deps) {
         document.body.appendChild(pet);
         // v0.8.16：仅宠物形态弹欢迎气泡（工具箱形态静默）
         if (!isToolbox) setTimeout(() => say(LINES.welcome), 2500); // 启动欢迎气泡（不抢注意力）
+
+        // ── v0.9.10（老大反馈：交互词少，间歇性提示功能）──
+        // 功能引导间歇提示：启动 30s 后第一条，之后每 5 分钟随机一条；
+        // 洗牌队列保证一轮（10 条）内不重复；工具箱形态/页面不可见/气泡显示中跳过。
+        if (!isToolbox) {
+          const tipOrder = LINES.tips.map((_, i) => i).sort(() => Math.random() - 0.5);
+          let tipIdx = 0;
+          const tipSay = () => {
+            if (document.getElementById('dsh-pet') !== pet) return;
+            if (isToolbox) return;
+            if (document.visibilityState !== 'visible') return;
+            if (bubble.style.display === 'block') return; // 已有气泡显示中：不覆盖
+            say([LINES.tips[tipOrder[tipIdx % LINES.tips.length]]], 3200);
+            tipIdx++;
+          };
+          const firstTipTimer = setTimeout(tipSay, 30_000);
+          const tipTimer = setInterval(() => {
+            if (document.getElementById('dsh-pet') !== pet) { clearInterval(tipTimer); return; }
+            tipSay();
+          }, 300_000);
+          pet._tipCleanup = () => { clearTimeout(firstTipTimer); clearInterval(tipTimer); };
+        }
         };
 
         // ── v0.8.23：页面内自愈 —— MutationObserver 监视 DOM，宠物被 SPA

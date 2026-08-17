@@ -173,12 +173,32 @@ function testChangelog() {
 }
 
 // ---------------------------------------------------------------------------
-// 6. package.json 版本
+// 6. pet.js —— 间歇性功能提示（v0.9.10）
+// ---------------------------------------------------------------------------
+function testPet() {
+  console.log('[6] pet.js 间歇性功能提示');
+  const src = read('modules/pet.js');
+  ok(src.includes('tips: ['), '功能引导词库 tips 已定义');
+  ok(src.includes('\'把文件直接拖进窗口，发送消息我就能帮你分析～\''), 'tips 含拖文件引导');
+  ok(src.includes('\'悬停点「提示词库」，101 条模板直接套用～\''), 'tips 含提示词库引导');
+  ok(src.includes('\'有问题进 QQ 群 916607090，随时来找我玩～\''), 'tips 含 QQ 群引导');
+  ok(src.includes('300_000'), '间歇提示间隔 5 分钟');
+  ok(src.includes('30_000'), '首次提示延迟 30s');
+  ok(src.includes('visibilityState !== \'visible\''), '页面隐藏时跳过提示');
+  ok(src.includes('bubble.style.display === \'block\''), '已有气泡时跳过（不覆盖）');
+  ok(src.includes('_tipCleanup'), '重建时清理提示定时器');
+  ok(src.includes('const say = (arr, ms) =>'), 'say 支持自定义时长参数');
+  ok(src.includes('ms || 2200'), 'say 默认时长 2200ms');
+  ok(src.includes('把文件拖进来，我帮你放进工作区～'), '点击文案库扩充功能引导');
+}
+
+// ---------------------------------------------------------------------------
+// 7. package.json 版本
 // ---------------------------------------------------------------------------
 function testVersion() {
-  console.log('[6] package.json 版本');
+  console.log('[7] package.json 版本');
   const pkg = JSON.parse(fs.readFileSync(path.join(APP, 'package.json'), 'utf8'));
-  ok(pkg.version === '0.9.9', `version = 0.9.9（实际 ${pkg.version}）`);
+  ok(pkg.version === '0.9.10', `version = 0.9.10（实际 ${pkg.version}）`);
 }
 
 // ---------------------------------------------------------------------------
@@ -190,6 +210,7 @@ async function main() {
   testMain();
   testNoticeWindow();
   testChangelog();
+  testPet();
   testVersion();
   console.log(`\n结果：${passed} 通过 / ${failed} 失败`);
   process.exit(failed === 0 ? 0 : 1);
