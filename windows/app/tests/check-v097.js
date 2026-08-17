@@ -207,8 +207,8 @@ function testPet() {
   ok(src.includes('pet.classList.contains(\'happy\')'), 'happy（点击/彩蛋）期间不眨眼（防表情竞争）');
   ok(src.includes('pet.matches(\':hover\')'), '表情结束后鼠标悬停恢复抬头（防眼睛突兀）');
   // v0.9.13（老大反馈：句子太长）：气泡自动换行
-  ok(src.includes('white-space:normal') && src.includes('word-break:break-all'), '气泡文字自动换行（不再 nowrap 溢出）');
-  ok(src.includes('max-width:240px'), '气泡最大宽度 240px（长句折行）');
+  ok(src.includes('white-space:normal') && src.includes('word-break:keep-all'), '气泡自动换行（keep-all，不字级乱断）');
+  ok(src.includes('max-width:8em'), '气泡每行约 8 字换行（8em = 8 全角字符宽）');
 }
 
 // ---------------------------------------------------------------------------
@@ -370,6 +370,11 @@ function testGlobalMemory() {
   ok(gms.includes('kind: \'users\'') && gms.includes('kind: \'dsh\''), '用户/DSH 设定各自独立 kind');
   ok(gms.includes('GUIDE_FIELD') && gms.includes('GUIDE_TEXT'), '未配置引导句定义（引导用户配置全局记忆）');
   ok(gms.includes('点击宠物/工具箱图标'), '引导句文案：点击宠物/工具箱图标 进行配置（v0.9.13 老大指令）');
+  ok(gms.includes('FORMAT_TIDY_PROMPT') && gms.includes('请按照以下标准格式整理你的全局记忆'), '标准格式整理提示词定义（格式不符时注入）');
+  ok(gms.includes('formatMismatch'), 'ensureGuide 返回 formatMismatch（格式检测）');
+  const mainSrc0 = read('main.js');
+  ok(mainSrc0.includes('memoryFormatMismatch') && mainSrc0.includes('FORMAT_TIDY_PROMPT'), 'main.js 格式不符 → 注入整理提示词');
+  ok(mainSrc0.includes('injectTextIntoInput(mw, globalMemoryApi.FORMAT_TIDY_PROMPT'), '整理提示词经注入链路进聊天窗口');
   ok(gms.includes('function ensureGuide()'), 'ensureGuide 引导检查（首次对话引导）');
   ok(gms.includes('DEFAULT_DSH_FIELDS'), '内置默认 DSH 设定字段（DSH 的名字/语气/角色）');
   ok(gms.includes('DEFAULT_FIELDS'), '内置默认用户设定字段');
@@ -558,6 +563,7 @@ $env:PATH = "..."
   ok(g1.ok === true && g1.guided === true, '无文件 ensureGuide 创建模板并插入引导句');
   ok(fs.readFileSync(target, 'utf8').includes('引导提示') && fs.readFileSync(target, 'utf8').includes('请在对话中引导用户点击宠物/工具箱图标'),
     '引导句写入文件');
+  ok(g1.formatMismatch === false, '模板格式符合标准（无格式整理需求）');
   const g2 = api.ensureGuide();
   ok(g2.guided === false, '重复 ensureGuide 幂等（不重复插入）');
   // 已配置（用户设定有值）→ ensureGuide 不插入
@@ -565,6 +571,11 @@ $env:PATH = "..."
   ok(!fs.readFileSync(target, 'utf8').includes('引导提示'), '配置完成后引导句被删除');
   const g3 = api.ensureGuide();
   ok(g3.guided === false && !fs.readFileSync(target, 'utf8').includes('引导提示'), '已配置后 ensureGuide 不再插入');
+  // 8) v0.9.13 格式检测（老大指令）：已存在记忆但不符标准格式（缺用户/DSH 区块）→ formatMismatch=true
+  fs.writeFileSync(target, '# AGENTS.md\n\n## 身份与称呼\n\n- 我的姓名：**小六**\n', 'utf8');
+  const g4 = api.ensureGuide();
+  ok(g4.formatMismatch === true, '旧格式记忆（无用户/DSH 设定区块）→ formatMismatch=true（待整理）');
+  ok(!fs.readFileSync(target, 'utf8').includes('引导提示'), '无用户设定区块 → 不插引导句（由注入整理提示接管）');
   fs.rmSync(tmp, { recursive: true, force: true });
 }
 

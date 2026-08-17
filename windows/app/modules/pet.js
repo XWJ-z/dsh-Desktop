@@ -167,11 +167,12 @@ function createPet(deps) {
         // 气泡 / 菜单容器样式（全部内联，兼容 DSH 页面 CSP）
         // v0.8.18（老大指令）：气泡移到宠物下方（top:100%）—— 上方会遮挡 DSH 选项/输入框
         const bubble = pet.querySelector('.pet-bubble');
-        // v0.9.13（老大反馈：句子太长）：气泡自动换行 —— nowrap → normal + word-break
+        // v0.9.13（老大反馈）：气泡自动换行 —— 长句子按 8 字/行折行居中
+        // （max-width:8em = 8 个全角字符宽；keep-all 避免字级乱断，之前 break-all 两字就换行）
         bubble.style.cssText = 'position:absolute;top:100%;left:50%;transform:translateX(-50%);'
-          + 'margin-top:8px;max-width:240px;padding:6px 10px;background:#171a21;color:#dbe2f0;'
+          + 'margin-top:8px;max-width:8em;padding:6px 10px;background:#171a21;color:#dbe2f0;'
           + 'border:1px solid #2a2f3a;border-radius:10px;font:12.5px/1.5 "Segoe UI","Microsoft YaHei",sans-serif;'
-          + 'white-space:normal;word-break:break-all;text-align:center;display:none;'
+          + 'white-space:normal;word-break:keep-all;overflow-wrap:anywhere;text-align:center;display:none;'
           + 'box-shadow:0 4px 16px rgba(0,0,0,.4);pointer-events:none;';
         const menu = pet.querySelector('.pet-menu');
         menu.style.cssText = 'position:absolute;bottom:100%;left:50%;transform:translateX(-50%);'

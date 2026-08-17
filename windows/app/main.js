@@ -864,7 +864,10 @@ if (!gotLock) {
     pushStage('check');
 
     // v0.9.12（老大指令）：未配置全局记忆 → 插入引导句（DSH 第一次对话引导用户配置）
-    globalMemoryApi.ensureGuide();
+    // v0.9.13（老大指令）：已存在记忆但不符标准格式 → 记录，主窗口就绪后注入整理提示
+    let memoryFormatMismatch = false;
+    const guideRes = globalMemoryApi.ensureGuide();
+    if (guideRes && guideRes.formatMismatch) memoryFormatMismatch = true;
 
     try {
       await spawnServer(resolvedPort);
@@ -877,6 +880,17 @@ if (!gotLock) {
         if (loadingWindow && !loadingWindow.isDestroyed()) loadingWindow.close();
         loadingWindow = null;
         createMainWindow();
+        // v0.9.13（老大指令）：记忆格式不符标准 → 主窗口加载完成后注入整理提示词
+        // （让 DSH 按标准格式整理现有记忆，不改变原意）
+        if (memoryFormatMismatch) {
+          setTimeout(() => {
+            const mw = mainWindow;
+            if (mw && !mw.isDestroyed()) {
+              promptInject.injectTextIntoInput(mw, globalMemoryApi.FORMAT_TIDY_PROMPT, { celebrate: false })
+                .catch(() => { /* ignore */ });
+            }
+          }, 3500);
+        }
         // v0.8.21（老大反馈）：不再启动时自动同步 DSH 外观 ——
         // v0.8.19 的 setTimeout(syncDshAppearance, 4000) 每次启动都会打开
         // DSH 设置面板；改为仅用户主动选择外观时同步（openAppearanceDialog）。

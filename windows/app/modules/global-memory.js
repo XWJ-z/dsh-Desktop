@@ -34,6 +34,34 @@ const LEGACY_ROLE_TITLE = '角色设定（DSH 扮演）';
 const GUIDE_FIELD = '引导提示';
 const GUIDE_TEXT = '【请在对话中引导用户点击宠物/工具箱图标 进行配置全局记忆，或者发送给我进行配置。配置完成后删除此句】';
 
+/**
+ * 标准格式整理提示词（v0.9.13 老大指令）：检测到已存在记忆但不符合标准格式
+ * （缺 用户设定 / DSH 设定 区块）→ 注入到聊天窗口，让 DSH 按此格式整理。
+ */
+const FORMAT_TIDY_PROMPT = `请按照以下标准格式整理你的全局记忆（~/.dsh/AGENTS.md），不要改变原意，把现有内容归类到对应区块：
+
+# AGENTS.md（全局记忆）
+
+## 用户设定
+
+- 你的称呼：
+- 你的身份/角色：
+- 项目背景：
+- 常用约定：
+
+## DSH 设定
+
+- DSH 的名字：
+- 语气风格：
+- 输出习惯：
+- 角色 1：
+- 角色 2：
+- 角色 3：
+
+## 其他记忆
+
+（其他原有内容放在这里）`;
+
 /** 内置默认用户设定字段（首次/空区块时窗口初始行） */
 const DEFAULT_FIELDS = ['你的称呼', '你的身份/角色', '项目背景', '常用约定'];
 
@@ -292,17 +320,19 @@ function createGlobalMemory(deps) {
   }
 
   /**
-   * 未配置引导（老大指令）：用户还没配置过全局记忆 → 在「用户设定」区块加引导句
-   * 【请在对话中引导用户配置全局记忆，配置完成后删除此句】，DSH 第一次对话时
-   * 会读到并主动引导。配置完成（用户设定有非空值）后 save() 自动删除该句。
-   * 每次启动调用，幂等：已配置或已有引导句则不重复插入。
-   * @returns {{ ok: boolean, guided: boolean, file: string }}
+   * 未配置引导 + 格式检测（老大指令）：
+   *  - 用户还没配置过全局记忆 → 在「用户设定」区块加引导句（DSH 第一次对话引导配置）；
+   *  - 已存在记忆但**不符合标准格式**（缺 用户设定/DSH 设定 区块）→ 返回 formatMismatch，
+   *    main.js 据此向聊天窗口注入 FORMAT_TIDY_PROMPT 让 DSH 按格式整理。
+   * 每次启动调用，幂等；配置保存后 save() 自动删除引导句。
+   * @returns {{ ok: boolean, guided: boolean, formatMismatch: boolean, file: string }}
    */
   function ensureGuide() {
     try {
       const raw = readRaw();
       let content;
       let guided = false;
+      let formatMismatch = false;
       if (raw === null) {
         // 首次：创建模板 + 引导句（插入用户设定区块）
         const { head, sections } = parse(TEMPLATE);
@@ -311,13 +341,16 @@ function createGlobalMemory(deps) {
       } else {
         const { head, sections } = parse(raw);
         const usersSec = sections.find((s) => s.kind === 'users');
+        const dshSec = sections.find((s) => s.kind === 'dsh');
+        // v0.9.13：格式检测 —— 标准格式 = 同时存在 用户设定 + DSH 设定 区块
+        formatMismatch = !usersSec || !dshSec;
         const configured = usersSec && usersSec.fields.some((it) => it.value !== '');
         if (!configured && usersSec && !usersSec.guide) {
           // 未配置且无引导句 → 插入
           content = render(head, sections.map((s) => (s.kind === 'users' ? { ...s, guide: true } : s)));
           guided = true;
         } else {
-          return { ok: true, guided: false, file: file() };
+          return { ok: true, guided: false, formatMismatch, file: file() };
         }
       }
       const f = file();
@@ -325,11 +358,11 @@ function createGlobalMemory(deps) {
       const tmp = `${f}.tmp`;
       fs.writeFileSync(tmp, content, 'utf8');
       fs.renameSync(tmp, f);
-      appendLog(guided ? 'info' : 'debug', `全局记忆未配置引导句：${guided ? '已插入' : '已存在/无需'} → ${f}`);
-      return { ok: true, guided, file: f };
+      appendLog(guided ? 'info' : 'debug', `全局记忆引导检查：引导句${guided ? '已插入' : '无变化'}，格式${formatMismatch ? '不符合标准（待整理）' : '符合'} → ${f}`);
+      return { ok: true, guided, formatMismatch, file: f };
     } catch (err) {
       appendLog('error', `全局记忆引导检查失败：${err.message}`);
-      return { ok: false, guided: false, file: file(), message: err.message };
+      return { ok: false, guided: false, formatMismatch: false, file: file(), message: err.message };
     }
   }
 
@@ -349,11 +382,11 @@ function createGlobalMemory(deps) {
 
   return {
     file, data, save, parse, ensureGuide,
-    DEFAULT_FIELDS, DEFAULT_DSH_FIELDS, USER_SECTION, DSH_SECTION, GUIDE_FIELD, GUIDE_TEXT,
+    DEFAULT_FIELDS, DEFAULT_DSH_FIELDS, USER_SECTION, DSH_SECTION, GUIDE_FIELD, GUIDE_TEXT, FORMAT_TIDY_PROMPT,
   };
 }
 
 module.exports = {
   createGlobalMemory, FILE_NAME, USER_SECTION, DSH_SECTION, LEGACY_SECTION, LEGACY_ROLE_TITLE,
-  GUIDE_FIELD, GUIDE_TEXT, DEFAULT_FIELDS, DEFAULT_DSH_FIELDS, TEMPLATE,
+  GUIDE_FIELD, GUIDE_TEXT, FORMAT_TIDY_PROMPT, DEFAULT_FIELDS, DEFAULT_DSH_FIELDS, TEMPLATE,
 };
