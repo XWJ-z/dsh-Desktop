@@ -182,7 +182,7 @@ async function main() {
     const ver = await cdp.send('Runtime.evaluate', {
       expression: 'window.dshDesktop.getVersion()', returnByValue: true, awaitPromise: true,
     });
-    ok(ver.result && ver.result.value === '0.9.13', `壳版本 = 0.9.13（实际 ${ver.result && ver.result.value}）`);
+    ok(ver.result && ver.result.value === '0.9.14', `壳版本 = 0.9.14（实际 ${ver.result && ver.result.value}）`);
 
     // ①.5 宠物注入正常（v0.9.10 间歇提示改动不破坏注入）+ 气泡元素存在
     // 注：injectPet 在 did-finish-load 后执行，需轮询等待注入完成
@@ -450,7 +450,7 @@ async function main() {
     ok(!!cv && cv.r096 === true, 'changelog:data 0.9.6 released=true');
     ok(!!cv && cv.r098 === false, 'changelog:data 0.9.8（内部）released=false');
     ok(!!cv && cv.releasedCount === 12, `released=true 共 12 个（实际 ${cv && cv.releasedCount}）`);
-    ok(!!cv && cv.sortedFirst === '0.9.13', `changelog:data 降序首条 = 0.9.13（P3-3 共享比较，实际 ${cv && cv.sortedFirst}）`);
+    ok(!!cv && cv.sortedFirst === '0.9.14', `changelog:data 降序首条 = 0.9.14（P3-3 共享比较，实际 ${cv && cv.sortedFirst}）`);
 
     // ④ 日志：公告自动刷新已启动 + fetchLatest 已执行
     await sleep(1500); // 等 checkUpdatesOnStart 的 fetchLatest 落日志

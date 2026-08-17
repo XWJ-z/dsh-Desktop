@@ -569,6 +569,47 @@ $env:PATH = "..."
     '旧容器用户字段迁移到「用户设定」独立区块');
   ok(!!dshSec3e && dshSec3e.fields.length === 1 && dshSec3e.fields[0].value === '旧角色',
     '旧「角色设定」子组迁移为「DSH 设定」独立区块');
+  // 4.9) v0.9.14（老大反馈：旧窗口保存的文件仍是「你的称呼/DSH 的名字」旧视角）：
+  //      字段名自动迁移为 DSH 视角（你的→用户 / DSH 的名字→我的名字 / 项目背景→当前项目）+ 旧模板头部说明迁移
+  fs.writeFileSync(target, `# AGENTS.md（全局记忆）
+
+> 此文件由 DSH-Desktop「全局记忆」窗口维护，DSH 会自动读取其中的内容作为长期记忆（无需手动发送）。
+> 「用户设定」与「DSH 设定」请用窗口中的表单编辑；其他内容可自行追加到「其他记忆」区。
+
+## 用户设定
+
+- 你的称呼：老大
+- 你的身份/角色：技术总监
+- 项目背景：DSH-Desktop
+- 常用约定：有改必升版本号
+
+## DSH 设定
+
+- DSH 的名字：小鲸鱼
+- 语气风格：简洁
+- 输出习惯：结论先行
+
+## DSH 角色
+
+- 角色 1：学习导师
+`, 'utf8');
+  const d3f = api.data();
+  const usersSec3f = d3f.sections.find((s) => s.kind === 'users');
+  const dshSec3f = d3f.sections.find((s) => s.kind === 'dsh');
+  const unames3f = (usersSec3f.fields || []).map((it) => it.name);
+  ok(unames3f.includes('用户的称呼') && unames3f.includes('用户的身份/角色') && unames3f.includes('当前项目') && unames3f.includes('常用约定'),
+    '旧字段名迁移：你的称呼→用户的称呼 / 你的身份/角色→用户的身份/角色 / 项目背景→当前项目');
+  ok(!unames3f.includes('你的称呼') && !unames3f.includes('你的身份/角色') && !unames3f.includes('项目背景'), '旧用户字段名不再出现');
+  const dnames3f = (dshSec3f.fields || []).map((it) => it.name);
+  ok(dnames3f.includes('我的名字') && !dnames3f.includes('DSH 的名字'), '旧字段名迁移：DSH 的名字→我的名字');
+  ok(dshSec3f.title === '我的设定', '旧「DSH 设定」区块标题 →「我的设定」');
+  ok(d3f.head.includes('我的设定') && !d3f.head.includes('「DSH 设定」请用窗口中的表单编辑'), '旧模板头部说明迁移为 DSH 视角');
+  const r3f = api.save({ users: usersSec3f.fields, dsh: dshSec3f.fields, roles: [], sections: [] });
+  ok(r3f.ok === true, '迁移后保存成功');
+  const raw3f = fs.readFileSync(target, 'utf8');
+  ok(raw3f.includes('- 用户的称呼：老大') && raw3f.includes('- 我的名字：小鲸鱼') && raw3f.includes('- 当前项目：DSH-Desktop'),
+    '保存后文件为 DSH 视角字段');
+  ok(!raw3f.includes('你的称呼') && !raw3f.includes('DSH 的名字') && !raw3f.includes('## DSH 设定'), '保存后无旧视角残留');
   // 5) 空字段名行过滤
   const r4 = api.save({ users: [{ name: '', value: '空名行' }, { name: '用户的称呼', value: '李四' }], dsh: [], sections: [] });
   ok(r4.ok === true && !fs.readFileSync(target, 'utf8').includes('- ：空名行'), '空字段名行被过滤');
@@ -629,7 +670,7 @@ $env:PATH = "..."
 function testVersion() {
   console.log('[7] package.json 版本');
   const pkg = JSON.parse(fs.readFileSync(path.join(APP, 'package.json'), 'utf8'));
-  ok(pkg.version === '0.9.13', `version = 0.9.13（实际 ${pkg.version}）`);
+  ok(pkg.version === '0.9.14', `version = 0.9.14（实际 ${pkg.version}）`);
 }
 
 // ---------------------------------------------------------------------------

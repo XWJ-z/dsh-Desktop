@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * DSH-Desktop — 全局记忆模块（v0.9.12，区块化识别版）
+ * DSH-Desktop — 全局记忆模块（v0.9.14，区块化识别版）
  *
  * 全局记忆 = DSH 原生 `~/.dsh/AGENTS.md`（DSH 启动时自动读取，无需手动发送）。
  * 本模块提供图形化编辑：
@@ -33,6 +33,20 @@ const LEGACY_SECTION = '基础设定（DSH-Desktop 图形化编辑）';
 
 /** 旧版角色设定子标题（兼容迁移：归入 DSH 设定） */
 const LEGACY_ROLE_TITLE = '角色设定（DSH 扮演）';
+
+/**
+ * 旧版字段名 → DSH 视角新字段名（v0.9.14 老大反馈：旧窗口保存的 AGENTS.md 仍是
+ * 「你的称呼 / DSH 的名字」等旧视角字段，解析时自动迁移，窗口与保存均显示新名）。
+ */
+const FIELD_MIGRATE = {
+  '你的称呼': '用户的称呼',
+  '你的身份/角色': '用户的身份/角色',
+  '项目背景': '当前项目',
+  'DSH 的名字': '我的名字',
+};
+
+/** 旧版模板头部特征句（含旧「DSH 设定」视角说明）→ 解析时替换为 DSH 视角新头部 */
+const LEGACY_HEAD_MARK = '此文件由 DSH-Desktop「全局记忆」窗口维护';
 
 /** 角色文件目录（~/.dsh/roles/，每个角色一个 md；AGENTS.md 只记录定位+文件名，避免文档过大） */
 const ROLES_DIR = 'roles';
@@ -143,6 +157,8 @@ function createGlobalMemory(deps) {
     let legacy = null; // 旧容器缓冲区 { u, d, group }
     let seenSection = false;
     const lines = String(content || '').split(/\r?\n/);
+    /** v0.9.14：旧字段名 → DSH 视角新字段名（老大反馈：旧文件仍是「你的称呼/DSH 的名字」） */
+    const migrateName = (name) => (Object.prototype.hasOwnProperty.call(FIELD_MIGRATE, name) ? FIELD_MIGRATE[name] : name);
     const flushLegacy = () => {
       if (legacy) {
         sections.push(legacy.u, legacy.d);
@@ -197,7 +213,7 @@ function createGlobalMemory(deps) {
           if (m) {
             const name = m[1].trim();
             if (name === GUIDE_FIELD) { legacy.u.guide = true; continue; }
-            const item = { name, value: m[2].trim() };
+            const item = { name: migrateName(name), value: m[2].trim() };
             if (legacy.group === 'dsh') legacy.d.fields.push(item);
             else legacy.u.fields.push(item);
           }
@@ -206,7 +222,7 @@ function createGlobalMemory(deps) {
           if (m) {
             const name = m[1].trim();
             if (name === GUIDE_FIELD) { cur.guide = true; continue; }
-            cur.fields.push({ name, value: m[2].trim() });
+            cur.fields.push({ name: migrateName(name), value: m[2].trim() });
           }
         } else {
           cur.body.push(line);
@@ -216,7 +232,10 @@ function createGlobalMemory(deps) {
       }
     }
     flushLegacy();
-    return { head: head.join('\n'), sections };
+    // v0.9.14：旧模板头部（含旧「DSH 设定」视角说明）→ 替换为 DSH 视角新头部；用户自定义头部不含特征句则原样保留
+    let headText = head.join('\n');
+    if (headText.includes(LEGACY_HEAD_MARK)) headText = templateHead().trim();
+    return { head: headText, sections };
   }
 
   /** 渲染用户设定区块（字段行；guide=true 时带未配置引导句） */
