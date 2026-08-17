@@ -378,9 +378,16 @@ function testGlobalMemory() {
   const ipcSrc2 = read('modules/ipc.js');
   ok(ipcSrc2.includes('将覆盖已有全局记忆内容'), 'ipc 保存有覆盖确认弹窗');
   ok(ipcSrc2.includes('\'cancelled\''), '取消返回 cancelled（不写盘）');
+  ok(ipcSrc2.includes('defaultId: 0'), '确认弹窗默认选中「保存」（防误按取消）');
   const mw = read('modules/windows/misc-windows.js');
   ok(mw.includes('openGlobalMemoryWindow'), 'misc-windows 有全局记忆窗口');
   ok(mw.includes('\'global-memory.html\''), '窗口加载 global-memory.html');
+  ok(mw.includes('autoHideMenuBar: true'), '弹窗不显示菜单栏（autoHideMenuBar）');
+  ok(mw.includes('width: 760'), '全局记忆窗口默认加宽（760）');
+  const aw = read('modules/windows/about-window.js');
+  ok(aw.includes('autoHideMenuBar: true'), '更新/联系/关于窗口不显示菜单栏');
+  const lw = read('modules/windows/loading-window.js');
+  ok(lw.includes('autoHideMenuBar: true'), '加载窗口不显示菜单栏');
   const html0 = read('renderer/global-memory.html');
   ok(html0.includes('id="cats"') && html0.includes('id="right-body"'), '左右分栏布局（左类别 / 右内容）');
   ok(html0.includes('参考提示词库') || html0.includes('左边'), '布局说明');
@@ -467,6 +474,16 @@ $env:PATH = "..."
   });
   ok(r3.ok === true, '长文本编辑保存成功');
   ok(fs.readFileSync(target, 'utf8').includes('- 我的姓名：**小六**（已更新）'), '长文本区块内容更新生效');
+  // 4.5) 标题修改（v0.9.12 修复：按序覆盖，旧标题消失 / 新标题生效 / 无重复副本）
+  const r3b = api.save({
+    fields: [{ name: '你的称呼', value: '小六' }],
+    sections: d2.sections.map((s) => (s.title === '身份与称呼' ? { title: '身份与称呼（改）', body: '- 我的姓名：**小六**' } : { title: s.title, body: s.body.join('\n') })),
+  });
+  ok(r3b.ok === true, '标题修改保存成功');
+  const raw3b = fs.readFileSync(target, 'utf8');
+  ok(raw3b.includes('## 身份与称呼（改）'), '新标题生效');
+  ok(!raw3b.includes('## 身份与称呼\n') && !raw3b.includes('## 身份与称呼（改）\n\n## 身份与称呼（改）'), '旧标题消失且无重复副本');
+  ok((raw3b.match(/## 身份与称呼/g) || []).length === 1, '身份与称呼相关区块仅 1 个');
   // 5) 空字段名行过滤
   const r4 = api.save({ fields: [{ name: '', value: '空名行' }, { name: '你的称呼', value: '李四' }], sections: [] });
   ok(r4.ok === true && !fs.readFileSync(target, 'utf8').includes('- ：空名行'), '空字段名行被过滤');

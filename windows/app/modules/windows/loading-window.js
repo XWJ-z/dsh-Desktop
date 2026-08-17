@@ -26,6 +26,7 @@ function createLoadingWindowModule(deps) {
       minWidth: 860,
       minHeight: 560,
       title: appName,
+      autoHideMenuBar: true, // v0.9.12（老大反馈）：弹窗不显示菜单栏
       icon: path.join(app.getAppPath(), 'assets', 'icon.png'),
       backgroundColor: nativeTheme.shouldUseDarkColors ? '#0f1115' : '#eef0f4', // v0.9.9：跟随外观
       show: false,

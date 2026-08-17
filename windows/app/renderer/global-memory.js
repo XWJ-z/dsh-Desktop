@@ -178,22 +178,27 @@ function collectPayload() {
   return { fields: cleanFields, sections: cleanSections };
 }
 
+/** 加载数据（init 与保存成功后共用，保存后刷新界面展示最新文件内容） */
+async function loadData() {
+  const data = await dsh.getGlobalMemory();
+  filePath = (data && data.file) || '';
+  const basic = data && data.sections.find((s) => s.title === SECTION_FULL);
+  if (basic && Array.isArray(basic.items) && basic.items.length > 0) {
+    fields = basic.items.map((it) => ({ name: it.name || '', value: it.value || '' }));
+  } else {
+    const defs = (data && Array.isArray(data.defaultFields)) ? data.defaultFields : DEFAULT_FIELDS;
+    fields = defs.map((n) => ({ name: n, value: '' }));
+  }
+  sections = (data && Array.isArray(data.sections) ? data.sections : [])
+    .filter((s) => s.title !== SECTION_FULL)
+    .map((s) => ({ title: s.title, body: (s.body || []).join('\n') }));
+  el('path').textContent = filePath;
+}
+
 async function init() {
   if (!dsh || !dsh.getGlobalMemory) return;
   try {
-    const data = await dsh.getGlobalMemory();
-    filePath = (data && data.file) || '';
-    const basic = data && data.sections.find((s) => s.title === SECTION_FULL);
-    if (basic && Array.isArray(basic.items) && basic.items.length > 0) {
-      fields = basic.items.map((it) => ({ name: it.name || '', value: it.value || '' }));
-    } else {
-      const defs = (data && Array.isArray(data.defaultFields)) ? data.defaultFields : DEFAULT_FIELDS;
-      fields = defs.map((n) => ({ name: n, value: '' }));
-    }
-    sections = (data && Array.isArray(data.sections) ? data.sections : [])
-      .filter((s) => s.title !== SECTION_FULL)
-      .map((s) => ({ title: s.title, body: (s.body || []).join('\n') }));
-    el('path').textContent = filePath;
+    await loadData();
   } catch {
     fields = DEFAULT_FIELDS.map((n) => ({ name: n, value: '' }));
     sections = [];
@@ -208,9 +213,13 @@ async function init() {
     }
     const btn = el('btn-save');
     btn.disabled = true;
+    btn.textContent = '保存中…';
     const res = await dsh.saveGlobalMemory(payload);
     btn.disabled = false;
+    btn.textContent = '保存';
     if (res && res.ok) {
+      // v0.9.12（老大反馈：保存没写入）：保存成功后重新加载，界面即展示最新文件内容
+      try { await loadData(); renderAll(); } catch { /* ignore */ }
       showBanner('✅ 已保存（DSH 新会话自动生效）', true);
     } else if (res && res.reason === 'cancelled') {
       showBanner('已取消保存（未改动文件）', false);

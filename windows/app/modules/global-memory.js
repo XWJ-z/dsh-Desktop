@@ -118,7 +118,9 @@ function createGlobalMemory(deps) {
 
   /** 渲染长文本区块（## 标题 + 原格式内容） */
   function renderLong(title, body) {
-    const b = String(body || '').replace(/^\s*\n+|\s+$/g, ''); // 去首尾多余空行
+    // 防御：body 可能是数组（解析产物）或字符串（窗口提交），统一为字符串
+    const raw = Array.isArray(body) ? body.join('\n') : String(body || '');
+    const b = raw.replace(/^\s*\n+|\s+$/g, ''); // 去首尾多余空行
     return `## ${title}${b ? `\n\n${b}` : ''}`;
   }
 
@@ -164,22 +166,31 @@ function createGlobalMemory(deps) {
     const raw = readRaw();
     // 重组：首次用完整模板解析（含「其他记忆」区块），已有文件保留原头部与区块
     const { head, sections } = raw === null ? parse(TEMPLATE) : parse(raw);
+    // v0.9.12（老大反馈：保存没写入）：按序覆盖 —— 窗口区块顺序 = 原文件区块顺序
+    //（窗口无排序功能），第 i 个长区块用窗口第 i 个提交值（标题与内容都可修改生效），
+    // 原文件没有的新区块追加末尾；避免按标题匹配导致「改标题后旧区块残留 + 新增重复」。
     const merged = [];
     let fieldsPlaced = false;
+    let li = 0;
     for (const s of sections) {
       if (s.kind === 'fields') {
         merged.push({ title: SECTION_TITLE, kind: 'fields', items: fields });
         fieldsPlaced = true;
       } else {
-        const incoming = longSections.find((ls) => ls.title === s.title);
-        merged.push({ title: s.title, kind: 'long', body: incoming ? incoming.body : s.body });
+        const incoming = longSections[li] || null;
+        li++;
+        merged.push({
+          title: incoming ? incoming.title : s.title,
+          kind: 'long',
+          body: incoming ? incoming.body : s.body,
+        });
       }
     }
     if (!fieldsPlaced) merged.unshift({ title: SECTION_TITLE, kind: 'fields', items: fields });
-    // 窗口新增的区块（原文件没有的标题）追加到末尾
-    const known = new Set(sections.map((s) => s.title));
-    for (const ls of longSections) {
-      if (!known.has(ls.title)) merged.push({ title: ls.title, kind: 'long', body: ls.body });
+    // 窗口新增区块（原文件区块数之后）追加末尾
+    const originalLong = sections.filter((s) => s.kind !== 'fields').length;
+    for (let i = originalLong; i < longSections.length; i++) {
+      merged.push({ title: longSections[i].title, kind: 'long', body: longSections[i].body });
     }
     const content = render(head, merged);
     try {

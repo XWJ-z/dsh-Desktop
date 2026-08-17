@@ -42,6 +42,7 @@ function createMiscWindowsModule(deps) {
     const win = new BrowserWindow({
       width: 520, height: 560, resizable: false, minimizable: false,
       parent: getMainWindow(), modal: true, title: '更新日志',
+      autoHideMenuBar: true, // v0.9.12（老大反馈）：弹窗不显示菜单栏
       backgroundColor: nativeTheme.shouldUseDarkColors ? '#0f1115' : '#eef0f4', // v0.9.9：跟随外观
       webPreferences: secureWebPreferences(),
     });
@@ -56,6 +57,7 @@ function createMiscWindowsModule(deps) {
     const win = new BrowserWindow({
       width: 520, height: 560, resizable: false, minimizable: false,
       parent: getMainWindow(), modal: true, title: '公告',
+      autoHideMenuBar: true, // v0.9.12（老大反馈）：弹窗不显示菜单栏
       backgroundColor: nativeTheme.shouldUseDarkColors ? '#0f1115' : '#eef0f4', // v0.9.9：跟随外观
       webPreferences: secureWebPreferences(),
     });
@@ -76,6 +78,7 @@ function createMiscWindowsModule(deps) {
     const win = new BrowserWindow({
       width: 720, height: 560, resizable: true, minimizable: false, // v0.8.7：内容更多，窗口加大
       parent: getMainWindow(), modal: false, title: '提示词库', // modal:false —— 面板随时可点主窗口连续注入
+      autoHideMenuBar: true, // v0.9.12（老大反馈）：弹窗不显示菜单栏
       backgroundColor: nativeTheme.shouldUseDarkColors ? '#0f1115' : '#eef0f4', // v0.9.9：跟随外观
       webPreferences: secureWebPreferences(),
     });
@@ -84,13 +87,14 @@ function createMiscWindowsModule(deps) {
     setPromptLibWin(win);
   }
 
-  /** v0.9.12：全局记忆窗口 —— 基础设定图形化编辑（~/.dsh/AGENTS.md，DSH 自动读取）。
+  /** v0.9.12：全局记忆窗口 —— 左右分栏编辑（基础设定字段 + 自动识别 ## 区块长文本）。
    *  modal:false 便于对照主窗口；表单区块级写回，不破坏用户其他记忆内容。 */
   function openGlobalMemoryWindow() {
     if (getGlobalMemoryWin() && !getGlobalMemoryWin().isDestroyed()) { getGlobalMemoryWin().focus(); return; }
     const win = new BrowserWindow({
-      width: 560, height: 640, resizable: true, minimizable: false,
+      width: 760, height: 640, resizable: true, minimizable: false, // v0.9.12（老大反馈）：默认加宽（左右分栏）
       parent: getMainWindow(), modal: false, title: '全局记忆',
+      autoHideMenuBar: true, // v0.9.12（老大反馈）：弹窗不显示菜单栏
       backgroundColor: nativeTheme.shouldUseDarkColors ? '#0f1115' : '#eef0f4', // v0.9.9：跟随外观
       webPreferences: secureWebPreferences(),
     });
@@ -138,6 +142,7 @@ function createMiscWindowsModule(deps) {
     backupProgressWin = new BrowserWindow({
       width: 360, height: 110, resizable: false, minimizable: false, maximizable: false,
       parent: getMainWindow(), modal: false, title: '备份数据',
+      autoHideMenuBar: true, // v0.9.12（老大反馈）：弹窗不显示菜单栏
       backgroundColor: nativeTheme.shouldUseDarkColors ? '#0f1115' : '#eef0f4', // v0.9.9：跟随外观
       webPreferences: secureWebPreferences(),
     });

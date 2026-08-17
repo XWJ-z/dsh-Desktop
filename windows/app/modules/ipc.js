@@ -162,7 +162,7 @@ function registerIpc(deps) {
         message: '将覆盖已有全局记忆内容？',
         detail: '保存会用当前表单/区块内容覆盖 ~/.dsh/AGENTS.md 中展示的内容（其余未展示部分保持不变）。',
         buttons: ['保存', '取消'],
-        defaultId: 1, cancelId: 1, noLink: true,
+        defaultId: 0, cancelId: 1, noLink: true, // defaultId=保存（老大反馈：误按取消导致没写入）
       });
       if (response !== 0) return { ok: false, reason: 'cancelled' };
     }
