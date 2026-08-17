@@ -20,10 +20,13 @@
 
 const FILE_NAME = 'AGENTS.md';
 
-/** 三个独立顶层区块（v0.9.13 老大指令：DSH 角色 与 用户设定/DSH 设定 同级） */
+/** 三个独立顶层区块（v0.9.13 老大方案：全局记忆是 DSH 的视角 —— 用户设定/我的设定/DSH 角色） */
 const USER_SECTION = '用户设定';
-const DSH_SECTION = 'DSH 设定';
+const DSH_SECTION = '我的设定';          // v0.9.13：原「DSH 设定」改「我的设定」（DSH 视角）
 const ROLES_SECTION = 'DSH 角色';
+
+/** 旧版「DSH 设定」标题（兼容迁移：解析时归入「我的设定」） */
+const LEGACY_DSH_SECTION = 'DSH 设定';
 
 /** 旧版「基础设定」容器标题（兼容迁移：解析时拆成独立区块） */
 const LEGACY_SECTION = '基础设定（DSH-Desktop 图形化编辑）';
@@ -42,22 +45,23 @@ const GUIDE_TEXT = '【请在对话中引导用户点击宠物/工具箱图标 �
  * 标准格式整理提示词（v0.9.13 老大指令）：检测到已存在记忆但不符合标准格式
  * （缺 用户设定 / DSH 设定 区块）→ 注入到聊天窗口，让 DSH 按此格式整理。
  */
-const FORMAT_TIDY_PROMPT = `请按照以下标准格式整理你的全局记忆（~/.dsh/AGENTS.md），不要改变原意，把现有内容归类到对应区块：
+const FORMAT_TIDY_PROMPT = `请按照以下标准格式整理你的全局记忆（~/.dsh/AGENTS.md），不要改变原意，把现有内容归类到对应区块（注意：这是 DSH 的视角，「用户设定」记录用户，「我的设定」记录 DSH 自己）：
 
 # AGENTS.md（全局记忆）
 
 ## 用户设定
 
-- 你的称呼：
-- 你的身份/角色：
-- 项目背景：
+- 用户的称呼：
+- 用户的身份/角色：
+- 当前项目：
 - 常用约定：
 
-## DSH 设定
+## 我的设定
 
-- DSH 的名字：
+- 我的名字：
 - 语气风格：
 - 输出习惯：
+- 默认角色：角色 1
 
 ## DSH 角色
 
@@ -69,20 +73,21 @@ const FORMAT_TIDY_PROMPT = `请按照以下标准格式整理你的全局记忆�
 
 （其他原有内容放在这里；各角色的详细记忆写入 ~/.dsh/roles/ 下对应角色文件）`;
 
-/** 内置默认用户设定字段（首次/空区块时窗口初始行） */
-const DEFAULT_FIELDS = ['你的称呼', '你的身份/角色', '项目背景', '常用约定'];
+/** 内置默认用户设定字段（v0.9.13 老大方案：DSH 视角 —— "用户的…"） */
+const DEFAULT_FIELDS = ['用户的称呼', '用户的身份/角色', '当前项目', '常用约定'];
 
-/** 内置默认 DSH 设定字段（名字/语气/输出习惯/角色，可增删） */
-const DEFAULT_DSH_FIELDS = ['DSH 的名字', '语气风格', '输出习惯'];
+/** 内置默认 DSH（我的）设定字段（DSH 视角；默认角色为下拉选择） */
+const DEFAULT_DSH_FIELDS = ['我的名字', '语气风格', '输出习惯', '默认角色'];
 
 /** 内置默认角色字段（v0.9.13：角色 1/2/3，值 = 定位 + 角色文件名；可增删） */
 const DEFAULT_ROLES = ['角色 1', '角色 2', '角色 3'];
 
-/** 首次创建时的模板（头部 + 用户设定 + DSH 设定 + DSH 角色 + 其他记忆区） */
+/** 首次创建时的模板（头部 + 用户设定 + 我的设定 + DSH 角色 + 其他记忆区；DSH 视角说明） */
 const TEMPLATE = `# AGENTS.md（全局记忆）
 
-> 此文件由 DSH-Desktop「全局记忆」窗口维护，DSH 会自动读取其中的内容作为长期记忆（无需手动发送）。
-> 「用户设定」「DSH 设定」「DSH 角色」请用窗口中的表单编辑；其他内容可自行追加到「其他记忆」区。
+> 本文件是 DSH 的全局记忆（DSH 视角）：「用户设定」记录用户是谁、「我的设定」记录 DSH 自己
+> （名字/语气/默认角色）、「DSH 角色」记录可切换的角色（详细记忆在 ~/.dsh/roles/ 角色文件）。
+> 请用 DSH-Desktop「全局记忆」窗口编辑；其他内容可追加到「其他记忆」区。
 
 ## ${USER_SECTION}
 
@@ -153,8 +158,9 @@ function createGlobalMemory(deps) {
         if (title === USER_SECTION) {
           sections.push({ title, kind: 'users', fields: [], guide: false });
           cur = sections[sections.length - 1];
-        } else if (title === DSH_SECTION) {
-          sections.push({ title, kind: 'dsh', fields: [] });
+        } else if (title === DSH_SECTION || title === LEGACY_DSH_SECTION) {
+          // v0.9.13：旧「DSH 设定」→ 归入「我的设定」（kind dsh）
+          sections.push({ title: DSH_SECTION, kind: 'dsh', fields: [] });
           cur = sections[sections.length - 1];
         } else if (title === ROLES_SECTION) {
           sections.push({ title, kind: 'roles', fields: [] });
@@ -464,6 +470,6 @@ function createGlobalMemory(deps) {
 }
 
 module.exports = {
-  createGlobalMemory, FILE_NAME, USER_SECTION, DSH_SECTION, ROLES_SECTION, LEGACY_SECTION, LEGACY_ROLE_TITLE,
+  createGlobalMemory, FILE_NAME, USER_SECTION, DSH_SECTION, ROLES_SECTION, LEGACY_SECTION, LEGACY_DSH_SECTION, LEGACY_ROLE_TITLE,
   GUIDE_FIELD, GUIDE_TEXT, FORMAT_TIDY_PROMPT, DEFAULT_FIELDS, DEFAULT_DSH_FIELDS, DEFAULT_ROLES, TEMPLATE,
 };

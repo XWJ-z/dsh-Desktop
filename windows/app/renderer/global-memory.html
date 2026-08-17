@@ -82,6 +82,11 @@
     }
     .row .f-name:focus, .row .f-value:focus { border-color: rgba(94,106,210,.55); }
     .row .f-name::placeholder, .row .f-value::placeholder { color: var(--text-quaternary); }
+    /* 默认角色下拉选择（v0.9.13） */
+    .row .f-select {
+      min-height: 36px; cursor: pointer; appearance: auto;
+      font: 13px/1.5 "Segoe UI", "Microsoft YaHei", sans-serif;
+    }
     .row .del {
       width: 30px; flex-shrink: 0; border: none; background: transparent; cursor: pointer;
       color: var(--text-quaternary); font-size: 15px; border-radius: 8px;
@@ -162,7 +167,7 @@
 </head>
 <body>
   <h1>🧠 全局记忆</h1>
-  <div class="subtitle">写入 <code>~/.dsh/AGENTS.md</code>，DSH 启动时自动读取。左边选类别（用户设定 / DSH 设定 / 自动识别的各记忆区块），右边编辑内容；区块标题可直接修改。覆盖已有内容保存时需二次确认。</div>
+  <div class="subtitle">写入 <code>~/.dsh/AGENTS.md</code>（DSH 的视角）：「用户设定」记用户是谁、「我的设定」记 DSH 自己（含默认角色下拉）、「DSH 角色」可切换角色，其他记忆区块自动识别。覆盖已有内容保存时需二次确认。</div>
   <div id="banner" class="banner"></div>
   <div class="layout">
     <div class="left" id="cats"></div>

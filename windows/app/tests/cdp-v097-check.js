@@ -220,6 +220,18 @@ async function main() {
     ok(!!wv && wv.hasPupil, '眨眼几何目标（右眼瞳孔 ellipse）存在');
     ok(!!wv && wv.ry === '24', `瞳孔初始 ry=24（实际 ${wv && wv.ry}）`);
 
+    // ①.65 v0.9.13（老大反馈：选错角色只能重开新对话）：双击输入框重选角色
+    const roleDbl = await cdp.send('Runtime.evaluate', {
+      expression: `(() => ({
+        hasChooseRole: typeof window.dshDesktop.chooseRole === 'function',
+        dblInjected: !!window.__dshRoleDblclick,
+      }))()`,
+      returnByValue: true,
+    });
+    const rdv = roleDbl.result && roleDbl.result.value;
+    ok(!!rdv && rdv.hasChooseRole, 'preload 暴露 chooseRole（双击输入框重选角色）');
+    ok(!!rdv && rdv.dblInjected, '双击监听已注入（双击输入框 → 弹角色选择）');
+
     // ①.7 v0.9.12：宠物菜单含「🧠 全局记忆」（排在提示词库前）+ preload API 存在
     const mem = await cdp.send('Runtime.evaluate', {
       expression: `(() => {
@@ -278,35 +290,38 @@ async function main() {
           await sleep(500);
         }
         ok(!!fv && fv.hasCats && fv.hasRight, '窗口左右分栏（左类别 / 右内容）');
-        ok(!!fv && fv.catCount >= 4, `左侧类别列表（${fv && fv.catCount} 项：用户/DSH/角色/区块）`);
-        ok(!!fv && fv.catTexts.some((t) => t.includes('用户设定')) && fv.catTexts.some((t) => t.includes('DSH 设定')) && fv.catTexts.some((t) => t.includes('DSH 角色')),
-          `左侧含 用户设定/DSH 设定/DSH 角色 三个独立类别（${fv && fv.catTexts.join(' | ')}）`);
+        ok(!!fv && fv.catCount >= 4, `左侧类别列表（${fv && fv.catCount} 项：用户/我的/角色/区块）`);
+        ok(!!fv && fv.catTexts.some((t) => t.includes('用户设定')) && fv.catTexts.some((t) => t.includes('我的设定')) && fv.catTexts.some((t) => t.includes('DSH 角色')),
+          `左侧含 用户设定/我的设定/DSH 角色 三个独立类别（${fv && fv.catTexts.join(' | ')}）`);
         ok(!!fv && fv.catTexts.some((t) => t.includes('其他记忆')), '自动识别出 其他记忆 区块');
-        ok(!!fv && fv.rowCount >= 4 && fv.names.includes('你的称呼'), '用户设定字段列表默认显示（含你的称呼）');
+        ok(!!fv && fv.rowCount >= 4 && fv.names.includes('用户的称呼'), '用户设定字段列表默认显示（含用户的称呼）');
         ok(!!fv && fv.hasAddField && fv.hasAddSec, '有「＋ 添加字段」和「＋ 添加区块」按钮');
         ok(!!fv && fv.hasGuideTip, '未配置引导提示条显示（引导用户配置全局记忆）');
-        // 点击「DSH 设定」类别 → 右侧显示 DSH 设定字段列表 + 添加按钮
+        // 点击「我的设定」类别 → 右侧显示 我的设定 字段列表（含默认角色下拉）
         const dshCat = await memCdp.send('Runtime.evaluate', {
           expression: `(() => {
             const cat = Array.from(document.querySelectorAll('#cats .cat[data-key]'))
-              .find((c) => (c.textContent || '').includes('DSH 设定'));
+              .find((c) => (c.textContent || '').includes('我的设定'));
             if (!cat) return { ok: false };
             cat.click();
             return { ok: true };
           })()`,
           returnByValue: true,
         });
-        ok(!!(dshCat.result && dshCat.result.value && dshCat.result.value.ok), '点击「DSH 设定」类别');
+        ok(!!(dshCat.result && dshCat.result.value && dshCat.result.value.ok), '点击「我的设定」类别');
         let dv = null;
         const td = Date.now();
         while (Date.now() - td < 5000) {
           const s = await memCdp.send('Runtime.evaluate', {
             expression: `(() => {
               const rows = Array.from(document.querySelectorAll('#dsh-fields .row'));
+              const names = rows.map((r) => (r.querySelector('.f-name') || {}).value || '').filter(Boolean);
+              const roleRow = rows.find((r) => (r.querySelector('.f-name') || {}).value === '默认角色');
               return {
                 hasDshFields: !!document.getElementById('dsh-fields'),
                 dshCount: rows.length,
-                dshNames: rows.map((r) => (r.querySelector('.f-name') || {}).value || '').filter(Boolean),
+                dshNames: names,
+                hasDefaultRoleSelect: !!(roleRow && roleRow.querySelector('select.f-select')),
                 hasAddDsh: !!document.getElementById('btn-add-dsh'),
               };
             })()`,
@@ -316,8 +331,9 @@ async function main() {
           if (dv && dv.hasDshFields && dv.dshCount >= 1) break;
           await sleep(400);
         }
-        ok(!!dv && dv.hasDshFields && dv.dshCount >= 1, `DSH 设定独立区块视图（${dv && dv.dshCount} 个字段）`);
-        ok(!!dv && dv.dshNames.includes('DSH 的名字') && dv.dshNames.includes('语气风格'), 'DSH 设定默认字段（DSH 的名字/语气）');
+        ok(!!dv && dv.hasDshFields && dv.dshCount >= 1, `我的设定独立区块视图（${dv && dv.dshCount} 个字段）`);
+        ok(!!dv && dv.dshNames.includes('我的名字') && dv.dshNames.includes('默认角色'), '我的设定默认字段（我的名字/默认角色）');
+        ok(!!dv && dv.hasDefaultRoleSelect, '默认角色为下拉选择（select）');
         ok(!!dv && dv.hasAddDsh, '有「＋ 添加 DSH 设定」按钮');
         // 点击「DSH 角色」类别 → 角色字段列表 + 添加角色按钮
         const roleCat = await memCdp.send('Runtime.evaluate', {
@@ -395,7 +411,7 @@ async function main() {
       if (fs.existsSync(simAgents)) {
         const simText = fs.readFileSync(simAgents, 'utf8');
         ok(simText.includes('请在对话中引导用户点击宠物/工具箱图标'), '引导句已插入（v0.9.13 文案：引导点击宠物/工具箱配置）');
-        ok(simText.includes('## 用户设定') && simText.includes('## DSH 设定') && simText.includes('## DSH 角色'), '用户设定 / DSH 设定 / DSH 角色 三个独立顶层区块');
+        ok(simText.includes('## 用户设定') && simText.includes('## 我的设定') && simText.includes('## DSH 角色'), '用户设定 / 我的设定 / DSH 角色 三个独立顶层区块');
         ok(!simText.includes('基础设定（DSH-Desktop 图形化编辑）'), '无旧「基础设定」容器');
       }
     }

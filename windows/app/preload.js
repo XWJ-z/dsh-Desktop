@@ -101,4 +101,7 @@ contextBridge.exposeInMainWorld('dshDesktop', {
   saveGlobalMemory: (form) => ipcRenderer.invoke('memory:save', form),
   /** 打开全局记忆文件所在目录（~/.dsh） */
   openGlobalMemoryFolder: () => ipcRenderer.invoke('memory:open-folder'),
+  // ── v0.9.13：角色选择（新对话选角色 / 双击输入框重选）──
+  /** 弹窗选择角色并注入提示（无角色配置时不弹） */
+  chooseRole: () => ipcRenderer.invoke('role:choose'),
 });

@@ -25,6 +25,8 @@ function registerIpc(deps) {
     customPrompts, noticeApi,
     // v0.9.12（老大指令）：全局记忆（读写 ~/.dsh/AGENTS.md + 打开编辑窗口）
     globalMemory, openGlobalMemoryWindow,
+    // v0.9.13：角色选择（新对话选角色 / 双击输入框重选）
+    pickAndInjectRole,
   } = deps;
   // P2-2（外审 zx(9)）：外部链接域名白名单 —— 渲染进程可达的 openExternal 一律过白名单
   const { isAllowedExternalUrl } = require('./external-links');
@@ -166,6 +168,8 @@ function registerIpc(deps) {
     shell.openPath(path.dirname(globalMemory.file()));
     return true;
   });
+  // v0.9.13（老大反馈）：双击 DSH 输入框重选角色 —— 弹窗选角色并注入
+  ipcMain.handle('role:choose', () => pickAndInjectRole());
   // 联系我们窗口：向渲染进程提供二维码路径与群号（文件路径经 IPC 传递最稳）
   ipcMain.handle('contact:info', () => {
     const group = readShellConfig().qqGroup;

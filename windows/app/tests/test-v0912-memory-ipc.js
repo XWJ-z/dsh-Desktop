@@ -71,15 +71,15 @@ async function main() {
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, '# AGENTS.md\n\n## 身份与称呼\n\n- 我的姓名：**小六**\n', 'utf8');
     const r = await handlers['memory:save'](null, {
-      users: [{ name: '你的称呼', value: '老大' }],
-      dsh: [{ name: 'DSH 的名字', value: '小鲸鱼' }, { name: '角色 1', value: '资深 C++ 工程师' }],
+      users: [{ name: '用户的称呼', value: '老大' }],
+      dsh: [{ name: '我的名字', value: '小鲸鱼' }, { name: '角色 1', value: '资深 C++ 工程师' }],
       sections: [{ title: '身份与称呼', body: '- 我的姓名：**小六**' }],
     });
     ok(r && r.ok === true, 'memory:save 返回 ok（不 reject、不卡死）');
     ok(calls.dialogs === 0, '主进程不再弹 dialog（确认在前端）');
     const raw = fs.readFileSync(target, 'utf8');
-    ok(raw.includes('## 用户设定') && raw.includes('- 你的称呼：老大'), '用户设定独立区块写入文件');
-    ok(raw.includes('## DSH 设定') && raw.includes('- DSH 的名字：小鲸鱼') && raw.includes('- 角色 1：资深 C++ 工程师'), 'DSH 设定独立区块写入文件');
+    ok(raw.includes('## 用户设定') && raw.includes('- 用户的称呼：老大'), '用户设定独立区块写入文件');
+    ok(raw.includes('## 我的设定') && raw.includes('- 我的名字：小鲸鱼') && raw.includes('- 角色 1：资深 C++ 工程师'), '我的设定独立区块写入文件');
     ok(raw.includes('## 身份与称呼'), '其他区块保留');
     fs.rmSync(tmp, { recursive: true, force: true });
   }
@@ -94,17 +94,17 @@ async function main() {
     fs.rmSync(tmp, { recursive: true, force: true });
   }
 
-  console.log('[3] 文件不存在（首次）→ 直接创建（含用户/DSH 设定）');
+  console.log('[3] 文件不存在（首次）→ 直接创建（含用户/我的设定）');
   {
     const { handlers, target, tmp } = setup();
     const r = await handlers['memory:save'](null, {
-      users: [{ name: '你的称呼', value: '小六' }],
-      dsh: [{ name: 'DSH 的名字', value: '小鲸鱼' }],
+      users: [{ name: '用户的称呼', value: '小六' }],
+      dsh: [{ name: '我的名字', value: '小鲸鱼' }],
       sections: [],
     });
     ok(r && r.ok === true, '首次保存成功');
-    ok(fs.existsSync(target) && fs.readFileSync(target, 'utf8').includes('- 你的称呼：小六'), '文件创建且用户设定写入');
-    ok(fs.readFileSync(target, 'utf8').includes('- DSH 的名字：小鲸鱼'), 'DSH 设定随首次保存写入');
+    ok(fs.existsSync(target) && fs.readFileSync(target, 'utf8').includes('- 用户的称呼：小六'), '文件创建且用户设定写入');
+    ok(fs.readFileSync(target, 'utf8').includes('- 我的名字：小鲸鱼'), 'DSH 设定随首次保存写入');
     fs.rmSync(tmp, { recursive: true, force: true });
   }
 }

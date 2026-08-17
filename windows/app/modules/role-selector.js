@@ -58,8 +58,18 @@ function createRoleSelector(deps) {
   async function onSessionChanged() {
     const roles = configuredRoles();
     if (roles.length === 0) return; // 未配置角色：不弹窗（老大方案 3）
+    await pickAndInject();
+  }
+
+  /**
+   * 弹窗选角色 + 注入（v0.9.13 老大反馈：选错角色只能重开新对话 → 双击输入框可重选）。
+   * @returns {{ ok: boolean, name?: string, reason?: string }}
+   */
+  async function pickAndInject() {
+    const roles = configuredRoles();
+    if (roles.length === 0) return { ok: false, reason: 'no-roles' }; // 未配置角色不弹
     const chosen = await pickRole(roles);
-    if (!chosen) return;
+    if (!chosen) return { ok: false, reason: 'cancelled' };
     const name = String(chosen.name).trim();
     const filePath = deps.roleFilePath ? deps.roleFilePath(name) : null;
     const text = `本次对话角色为 ${name}${filePath ? `，角色定义文件为 ${filePath}` : ''}`;
@@ -68,6 +78,28 @@ function createRoleSelector(deps) {
       injectText(mw, text, { celebrate: false }).catch(() => { /* ignore */ });
       appendLog('info', `已为新对话选择角色：${name}（${filePath || '无文件'}）`);
     }
+    return { ok: true, name };
+  }
+
+  /**
+   * 注入「双击输入框重选角色」监听（v0.9.13 老大反馈）：
+   * DSH 主页面双击聊天输入框 → 通知主进程弹角色选择（选错角色不用重开新对话）。
+   * 幂等：同一页面生命周期只注入一次。
+   */
+  function injectDblclick(win) {
+    if (!win || win.isDestroyed()) return;
+    win.webContents.executeJavaScript(`
+      (() => {
+        if (window.__dshRoleDblclick) return;
+        window.__dshRoleDblclick = true;
+        document.addEventListener('dblclick', (e) => {
+          const t = e.target;
+          const isInput = t && (t.tagName === 'TEXTAREA' || t.tagName === 'INPUT' || t.isContentEditable);
+          if (!isInput) return;
+          if (window.dshDesktop && window.dshDesktop.chooseRole) window.dshDesktop.chooseRole();
+        });
+      })()
+    `).catch(() => { /* ignore */ });
   }
 
   /** 开始轮询（幂等）：检测 DSH 会话切换 */
@@ -94,7 +126,7 @@ function createRoleSelector(deps) {
     if (timer) { clearInterval(timer); timer = null; }
   }
 
-  return { start, stop, configuredRoles, onSessionChanged };
+  return { start, stop, configuredRoles, onSessionChanged, pickAndInject, injectDblclick };
 }
 
 module.exports = { createRoleSelector };

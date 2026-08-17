@@ -11,21 +11,22 @@
 const el = (id) => document.getElementById(id);
 const dsh = window.dshDesktop;
 
-// v0.9.13（老大方案）：用户设定 / DSH 设定 / DSH 角色 三个独立顶层区块
+// v0.9.13（老大方案）：用户设定 / 我的设定 / DSH 角色 三个独立顶层区块（DSH 视角）
 const USERS_KEY = '__users__';
 const DSH_KEY = '__dsh__';
 const ROLES_KEY = '__roles__';
-const DEFAULT_FIELDS = ['你的称呼', '你的身份/角色', '项目背景', '常用约定'];
-const DEFAULT_DSH_FIELDS = ['DSH 的名字', '语气风格', '输出习惯'];
+const DEFAULT_FIELDS = ['用户的称呼', '用户的身份/角色', '当前项目', '常用约定'];
+const DEFAULT_DSH_FIELDS = ['我的名字', '语气风格', '输出习惯', '默认角色'];
 const DEFAULT_ROLES = ['角色 1', '角色 2', '角色 3'];
 const VALUE_HINTS = {
-  你的称呼: '例：老大 / 张三',
-  你的身份角色: '例：技术总监 / 项目负责人',
-  项目背景: '例：DSH-Desktop（Electron 套壳），团队 4 人',
+  用户的称呼: '例：老大 / 张三',
+  用户的身份角色: '例：技术总监 / 项目负责人',
+  当前项目: '例：DSH-Desktop（Electron 套壳）',
   常用约定: '例：有改必升版本号；开发日志必写',
-  'DSH 的名字': '例：小鲸鱼',
+  我的名字: '例：小鲸鱼',
   语气风格: '例：专业、简洁、中文',
   输出习惯: '例：代码带注释、结论先行',
+  默认角色: '下拉选择：本次对话默认使用的角色',
   '角色 1': '角色定位（文件：~/.dsh/roles/角色 1.md）',
   '角色 2': '角色定位（文件：~/.dsh/roles/角色 2.md）',
   '角色 3': '角色定位（文件：~/.dsh/roles/角色 3.md）',
@@ -70,7 +71,7 @@ function valueHint(name) {
 function renderCats() {
   const cats = el('cats');
   let html = `<div class="cat ${activeKey === USERS_KEY ? 'active' : ''}" data-key="${USERS_KEY}">👤 用户设定<span class="tag">字段</span></div>`;
-  html += `<div class="cat ${activeKey === DSH_KEY ? 'active' : ''}" data-key="${DSH_KEY}">🤖 DSH 设定<span class="tag">字段</span></div>`;
+  html += `<div class="cat ${activeKey === DSH_KEY ? 'active' : ''}" data-key="${DSH_KEY}">🤖 我的设定<span class="tag">字段</span></div>`;
   html += `<div class="cat ${activeKey === ROLES_KEY ? 'active' : ''}" data-key="${ROLES_KEY}">🎭 DSH 角色<span class="tag">新对话选择</span></div>`;
   html += sections.map((s) => {
     const key = secKey(s);
@@ -104,7 +105,7 @@ function renderRight() {
     return;
   }
   if (activeKey === DSH_KEY) {
-    head.innerHTML = 'DSH 设定 <span class="tag">DSH 的名字 / 语气 / 输出习惯 · 可增删</span>';
+    head.innerHTML = '我的设定 <span class="tag">DSH 的名字 / 语气 / 输出习惯 / 默认角色 · 可增删</span>';
     body.innerHTML = `
       <div class="fields" id="dsh-fields"></div>
       <button id="btn-add-dsh" class="add-field">＋ 添加 DSH 设定</button>`;
@@ -150,15 +151,26 @@ function renderAll() {
   renderRight();
 }
 
-/** 通用字段行渲染（listElId：容器 id；arr：数据数组） */
+/** 通用字段行渲染（listElId：容器 id；arr：数据数组）。
+ *  v0.9.13：「默认角色」字段渲染为下拉选择（选项 = DSH 角色区块的角色名）。 */
 function renderRows(listElId, arr) {
   const wrap = el(listElId);
-  wrap.innerHTML = arr.map((it, i) => `
+  const roleNames = roleFields.map((r) => String(r.name || '').trim()).filter(Boolean);
+  wrap.innerHTML = arr.map((it, i) => {
+    const isRoleSelect = it.name === '默认角色';
+    const valueCtrl = isRoleSelect
+      ? `<select class="f-value f-select" data-i="${i}">
+          <option value=""${!it.value ? ' selected' : ''}>（未设置）</option>
+          ${roleNames.map((n) => `<option value="${escapeHtml(n)}"${it.value === n ? ' selected' : ''}>${escapeHtml(n)}</option>`).join('')}
+        </select>`
+      : `<textarea class="f-value" rows="1" placeholder="${escapeHtml(valueHint(it.name))}">${escapeHtml(it.value)}</textarea>`;
+    return `
     <div class="row" data-i="${i}">
       <input class="f-name" placeholder="字段名" value="${escapeHtml(it.name)}" />
-      <textarea class="f-value" rows="1" placeholder="${escapeHtml(valueHint(it.name))}">${escapeHtml(it.value)}</textarea>
+      ${valueCtrl}
       <button class="del" title="删除这一条">✕</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   wrap.querySelectorAll('.row').forEach((row) => {
     const i = Number(row.dataset.i);
     const name = row.querySelector('.f-name');
@@ -166,9 +178,13 @@ function renderRows(listElId, arr) {
     name.addEventListener('input', () => {
       arr[i].name = name.value;
       const ph = valueHint(name.value);
-      if (value.placeholder !== ph) value.placeholder = ph;
+      if (value.tagName === 'TEXTAREA' && value.placeholder !== ph) value.placeholder = ph;
     });
-    value.addEventListener('input', () => { arr[i].value = value.value; });
+    if (value.tagName === 'SELECT') {
+      value.addEventListener('change', () => { arr[i].value = value.value; });
+    } else {
+      value.addEventListener('input', () => { arr[i].value = value.value; });
+    }
     row.querySelector('.del').addEventListener('click', () => {
       arr.splice(i, 1);
       renderRows(listElId, arr);

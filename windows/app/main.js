@@ -788,20 +788,9 @@ function promptShellUpdate(info) {
 // ---------------------------------------------------------------------------
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
-  // v0.8.13（T2 修复）：不再静默退出 —— 用户双击"无反应"是最差体验。
-  // 弹提示告知正在运行，引导关闭旧实例后重试。
-  // 真机复测（v0.8.13）：残留进程可能无窗口、无托盘图标，故文案需覆盖两种情况。
-  try {
-    dialog.showErrorBox(
-      APP_NAME,
-      'DSH-Desktop 已在运行中。\n\n'
-      + '请先关闭当前运行的 DSH-Desktop 后再重新打开：\n'
-      + '1. 若系统托盘有 DSH-Desktop 图标（含点击托盘区「^」展开的折叠图标）'
-      + ' → 右键图标选择「退出」；\n'
-      + '2. 若托盘无图标（残留进程）→ 按 Ctrl+Shift+Esc 打开任务管理器，'
-      + '结束 DSH-Desktop.exe 进程后重试。'
-    );
-  } catch { /* ignore */ }
+  // v0.9.13（老大反馈：关闭到托盘后双击桌面图标弹"已在运行中"）：去掉该弹框 ——
+  // 第二实例静默退出，第一实例的 second-instance 事件负责恢复显示主窗口
+  //（双击桌面图标 = 直接显示界面，与托盘模式体验一致）
   app.quit();
 } else {
   app.on('second-instance', () => {
@@ -856,6 +845,8 @@ if (!gotLock) {
       globalMemory: globalMemoryApi,
       openGlobalMemoryWindow,
       getGlobalMemoryWin: () => globalMemoryWin,
+      // v0.9.13：角色选择（新对话选角色 / 双击输入框重选）
+      pickAndInjectRole: () => roleSelectorApi.pickAndInject(),
     });
 
     resolvedPort = parsePortArg() ?? await pickPort(DEFAULT_PORT);
@@ -897,6 +888,8 @@ if (!gotLock) {
         createMainWindow();
         // v0.9.13：新对话角色选择轮询（有角色配置时，会话切换弹窗选角色并注入）
         roleSelectorApi.start();
+        // v0.9.13（老大反馈：选错角色只能重开新对话）：双击 DSH 输入框 → 重选角色
+        roleSelectorApi.injectDblclick(mainWindow);
         // v0.9.13（老大指令）：记忆格式不符标准 → 主窗口加载完成后注入整理提示词
         // （让 DSH 按标准格式整理现有记忆，不改变原意）
         if (memoryFormatMismatch) {
