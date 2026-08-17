@@ -7,6 +7,7 @@
  *  - openChangelogWindow：更新日志窗口（本地 CHANGELOG.json）
  *  - openNoticeWindow / hasNewNotices：公告窗口 + 未读判断（T0.6）
  *  - openPromptLibWindow：提示词库面板（modal:false，可连续注入）
+ *  - openGlobalMemoryWindow：全局记忆面板（v0.9.12：基础设定图形化编辑，非裸文件）
  *  - openCloseChoiceWindow：关闭行为询问（Windows 原生对话框）
  *  - openBackupProgress / updateBackupProgress / closeBackupProgress：备份进度
  *  （secureWebPreferences 已抽到 modules/security.js，v0.8.30 R1）
@@ -18,6 +19,7 @@
  *  - getMainWindow / getIsQuitting / setQuitting
  *  - getChangelogWin/setChangelogWin / getNoticeWin/setNoticeWin
  *  - getPromptLibWin/setPromptLibWin
+ *  - getGlobalMemoryWin/setGlobalMemoryWin（v0.9.12 全局记忆窗口）
  *  - secureWebPreferences   安全基线（modules/security.js 注入）
  */
 
@@ -30,6 +32,7 @@ function createMiscWindowsModule(deps) {
     getChangelogWin, setChangelogWin,
     getNoticeWin, setNoticeWin,
     getPromptLibWin, setPromptLibWin,
+    getGlobalMemoryWin, setGlobalMemoryWin, // v0.9.12
     secureWebPreferences,
   } = deps;
 
@@ -79,6 +82,21 @@ function createMiscWindowsModule(deps) {
     win.loadFile(path.join(app.getAppPath(), 'renderer', 'promptlib.html'));
     win.on('closed', () => { setPromptLibWin(null); });
     setPromptLibWin(win);
+  }
+
+  /** v0.9.12：全局记忆窗口 —— 基础设定图形化编辑（~/.dsh/AGENTS.md，DSH 自动读取）。
+   *  modal:false 便于对照主窗口；表单区块级写回，不破坏用户其他记忆内容。 */
+  function openGlobalMemoryWindow() {
+    if (getGlobalMemoryWin() && !getGlobalMemoryWin().isDestroyed()) { getGlobalMemoryWin().focus(); return; }
+    const win = new BrowserWindow({
+      width: 560, height: 640, resizable: true, minimizable: false,
+      parent: getMainWindow(), modal: false, title: '全局记忆',
+      backgroundColor: nativeTheme.shouldUseDarkColors ? '#0f1115' : '#eef0f4', // v0.9.9：跟随外观
+      webPreferences: secureWebPreferences(),
+    });
+    win.loadFile(path.join(app.getAppPath(), 'renderer', 'global-memory.html'));
+    win.on('closed', () => { setGlobalMemoryWin(null); });
+    setGlobalMemoryWin(win);
   }
 
   /** 关闭行为询问弹窗（v0.6.1 T-027 → v0.7.10 改原生）：退出 / 关闭到托盘 + 记住我的选择。
@@ -164,6 +182,7 @@ function createMiscWindowsModule(deps) {
     openNoticeWindow,
     hasNewNotices,
     openPromptLibWindow,
+    openGlobalMemoryWindow, // v0.9.12
     openCloseChoiceWindow,
     openBackupProgress,
     updateBackupProgress,

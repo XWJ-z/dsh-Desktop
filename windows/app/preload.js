@@ -92,7 +92,13 @@ contextBridge.exposeInMainWorld('dshDesktop', {
   },
   /** 拖拽文件 → 主进程处理（复制进工作区 + 注入提示词） */
   dropFiles: (paths) => ipcRenderer.invoke('drop:files', paths),
-  // ── v0.9.12：全局记忆（宠物菜单入口）──
-  /** 打开全局记忆文件（首次自动建立；返回 { ok, file, created? }） */
-  openGlobalMemory: () => ipcRenderer.invoke('memory:open'),
+  // ── v0.9.12：全局记忆（宠物菜单入口；~/.dsh/AGENTS.md，DSH 自动读取）──
+  /** 打开全局记忆编辑窗口（基础设定图形化表单） */
+  openGlobalMemory: () => ipcRenderer.invoke('memory:open-window'),
+  /** 读取全局记忆数据（{ exists, hasSection, form, file }） */
+  getGlobalMemory: () => ipcRenderer.invoke('memory:data'),
+  /** 保存全局记忆（区块级写回，返回 { ok, file, message? }） */
+  saveGlobalMemory: (form) => ipcRenderer.invoke('memory:save', form),
+  /** 打开全局记忆文件所在目录（~/.dsh） */
+  openGlobalMemoryFolder: () => ipcRenderer.invoke('memory:open-folder'),
 });

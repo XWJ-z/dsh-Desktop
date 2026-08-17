@@ -218,6 +218,41 @@ async function main() {
     ok(!!mv && mv.memoryFirst, '「🧠 全局记忆」排在「💡 提示词库」前面');
     ok(!!mv && mv.api, 'preload 暴露 openGlobalMemory API');
 
+    // ①.8 v0.9.12：点击「🧠 全局记忆」→ 打开图形化编辑窗口（global-memory.html target）
+    await cdp.send('Runtime.evaluate', {
+      expression: 'window.dshDesktop.openGlobalMemory()', returnByValue: true, awaitPromise: true,
+    });
+    const memWin = await waitTarget(SIM_DEBUG_PORT, (t) => /global-memory\.html/.test(t.url), 15_000);
+    ok(!!memWin, '「🧠 全局记忆」点击打开编辑窗口（global-memory.html）');
+    if (memWin && memWin.webSocketDebuggerUrl) {
+      // 窗口内：表单容器存在（图形化输入框而非裸文件）—— 页面加载异步，轮询等待就绪
+      const memCdp = cdpConnect(memWin.webSocketDebuggerUrl);
+      try {
+        let fv = null;
+        const t1 = Date.now();
+        while (Date.now() - t1 < 10_000) {
+          const f = await memCdp.send('Runtime.evaluate', {
+            expression: `(() => ({
+              hasForm: !!document.getElementById('form'),
+              fields: Array.from(document.querySelectorAll('textarea[data-field]')).map((t) => t.dataset.field),
+              path: (document.getElementById('path') || {}).textContent || '',
+            }))()`,
+            returnByValue: true,
+          });
+          fv = f.result && f.result.value;
+          if (fv && fv.hasForm && fv.fields.length >= 6) break;
+          await sleep(500);
+        }
+        ok(!!fv && fv.hasForm && fv.fields.length >= 6, `全局记忆窗口含表单输入框（${fv && fv.fields && fv.fields.length} 个）`);
+        ok(!!fv && fv.fields.includes('我的姓名') && fv.fields.includes('项目背景'), '表单字段含我的姓名/项目背景');
+        ok(!!fv && /AGENTS\.md$/.test(fv.path), `窗口显示记忆文件路径（${fv && fv.path}）`);
+      } catch (err) {
+        ok(false, '全局记忆窗口内容断言异常：' + err.message);
+      } finally {
+        memCdp.close();
+      }
+    }
+
     // ② 公告：notice:data 附带完整 marquee（v0.9.7 新字段）
     const notice = await cdp.send('Runtime.evaluate', {
       expression: `(async () => {

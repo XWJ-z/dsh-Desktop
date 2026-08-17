@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' file: data:; style-src 'self' file: 'unsafe-inline'; script-src 'self' file:; img-src 'self' file: data:" />
+  <title>全局记忆</title>
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    body {
+      padding: 18px 20px 20px;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    h1 { font-size: 18px; font-weight: 590; margin-bottom: 2px; }
+    .subtitle { font-size: 12px; color: var(--text-quaternary); margin-bottom: 14px; }
+    .subtitle code { background: var(--bg-hover); padding: 1px 5px; border-radius: 4px; font-size: 11px; }
+    /* 反馈横幅 */
+    .banner {
+      display: none; padding: 9px 14px; margin-bottom: 12px;
+      border-radius: var(--radius-btn); font-size: 13px; font-weight: 590;
+    }
+    .banner.show { display: block; }
+    .banner.ok { color: var(--success); background: rgba(16,185,129,.1); border: 1px solid rgba(16,185,129,.3); }
+    .banner.fail { color: var(--warn); background: rgba(245,166,35,.1); border: 1px solid rgba(245,166,35,.3); }
+    .form { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    .field label { font-size: 12.5px; font-weight: 590; color: var(--text-secondary); }
+    .field label .tip { font-weight: 400; color: var(--text-quaternary); margin-left: 6px; }
+    .field textarea {
+      width: 100%; padding: 8px 12px; min-height: 46px; resize: vertical;
+      background: var(--bg-input); border: 1px solid var(--border-standard);
+      border-radius: var(--radius-btn); color: var(--text-primary);
+      font: 13px/1.6 "Segoe UI", "Microsoft YaHei", sans-serif; outline: none;
+    }
+    .field textarea:focus { border-color: rgba(94,106,210,.55); }
+    .field textarea::placeholder { color: var(--text-quaternary); }
+    .foot { display: flex; align-items: center; gap: 12px; margin-top: 14px; }
+    .path { font-size: 11px; color: var(--text-quaternary); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .btn {
+      padding: 9px 22px; border: none; border-radius: var(--radius-btn); cursor: pointer;
+      font-size: 13px; font-weight: 590; background: var(--brand); color: #fff;
+    }
+    .btn:hover { background: var(--accent-hover); }
+    .btn:disabled { opacity: .5; cursor: default; }
+    .btn.ghost {
+      background: transparent; color: var(--text-secondary);
+      border: 1px solid var(--border-standard);
+    }
+    .btn.ghost:hover { background: var(--bg-hover); }
+  </style>
+</head>
+<body>
+  <h1>🧠 全局记忆</h1>
+  <div class="subtitle">写入 <code>~/.dsh/AGENTS.md</code>，DSH 启动时自动读取（无需手动发送）。基础设定直接填表单，保存后新会话生效。</div>
+  <div id="banner" class="banner"></div>
+  <div class="form" id="form"></div>
+  <div class="foot">
+    <span id="path" class="path"></span>
+    <button id="btn-open-folder" class="btn ghost">打开文件位置</button>
+    <button id="btn-save" class="btn">保存</button>
+  </div>
+  <script src="global-memory.js"></script>
+</body>
+</html>

@@ -87,6 +87,7 @@ let aboutWin = null;            // 关于窗口（v0.5.3 现代化）
 let changelogWin = null;        // 更新日志窗口（v0.8.1 T3）
 let promptLibWin = null;        // 提示词库窗口（v0.8.3 T4）
 let noticeWin = null;          // 公告窗口（v0.8.11 T0.6）
+let globalMemoryWin = null;    // 全局记忆窗口（v0.9.12）
 let serverChild = null;         // dsh web 服务子进程
 let resolvedPort = DEFAULT_PORT;
 let quitting = false;
@@ -367,10 +368,9 @@ const { handleDropFiles } = dropFilesApi;
 // v0.9.5（T2.1）：自定义提示词存储（userData/custom-prompts.json）
 const customPromptsApi = createCustomPrompts({ fs, path, app, appendLog });
 
-// v0.9.12（老大指令）：全局记忆 —— 记忆文件 userData/global-memory.md
-// （首次自动建立；宠物菜单打开；随数据备份/恢复）
-const globalMemoryApi = createGlobalMemory({ app, fs, path, shell, appendLog });
-const { file: globalMemoryFile } = globalMemoryApi;
+// v0.9.12（老大指令）：全局记忆 —— 读写 DSH 原生 ~/.dsh/AGENTS.md（DSH 自动读取，
+// 无需手动发送）；图形化表单编辑基础设定（区块级写回，不破坏其他内容）
+const globalMemoryApi = createGlobalMemory({ app, fs, os, path, appendLog });
 
 // ----
 // 更新检查/下载（v0.8.12：逻辑已移入 modules/updater.js）
@@ -431,9 +431,10 @@ const miscWindowsModule = createMiscWindowsModule({
   getChangelogWin: () => changelogWin, setChangelogWin: (v) => { changelogWin = v; },
   getNoticeWin: () => noticeWin, setNoticeWin: (v) => { noticeWin = v; },
   getPromptLibWin: () => promptLibWin, setPromptLibWin: (v) => { promptLibWin = v; },
+  getGlobalMemoryWin: () => globalMemoryWin, setGlobalMemoryWin: (v) => { globalMemoryWin = v; }, // v0.9.12
   secureWebPreferences,
 });
-const { openChangelogWindow, openNoticeWindow, hasNewNotices, openPromptLibWindow, openCloseChoiceWindow, openBackupProgress, updateBackupProgress, closeBackupProgress } = miscWindowsModule;
+const { openChangelogWindow, openNoticeWindow, hasNewNotices, openPromptLibWindow, openGlobalMemoryWindow, openCloseChoiceWindow, openBackupProgress, updateBackupProgress, closeBackupProgress } = miscWindowsModule;
 
 const mainWindowModule = createMainWindowModule({
   BrowserWindow, app, dialog, shell, screen, path, nativeTheme, // v0.9.9：窗口背景跟随外观
@@ -531,8 +532,6 @@ const { backupUserData, restoreUserData } = createBackup({
   app, dialog, shell, fs, os, path, tar,
   appendLog, localTimestamp, localDate,
   readShellConfig, installedDshVersion, settingsFile: settingsApi.settingsFile,
-  // v0.9.12：全局记忆文件随数据备份/恢复（与 settings.json 同级）
-  globalMemoryFile,
   getOwnerWindow: () => (mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined),
   isServerRunning: () => !!(serverChild && serverChild.exitCode === null),
   // v0.7.10（老大反馈）：恢复数据前可只停 DSH 服务（不退出应用），而非要求整体退出
@@ -838,8 +837,9 @@ if (!gotLock) {
       // v0.9.5：自定义提示词（T2）+ 公告模块（T3，notice:data 唯一源）
       customPrompts: customPromptsApi,
       noticeApi,
-      // v0.9.12：全局记忆（宠物菜单 memory:open）
+      // v0.9.12：全局记忆（读写 AGENTS.md + 打开编辑窗口）
       globalMemory: globalMemoryApi,
+      openGlobalMemoryWindow,
     });
 
     resolvedPort = parsePortArg() ?? await pickPort(DEFAULT_PORT);
