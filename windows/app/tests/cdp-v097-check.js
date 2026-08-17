@@ -171,11 +171,11 @@ async function main() {
     ok(dshReady, 'preload dshDesktop 已注入');
     if (!dshReady) throw new Error('dshDesktop 注入超时');
 
-    // ① 版本 0.9.8
+    // ① 版本 0.9.9
     const ver = await cdp.send('Runtime.evaluate', {
       expression: 'window.dshDesktop.getVersion()', returnByValue: true, awaitPromise: true,
     });
-    ok(ver.result && ver.result.value === '0.9.8', `壳版本 = 0.9.8（实际 ${ver.result && ver.result.value}）`);
+    ok(ver.result && ver.result.value === '0.9.9', `壳版本 = 0.9.9（实际 ${ver.result && ver.result.value}）`);
 
     // ② 公告：notice:data 附带完整 marquee（v0.9.7 新字段）
     const notice = await cdp.send('Runtime.evaluate', {
@@ -190,13 +190,15 @@ async function main() {
     ok(!!nv && nv.marquee === MARQUEE_FULL, 'notice:data 返回完整 marquee（未截断，公告窗口横幅用）');
     ok(!!nv && nv.marquee && nv.marquee.length > 30 && !nv.marquee.includes('…'), 'marquee 长度 > 30 且不含省略号（全文）');
 
-    // ③ 更新日志：changelog:data 含 0.9.7 + 0.9.6 12 条
+    // ③ 更新日志：changelog:data 含 0.9.7 + 0.9.6 12 条 + released 标记（v0.9.9）
     const cl = await cdp.send('Runtime.evaluate', {
       expression: `(async () => {
         const d = await window.dshDesktop.getChangelog();
         const v096 = (d && d.versions || []).find((v) => v.version === '0.9.6');
         const v097 = (d && d.versions || []).find((v) => v.version === '0.9.7');
-        return { has097: !!v097, n096: v096 && v096.notes.length, first096: v096 && v096.notes[0] };
+        const v098 = (d && d.versions || []).find((v) => v.version === '0.9.8');
+        const releasedCount = (d && d.versions || []).filter((v) => v.released === true).length;
+        return { has097: !!v097, n096: v096 && v096.notes.length, first096: v096 && v096.notes[0], r096: v096 && v096.released, r098: v098 && v098.released, releasedCount };
       })()`,
       returnByValue: true, awaitPromise: true,
     });
@@ -204,6 +206,9 @@ async function main() {
     ok(!!cv && cv.has097, 'changelog:data 含 0.9.7 条目');
     ok(!!cv && cv.n096 === 12, `changelog:data 0.9.6 条目 = 12 条（与 GitHub 一致，实际 ${cv && cv.n096}）`);
     ok(!!cv && typeof cv.first096 === 'string' && cv.first096.startsWith('1. '), '0.9.6 首条带编号（与 GitHub body 相同）');
+    ok(!!cv && cv.r096 === true, 'changelog:data 0.9.6 released=true');
+    ok(!!cv && cv.r098 === false, 'changelog:data 0.9.8（内部）released=false');
+    ok(!!cv && cv.releasedCount === 12, `released=true 共 12 个（实际 ${cv && cv.releasedCount}）`);
 
     // ④ 日志：公告自动刷新已启动 + fetchLatest 已执行
     await sleep(1500); // 等 checkUpdatesOnStart 的 fetchLatest 落日志

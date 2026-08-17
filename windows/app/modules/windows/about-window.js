@@ -10,7 +10,7 @@
  *  （secureWebPreferences 已抽到 modules/security.js，v0.8.30 R1）
  *
  * 依赖注入（deps）：
- *  - BrowserWindow / app / path
+ *  - BrowserWindow / app / path / nativeTheme
  *  - getMainWindow
  *  - getUpdateWin/setUpdateWin / getContactWin/setContactWin / getAboutWin/setAboutWin
  *  - secureWebPreferences   安全基线（modules/security.js 注入）
@@ -18,7 +18,7 @@
 
 function createDialogWindowsModule(deps) {
   const {
-    BrowserWindow, app, path,
+    BrowserWindow, app, path, nativeTheme,
     getUpdateWin, setUpdateWin,
     getContactWin, setContactWin,
     getAboutWin, setAboutWin,
@@ -31,7 +31,7 @@ function createDialogWindowsModule(deps) {
     const win = new BrowserWindow({
       width: 560, height: 640, resizable: false, minimizable: false,
       parent: deps.getMainWindow(), modal: true, title: '检查更新',
-      backgroundColor: '#0f1115',
+      backgroundColor: nativeTheme.shouldUseDarkColors ? '#0f1115' : '#eef0f4', // v0.9.9：跟随外观
       webPreferences: secureWebPreferences(),
     });
     win.loadFile(path.join(app.getAppPath(), 'renderer', 'update.html'));
@@ -45,7 +45,7 @@ function createDialogWindowsModule(deps) {
     const win = new BrowserWindow({
       width: 400, height: 560, resizable: false, minimizable: false,
       parent: deps.getMainWindow(), modal: true, title: '联系我们',
-      backgroundColor: '#0f1115',
+      backgroundColor: nativeTheme.shouldUseDarkColors ? '#0f1115' : '#eef0f4', // v0.9.9：跟随外观
       webPreferences: secureWebPreferences(),
     });
     win.loadFile(path.join(app.getAppPath(), 'renderer', 'contact.html'));
@@ -59,7 +59,7 @@ function createDialogWindowsModule(deps) {
     const win = new BrowserWindow({
       width: 420, height: 560, resizable: false, minimizable: false,
       parent: deps.getMainWindow(), modal: true, title: '关于 DSH-Desktop',
-      backgroundColor: '#0f1115',
+      backgroundColor: nativeTheme.shouldUseDarkColors ? '#0f1115' : '#eef0f4', // v0.9.9：跟随外观
       webPreferences: secureWebPreferences(),
     });
     win.loadFile(path.join(app.getAppPath(), 'renderer', 'about.html'));

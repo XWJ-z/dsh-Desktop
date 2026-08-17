@@ -13,12 +13,12 @@
       border: 1px solid var(--border-standard); border-radius: var(--radius-btn);
       background: var(--bg-surface);
     }
-    .refresh:hover { color: var(--text-primary); border-color: rgba(255,255,255,0.16); }
+    .refresh:hover { color: var(--text-primary); border-color: var(--border-standard); }
     .row { margin-bottom: 8px; } /* shared 提供行布局，此处恢复页面间距 */
     .row .label { width: 64px; flex-shrink: 0; }
     .notes {
       font-size: 13px; color: var(--text-tertiary); line-height: 1.6;
-      background: rgba(255,255,255,0.02); border-radius: var(--radius-card);
+      background: var(--bg-hover); border-radius: var(--radius-card);
       padding: 10px 12px; margin: 8px 0 12px;
       white-space: pre-wrap; word-break: break-all;
       max-height: 96px; overflow-y: auto;
@@ -31,7 +31,7 @@
     .progress-wrap { margin: 10px 0 12px; }
     .progress-bar {
       height: 6px; border-radius: 999px;
-      background: rgba(255,255,255,0.06);
+      background: var(--bg-hover);
       overflow: hidden;
     }
     .progress-fill {
@@ -46,7 +46,7 @@
     .status { font-size: 12px; color: var(--text-quaternary); text-align: center; margin-top: 4px; }
     .spinner {
       width: 14px; height: 14px; display: inline-block; vertical-align: -2px;
-      border: 2px solid rgba(255,255,255,0.15); border-top-color: var(--accent);
+      border: 2px solid var(--border-standard); border-top-color: var(--accent);
       border-radius: 50%; animation: spin .8s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }

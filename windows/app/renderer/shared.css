@@ -23,11 +23,38 @@
   --warn: #f5a623;
   --border-subtle: rgba(255,255,255,0.05);
   --border-standard: rgba(255,255,255,0.08);
+  --bg-input: #161a22; /* v0.9.9：弹窗输入框背景（浅色主题下覆盖） */
   --radius-btn: 6px;
   --radius-card: 8px;
   --radius-panel: 12px;
   --font: 'Inter', 'Segoe UI', 'Microsoft YaHei', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', Consolas, monospace;
+}
+
+/* v0.9.9（老大反馈：切换外观壳延迟大/不跟随）：浅色主题 token ——
+   壳弹窗（提示词库/公告/更新日志/更新/关于/联系我们/备份进度）跟随
+   外观设置（nativeTheme.themeSource → prefers-color-scheme），
+   与 DSH 页面同步切换，不再永远深色。 */
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
+    --bg-deep: #eef0f4;
+    --bg-panel: #f7f8fa;
+    --bg-surface: #ffffff;
+    --bg-hover: #e6e9ee;
+    --text-primary: #1b1d23;
+    --text-secondary: #40464f;
+    --text-tertiary: #6b7280;
+    --text-quaternary: #9aa0ab;
+    --brand: #4f5bd5;
+    --accent: #5a5adf;
+    --accent-hover: #4a4ad0;
+    --success: #0d9f6e;
+    --warn: #d98a1a;
+    --border-subtle: rgba(0,0,0,0.05);
+    --border-standard: rgba(0,0,0,0.10);
+    --bg-input: #f2f4f7;
+  }
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }

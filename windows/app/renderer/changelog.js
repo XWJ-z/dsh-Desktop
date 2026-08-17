@@ -4,6 +4,8 @@
  * changelog.js — 更新日志窗口脚本（v0.8.1 T3）
  * 经 preload：getChangelog() 获取本地 CHANGELOG.json 数据 + 当前版本。
  * 版本按降序渲染，最新置顶；当前运行版本卡片高亮。
+ * v0.9.9（老大指令）：只显示已发布到 GitHub 的版本（released=true），内部版本不展示；
+ *   当前运行版本若未发布 → 顶部提示「内部测试版」。
  */
 
 const el = (id) => document.getElementById(id);
@@ -26,20 +28,35 @@ async function init() {
   }
 
   const list = el('list');
-  // 服务端已按降序维护，这里再保险排序一次（最新置顶）
-  const versions = [...data.versions].sort((a, b) =>
-    compareVersion(b.version, a.version));
+  // v0.9.9：只显示已发布版本（released=true）；服务端已按降序维护，这里再保险排序一次
+  const versions = data.versions
+    .filter((v) => v.released !== false)
+    .sort((a, b) => compareVersion(b.version, a.version));
+
+  // v0.9.9：当前运行版本若未发布（内部测试版）→ 顶部提示
+  const current = data.current;
+  const currentReleased = data.versions.some((v) => v.version === current && v.released !== false);
+  const tip = el('current-tip');
+  if (tip && !currentReleased) {
+    tip.hidden = false;
+    tip.textContent = `当前运行版本 v${current}（内部测试版，更新日志仅展示已发布版本）`;
+  }
+
+  if (versions.length === 0) {
+    list.innerHTML = '<div class="empty">暂无已发布版本记录</div>';
+    return;
+  }
 
   list.innerHTML = versions.map((v) => {
-    const current = v.version === data.current;
+    const isCurrent = v.version === current;
     const notes = (Array.isArray(v.notes) ? v.notes : [])
       .map((n) => `<li>${escapeHtml(n)}</li>`).join('');
     return `
-      <div class="ver-card${current ? ' current' : ''}">
+      <div class="ver-card${isCurrent ? ' current' : ''}">
         <div class="ver-head">
           <span class="ver-title">v${escapeHtml(v.version)}</span>
           <span class="ver-date">${escapeHtml(v.date || '')}</span>
-          ${current ? '<span class="badge latest">当前版本</span>' : ''}
+          ${isCurrent ? '<span class="badge latest">当前版本</span>' : ''}
         </div>
         <ul class="ver-notes">${notes}</ul>
       </div>`;

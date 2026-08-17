@@ -62,7 +62,7 @@
     .cat.active { background: var(--bg-surface); border-color: rgba(94,106,210,.4); color: var(--text-primary); }
     .cat .count {
       margin-left: auto; font-size: 11px; color: var(--text-quaternary);
-      background: rgba(255,255,255,.05); border-radius: 999px; padding: 1px 7px;
+      background: var(--bg-hover); border-radius: 999px; padding: 1px 7px;
     }
     /* 右侧提示词卡片（内置 + 自定义共用） */
     .items { flex: 1; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; min-width: 0; align-content: flex-start; }
@@ -91,10 +91,10 @@
     .act.use { background: var(--brand); color: #fff; }
     .act.use:hover { background: var(--accent-hover); }
     .act.copy, .act.edit {
-      background: rgba(255,255,255,.03); color: var(--text-tertiary);
+      background: var(--bg-hover); color: var(--text-tertiary);
       border: 1px solid var(--border-standard);
     }
-    .act.copy:hover, .act.edit:hover { color: var(--text-primary); border-color: rgba(255,255,255,.16); }
+    .act.copy:hover, .act.edit:hover { color: var(--text-primary); border-color: var(--border-standard); }
     .act.del { background: rgba(239,68,68,.1); color: #f87171; border: 1px solid rgba(239,68,68,.3); }
     .act.del:hover { background: rgba(239,68,68,.2); }
     .act.del.confirm { background: #ef4444; color: #fff; border-color: #ef4444; }
@@ -131,7 +131,7 @@
     }
     .modal-actions .primary { background: var(--brand); color: #fff; }
     .modal-actions .primary:hover { background: var(--accent-hover); }
-    .modal-actions .plain { background: rgba(255,255,255,.05); color: var(--text-tertiary); }
+    .modal-actions .plain { background: var(--bg-hover); color: var(--text-tertiary); }
     .modal-actions .plain:hover { color: var(--text-primary); }
   </style>
 </head>

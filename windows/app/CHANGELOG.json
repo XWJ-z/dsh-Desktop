@@ -1,11 +1,21 @@
 {
   "versions": [
     {
+      "version": "0.9.9",
+      "date": "2026-08-17",
+      "notes": [
+        "优化（老大反馈：切换外观 DSH 与壳有延迟、壳延迟大）：① 用户在 DSH 面板直接切外观时，壳反向同步轮询 2500ms → 400ms（壳最多 0.4s 跟上，此前最长 2.5s）；② 壳菜单切外观时同步 DSH 的等待 600/600ms → 400/300ms（整体更快）；③ 壳弹窗（提示词库/公告/更新日志/更新/关于/联系我们/备份进度/加载页）跟随外观设置 —— shared.css 新增浅色主题 token（prefers-color-scheme: light），窗口背景色随 nativeTheme 动态切换，写死的半透明白色装饰色全部 token 化，不再永远深色",
+        "调整（老大指令）：内置更新日志只显示已发布到 GitHub 的版本 —— CHANGELOG.json 每条新增 released 标记（GitHub 实际发布 12 版：0.4.2/0.5.2/0.5.3/0.5.6/0.5.8/0.5.9/0.6.6/0.7.4/0.7.10/0.8.9/0.8.30/0.9.6），更新日志窗口过滤内部版本；当前运行版本若未发布 → 顶部提示「内部测试版」"
+      ],
+      "released": false
+    },
+    {
       "version": "0.9.8",
       "date": "2026-08-17",
       "notes": [
         "调整（老大指令）：公告菜单并入帮助菜单 —— 不再作为独立一级菜单（菜单栏更简洁），「查看公告（新）」子项放在更新日志之后，未读标记跟随子项；最右端 📢 公告条保留"
-      ]
+      ],
+      "released": false
     },
     {
       "version": "0.9.7",
@@ -14,7 +24,8 @@
         "修复（老大反馈）：菜单栏公告条内容显示不全 —— 截断收紧到 30 字符（任意窗口宽度下完整显示到省略号），且公告条改为可点击（打开公告窗口查看全文）；公告窗口顶部新增「最新公告」横幅显示完整内容",
         "优化（老大反馈）：公告不再需要重启应用才刷新 —— 运行中每 10 分钟自动拉取公告源并刷新公告条/公告窗口，拉到新公告立即生效；版本未变时静默（不刷日志）",
         "统一（老大反馈）：内置更新日志（帮助 → 更新日志）当前版本内容与 GitHub Release 发布说明保持一致 —— v0.9.6 条目改为与 version.json release_notes 相同的 12 条用户视角更新内容（技术细节移入开发日志）"
-      ]
+      ],
+      "released": false
     },
     {
       "version": "0.9.6",
@@ -32,7 +43,8 @@
         "10. 修复（0.9.2）：拖文件进窗口后不再卡在 DSH 的「图片拖动添加界面」——此前 dragenter/dragover 未拦截事件传播，DSH 页面自身的拖放遮罩被激活后无法关闭，现已完全拦截，文件拖拽不再干扰 DSH 页面",
         "11. 优化（0.9.3）：拖入的文件统一放入工作区的专用文件夹「拖入文件」，不再直接放工作区根目录；提示词带相对路径（如「拖入文件/报告.docx」），DSH 定位文件更准确",
         "12. 优化（0.9.6）：「我的提示词」也支持左侧分组（全部/内置类/自定义类），管理更清晰；安装器安装时默认展开安装日志（解压/复制文件/创建快捷方式过程可见），不再只有单调进度条"
-      ]
+      ],
+      "released": true
     },
     {
       "version": "0.9.5",
@@ -42,7 +54,8 @@
         "T2 自定义提示词：modules/custom-prompts.js（userData/custom-prompts.json，损坏备份 .bak + 空库、原子写盘 .tmp→rename、id = Date.now()+随机后缀）；IPC 新增 promptlib:custom-list/save/delete（校验 name/content 非空、cat 缺省「我的」）；提示词库窗口双 tab（📚 内置库 / ✏️ 我的提示词）+ 新建/编辑弹窗（分类下拉含内置类+自定义类+新建分类）+ 删除二次确认 + 复用 promptlib:inject 注入链路",
         "T3 公告条：仓库根 notice.json 成为公告唯一源（version.json notices 字段移除）；modules/notice.js 三源并发（jsDelivr/API/raw）取 schema 版本最高者，缓存 userData/notice-cache.json（失败沿用缓存不闪没）；菜单栏最右端（公告菜单之后）禁用态纯文字条 📢 marquee（超 40 字符截断 37+…，空回退默认文案）；公告窗口 notice:data 改读 notice.json items；启动与版本检查并行拉取",
         "T4 测试：check-v095.js 334 项（101 条结构校验 / 自定义存储全链路 / 公告三源与缓存容错）；ESLint 0 error；mock-load-test OK；check-v090 30 项回归无破坏"
-      ]
+      ],
+      "released": false
     },
     {
       "version": "0.9.3",
@@ -51,7 +64,8 @@
         "优化（老大指令）：拖入的文件统一放入工作区下的专用文件夹「拖入文件」，不再直接放工作区根目录——drop-files.js 复制目标改为 ws/拖入文件/（mkdir 幂等），重名去重/文件夹递归/.lnk/大文件异步全部在该子目录内生效",
         "提示词带相对路径：注入文案变为「请分析工作区里的文件：拖入文件/xxx.txt」（多文件同理），DSH 按工作区相对路径定位文件更准确",
         "测试同步：check-v090 单测（30 项，含专用文件夹创建断言）/ cdp-drag-sim-check.js / cdp-v090-sim.js / e2e T5 断言全部更新为子目录路径与新提示词格式"
-      ]
+      ],
+      "released": false
     },
     {
       "version": "0.9.2",
@@ -60,7 +74,8 @@
         "修复（老大实测反馈）：拖文件进窗口后卡在 DSH 的「图片拖动添加界面」——根因：dragenter/dragover/dragleave 仅 preventDefault 未 stopPropagation，事件继续传播到 document，DSH 页面自身的 document 级拖放监听（dsh-client-ui-attachment DropOverlay/DragMask）收到 dragenter 激活遮罩，而 drop 被我们吞掉后其 enter/leave 计数永不归零 → 遮罩卡死",
         "修复方案：Files 拖拽的 dragenter/dragover/dragleave/drop 四事件全部 preventDefault + stopPropagation + stopImmediatePropagation（window capture 阶段），DSH 页面从第一个事件起收不到任何文件拖放事件；非 Files 拖拽（DSH 会话/工作区 text/plain 拖放）不受影响",
         "CDP 仿真防回归（zx(6)）：cdp-v090-sim.js 新增 document 级探针（模拟 DSH 自身监听）+ role=status 遮罩残留检查；对照实验证明旧行为下 document 探针 enter=1/over=2/drop=0/leave=1（断言失败），修复后全 0（9/9 通过）"
-      ]
+      ],
+      "released": false
     },
     {
       "version": "0.9.1",
@@ -70,7 +85,8 @@
         "工作区定位：读取 DSH 真实状态（localStorage 当前会话 dsh.sessions.current → ~/.dsh/storages/session_projcache.json 的 cwd），多级兜底（最近活跃会话 / 唯一工作区）",
         "拖拽体验：全窗口 overlay「松开以将文件放入工作区」、防页面导航、同步取路径、多文件/文件夹递归复制、重名自动 (1) 不覆盖、.lnk 原样复制、大文件异步复制+气泡进度、无工作区友好提示",
         "提示词注入链路抽取公共模块 modules/prompt-inject.js（提示词库与拖文件共用）"
-      ]
+      ],
+      "released": false
     },
     {
       "version": "0.8.30",
@@ -78,7 +94,8 @@
       "notes": [
         "代码审查 v24.0 通过（无 P0/P1）：确认覆盖安装自动结束旧实例（electron-builder 26 内置 CHECK_APP_RUNNING）、安全基线 webPreferences 抽公共模块 modules/security.js（消除 about-window/misc-windows 重复定义）、清理未用解构与缩进、一次性验证脚本归档 tests/archive/、SVG 解析改 DOMParser",
         "宠物图标：DeepSeek 官方 logo 鲸鱼轮廓（老大手绘）+ 表情动画（悬停抬头/眨眼/弯眼笑/打哈欠/深夜犯困）"
-      ]
+      ],
+      "released": true
     },
     {
       "version": "0.8.27",
@@ -86,21 +103,24 @@
       "notes": [
         "宠物图标最终版：采用老大手绘 DeepSeek 官方 logo 鲸鱼轮廓 + 品牌蓝渐变 + 大眼/腮红/嘴巴/肚皮，注入表情 class 兼容全部动画",
         "修复：图标 body path 不完整导致渲染残缺（核对注入 path 完整性 4668 字符）"
-      ]
+      ],
+      "released": false
     },
     {
       "version": "0.8.26",
       "date": "2026-08-16",
       "notes": [
         "宠物图标改扁平图标风：侧视流线剪影/单眼/分叉尾鳍，去掉 Q 版卡通元素"
-      ]
+      ],
+      "released": false
     },
     {
       "version": "0.8.25",
       "date": "2026-08-16",
       "notes": [
         "宠物图标 V2 重设计：Q 版大头鲸鱼（流线身体/大眼双高光/腮红/肚皮渐变/喷水）"
-      ]
+      ],
+      "released": false
     },
     {
       "version": "0.8.24",
@@ -108,7 +128,8 @@
       "notes": [
         "紧急修复：切换外观后 DSH 设置面板残留（同步后点面板外空白关闭，实测 themeCube→0）",
         "紧急修复：移动宠物位置后重开消失（saved 分支重复 top: 覆盖 bug，自 v0.8.19 存在）"
-      ]
+      ],
+      "released": false
     },
     {
       "version": "0.8.23",
@@ -116,7 +137,8 @@
       "notes": [
         "宠物/工具箱改为页面内自愈（MutationObserver 监视 DOM，被 SPA 清除/隐藏立即重建，不再依赖轮询）",
         "弹窗窗口统一深色外观（shared.css 主题）"
-      ]
+      ],
+      "released": false
     },
     {
       "version": "0.8.22",
@@ -124,7 +146,8 @@
       "notes": [
         "修复宠物/工具箱要点恢复默认布局才出现（watchdog 存在性检查）",
         "设置菜单分组优化（开关项/外观+快捷键/清除记忆）"
-      ]
+      ],
+      "released": false
     },
     {
       "version": "0.8.21",
@@ -132,35 +155,40 @@
       "notes": [
         "修复每次启动自动打开 DSH 设置面板（外观仅用户主动选择时同步 DSH）",
         "DSH 外观反向同步壳（2.5s 监视）+ 公告菜单移到帮助右侧"
-      ]
+      ],
+      "released": false
     },
     {
       "version": "0.8.19",
       "date": "2026-08-16",
       "notes": [
         "修复窗口尺寸/分辨率变化后宠物位置跑出屏幕（位置记忆校验，越界自动回退底部居中）"
-      ]
+      ],
+      "released": false
     },
     {
       "version": "0.8.18",
       "date": "2026-08-16",
       "notes": [
         "宠物气泡移到下方（不遮挡 DSH 选项/输入框）；外观选项 + 公告位置调整"
-      ]
+      ],
+      "released": false
     },
     {
       "version": "0.8.17",
       "date": "2026-08-16",
       "notes": [
         "菜单调整；宠物/工具箱默认位置改底部居中"
-      ]
+      ],
+      "released": false
     },
     {
       "version": "0.8.16",
       "date": "2026-08-16",
       "notes": [
         "工具箱形态禁用宠物专属交互（表情/气泡/彩蛋/眨眼/深夜犯困），仅保留拖拽与悬停菜单；菜单清理"
-      ]
+      ],
+      "released": false
     },
     {
       "version": "0.8.15",
@@ -168,7 +196,8 @@
       "notes": [
         "宠物/工具箱双形态切换（隐藏宠物自动变工具箱图标，网页打开/提示词库入口不丢失）",
         "真机修复：前端同步切换形态（隐藏宠物不再消失）"
-      ]
+      ],
+      "released": false
     },
     {
       "version": "0.8.13",
@@ -176,7 +205,8 @@
       "notes": [
         "窗口模块拆分（modules/windows/ 子模块）",
         "修复全新系统启动崩溃（内置 Node 加入 PATH）；覆盖安装自动结束旧实例（electron-builder 26 内置）"
-      ]
+      ],
+      "released": false
     },
     {
       "version": "0.8.12",
@@ -184,7 +214,8 @@
       "notes": [
         "主进程模块化重构：logger/node-resolver/port-manager/dsh-runtime/serverLifecycle/updater/pet/menu/ipc 拆为独立模块（依赖注入）",
         "根目录清理 + 工程化基建"
-      ]
+      ],
+      "released": false
     },
     {
       "version": "0.8.11",
@@ -192,7 +223,8 @@
       "notes": [
         "新增桌面宠物：Q 版鲸鱼（表情/气泡/彩蛋/眨眼/深夜犯困，可拖拽并记忆位置）",
         "公告菜单；更新下载互斥锁（断点续传防并发）"
-      ]
+      ],
+      "released": false
     },
     {
       "version": "0.8.9",
@@ -202,7 +234,8 @@
         "优化：主进程模块化重构（settings/tray/hotkey 独立模块）、工具箱图标等界面细节",
         "规范：团队署名统一 zx(身份标识)（LICENSE/README/飞牛 manifest/关于窗口/版本信息）",
         "修复：更新下载「SHA256 校验未通过」—— 校验失败时删除损坏的续传缓存（.part）并自动回退下一个镜像从头重下，不再反复失败"
-      ]
+      ],
+      "released": true
     },
     {
       "version": "0.7.10",
@@ -211,7 +244,8 @@
         "重大更新（v0.7 线最终版）：新增 LICENSE、minVersion 最低版本门槛、托盘显示 DSH 版本、main.js 拆模块、共享样式、smoke 测试、备份进度条",
         "修复：备份卡死（异步复制）、重新打开/托盘恢复黑屏、备份 EPERM 符号链接、恢复数据死循环、断点续传旧下载流未关闭",
         "优化：关闭窗口询问改 Windows 原生弹窗、「网页打开」按钮支持拖拽与恢复默认布局（视图菜单）"
-      ]
+      ],
+      "released": true
     },
     {
       "version": "0.7.4",
@@ -220,7 +254,8 @@
         "紧急修复：无系统 Node 环境首次安装失败（内置 Node 加入 PATH）、首次安装下载卡死超时（registry 走 CLI 参数）",
         "新增：一键诊断报告、数据备份、数据迁移/恢复（manifest 校验 + 固定路径还原）",
         "新增：下载断点续传、更新下载失败可操作提示、「网页打开」悬浮按钮"
-      ]
+      ],
+      "released": true
     },
     {
       "version": "0.6.6",
@@ -229,7 +264,8 @@
         "新增：系统托盘常驻、设置菜单、关闭窗口询问、开机自启、启动时检查更新、强制更新支持",
         "新增：自启静默启动、窗口状态记忆、托盘多尺寸 ICO",
         "优化：安装包瘦身（126.8MB → 118.5MB）"
-      ]
+      ],
+      "released": true
     },
     {
       "version": "0.5.9",
@@ -238,7 +274,8 @@
         "新增：菜单栏「网页打开」按钮（系统浏览器打开 DSH 界面）",
         "修复：版本检查逻辑、项目主页链接、应用图标多尺寸",
         "随包发布：飞牛 fnOS 应用包 0.2.5"
-      ]
+      ],
+      "released": true
     },
     {
       "version": "0.5.8",
@@ -246,7 +283,8 @@
       "notes": [
         "新增：更新清单多源回退（jsDelivr + raw.githubusercontent），CDN 异常也能收到更新提示",
         "修复：版本检查逻辑、项目主页链接、应用图标多尺寸"
-      ]
+      ],
+      "released": true
     },
     {
       "version": "0.5.6",
@@ -254,7 +292,8 @@
       "notes": [
         "修复：关于窗口与菜单「项目主页」链接指向本项目",
         "优化：首次启动引导文案、应用图标多尺寸"
-      ]
+      ],
+      "released": true
     },
     {
       "version": "0.5.3",
@@ -263,7 +302,8 @@
         "菜单重构：新增「更新」「关于我们」菜单",
         "更新窗口现代化：壳+DSH 同屏卡片展示，徽章/更新日志/下载进度条",
         "联系我们窗口现代化：二维码大图 + 一键复制群号；关于窗口现代化：版本信息卡片 + 链接按钮"
-      ]
+      ],
+      "released": true
     },
     {
       "version": "0.5.2",
@@ -271,7 +311,8 @@
       "notes": [
         "新增「联系我们」：帮助菜单查看 QQ 群二维码并复制群号",
         "新增自动更新：启动/手动检查新版本，国内镜像加速下载"
-      ]
+      ],
+      "released": true
     },
     {
       "version": "0.4.2",
@@ -279,7 +320,8 @@
       "notes": [
         "首版：DSH-Desktop 基础套壳（纯套壳，DSH 本体由 npm 按 config.json 指定版本提供）",
         "自动探测端口、内置日志、启动界面友好；安装包约 120MB（含内置 Node 运行时）"
-      ]
+      ],
+      "released": true
     }
   ]
 }

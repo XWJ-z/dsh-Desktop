@@ -9,7 +9,7 @@
  *  - createMainWindow：主窗口（1440×900 承载 DSH GUI，还原窗口状态记忆，宠物注入）
  *
  * 依赖注入（deps）：
- *  - BrowserWindow / app / dialog / shell / screen / path
+ *  - BrowserWindow / app / dialog / shell / screen / path / nativeTheme
  *  - appendLog / logPath                      日志模块
  *  - getSettings / saveSettings               设置（winBounds/winMaximized/minimizeToTray/closeChoice）
  *  - injectPet                                宠物模块
@@ -19,7 +19,7 @@
 
 function createMainWindowModule(deps) {
   const {
-    BrowserWindow, app, dialog, shell, screen, path,
+    BrowserWindow, app, dialog, shell, screen, path, nativeTheme,
     appendLog, logPath, appName,
     getSettings, saveSettings,
     injectPet, openCloseChoiceWindow,
@@ -101,7 +101,7 @@ function createMainWindowModule(deps) {
       minHeight: 600,
       title: appName,
       icon: path.join(app.getAppPath(), 'assets', 'icon.png'),
-      backgroundColor: '#0f1115',
+      backgroundColor: nativeTheme.shouldUseDarkColors ? '#0f1115' : '#eef0f4', // v0.9.9：跟随外观
       show: false,
       webPreferences: {
         preload: path.join(app.getAppPath(), 'preload.js'),

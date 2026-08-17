@@ -7,14 +7,14 @@
  * 服务就绪后关闭，不承载 GUI）。
  *
  * 依赖注入（deps）：
- *  - BrowserWindow / app / path
+ *  - BrowserWindow / app / path / nativeTheme
  *  - appName
  *  - getResolvedPort / getLoadingWindow / setLoadingWindow
  */
 
 function createLoadingWindowModule(deps) {
   const {
-    BrowserWindow, app, path, appName,
+    BrowserWindow, app, path, nativeTheme, appName,
     getResolvedPort, getLoadingWindow, setLoadingWindow,
   } = deps;
 
@@ -27,7 +27,7 @@ function createLoadingWindowModule(deps) {
       minHeight: 560,
       title: appName,
       icon: path.join(app.getAppPath(), 'assets', 'icon.png'),
-      backgroundColor: '#0f1115',
+      backgroundColor: nativeTheme.shouldUseDarkColors ? '#0f1115' : '#eef0f4', // v0.9.9：跟随外观
       show: false,
       webPreferences: {
         preload: path.join(app.getAppPath(), 'preload.js'),

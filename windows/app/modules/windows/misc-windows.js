@@ -12,7 +12,7 @@
  *  （secureWebPreferences 已抽到 modules/security.js，v0.8.30 R1）
  *
  * 依赖注入（deps）：
- *  - BrowserWindow / app / dialog / path
+ *  - BrowserWindow / app / dialog / path / nativeTheme
  *  - appendLog / appName
  *  - getSettings / setCloseChoice / clearCloseChoice
  *  - getMainWindow / getIsQuitting / setQuitting
@@ -23,7 +23,7 @@
 
 function createMiscWindowsModule(deps) {
   const {
-    BrowserWindow, app, dialog, path,
+    BrowserWindow, app, dialog, path, nativeTheme,
     appendLog, appName,
     getSettings, setCloseChoice,
     getMainWindow, setQuitting,
@@ -39,7 +39,7 @@ function createMiscWindowsModule(deps) {
     const win = new BrowserWindow({
       width: 520, height: 560, resizable: false, minimizable: false,
       parent: getMainWindow(), modal: true, title: '更新日志',
-      backgroundColor: '#0f1115',
+      backgroundColor: nativeTheme.shouldUseDarkColors ? '#0f1115' : '#eef0f4', // v0.9.9：跟随外观
       webPreferences: secureWebPreferences(),
     });
     win.loadFile(path.join(app.getAppPath(), 'renderer', 'changelog.html'));
@@ -53,7 +53,7 @@ function createMiscWindowsModule(deps) {
     const win = new BrowserWindow({
       width: 520, height: 560, resizable: false, minimizable: false,
       parent: getMainWindow(), modal: true, title: '公告',
-      backgroundColor: '#0f1115',
+      backgroundColor: nativeTheme.shouldUseDarkColors ? '#0f1115' : '#eef0f4', // v0.9.9：跟随外观
       webPreferences: secureWebPreferences(),
     });
     win.loadFile(path.join(app.getAppPath(), 'renderer', 'notice.html'));
@@ -73,7 +73,7 @@ function createMiscWindowsModule(deps) {
     const win = new BrowserWindow({
       width: 720, height: 560, resizable: true, minimizable: false, // v0.8.7：内容更多，窗口加大
       parent: getMainWindow(), modal: false, title: '提示词库', // modal:false —— 面板随时可点主窗口连续注入
-      backgroundColor: '#0f1115',
+      backgroundColor: nativeTheme.shouldUseDarkColors ? '#0f1115' : '#eef0f4', // v0.9.9：跟随外观
       webPreferences: secureWebPreferences(),
     });
     win.loadFile(path.join(app.getAppPath(), 'renderer', 'promptlib.html'));
@@ -120,7 +120,7 @@ function createMiscWindowsModule(deps) {
     backupProgressWin = new BrowserWindow({
       width: 360, height: 110, resizable: false, minimizable: false, maximizable: false,
       parent: getMainWindow(), modal: false, title: '备份数据',
-      backgroundColor: '#0f1115',
+      backgroundColor: nativeTheme.shouldUseDarkColors ? '#0f1115' : '#eef0f4', // v0.9.9：跟随外观
       webPreferences: secureWebPreferences(),
     });
     backupProgressWin.loadFile(path.join(app.getAppPath(), 'renderer', 'progress.html'));

@@ -21,7 +21,7 @@
     }
     .spinner {
       width: 32px; height: 32px;
-      border: 3px solid rgba(255,255,255,0.12);
+      border: 3px solid var(--border-standard);
       border-top-color: var(--accent);
       border-radius: 50%;
       animation: spin 0.9s linear infinite;
@@ -60,7 +60,7 @@
       white-space: nowrap;          /* 任务2b：文字不截断 */
       flex-shrink: 0;               /* 任务2b：防挤压 */
       color: var(--text-quaternary);
-      background: rgba(255,255,255,0.02);
+      background: var(--bg-hover);
       border: 1px solid var(--border-standard);
       transition: all .25s ease;
     }

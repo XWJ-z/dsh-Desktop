@@ -38,11 +38,21 @@
     }
     .ver-notes li::before { content: '·'; position: absolute; left: 2px; color: var(--brand); }
     .empty { color: var(--text-quaternary); text-align: center; padding: 40px 0; font-size: 13px; }
+    /* v0.9.9：内部测试版提示（当前版本未发布时显示） */
+    .current-tip {
+      background: rgba(245,166,35,0.10);
+      border: 1px solid rgba(245,166,35,0.35);
+      border-radius: var(--radius-card);
+      padding: 8px 12px;
+      font-size: 12px; color: var(--text-secondary);
+      margin-bottom: 12px;
+    }
   </style>
 </head>
 <body>
   <h1>📋 更新日志</h1>
-  <div class="subtitle">DSH-Desktop 各版本更新内容（本地内置，离线可用）</div>
+  <div class="subtitle">DSH-Desktop 各版本更新内容（仅展示已发布版本，离线可用）</div>
+  <div class="current-tip" id="current-tip" hidden></div>
   <div class="list" id="list"><!-- JS 渲染 --></div>
 
   <script src="changelog.js"></script>

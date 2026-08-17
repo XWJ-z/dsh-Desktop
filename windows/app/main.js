@@ -243,7 +243,7 @@ function syncDshAppearance(mode) {
       }
       return wasOpen;
     })()
-  `).then((wasOpen) => new Promise((r) => setTimeout(() => r(wasOpen), 600))).then((wasOpen) => {
+  `).then((wasOpen) => new Promise((r) => setTimeout(() => r(wasOpen), 400))).then((wasOpen) => {
     mw.webContents.executeJavaScript(`
       (() => {
         const btn = Array.from(document.querySelectorAll('button'))
@@ -273,7 +273,7 @@ function syncDshAppearance(mode) {
               return { closed: !document.querySelector('[class*="themeCube"]'), clicked: !!el };
             })()
           `).catch(() => { /* ignore */ });
-        }, 600);
+        }, 300);
       }
     }).catch(() => { /* ignore */ });
   }).catch(() => { /* ignore */ });
@@ -283,6 +283,8 @@ function syncDshAppearance(mode) {
 // 轮询读取 DSH 面板当前选中的主题按钮（.themeCube._selected 文本），
 // 与壳设置不一致时更新壳外观（nativeTheme + 持久化 + 菜单）。
 // 仅面板打开时能读到选中态，面板关闭时轮询自动空转，开销可忽略。
+// v0.9.9（老大反馈：壳延迟大）：轮询 2500ms → 400ms —— 用户在 DSH 面板直接切外观时，
+// 壳（nativeTheme/菜单）最多 0.4s 内跟上（此前最长等 2.5s）。
 let dshThemeWatchTimer = null;
 function startDshThemeWatch() {
   if (dshThemeWatchTimer) return;
@@ -310,7 +312,7 @@ function startDshThemeWatch() {
       applyAppearance(mode); // applyAppearance 不触发 DSH 同步，无循环
       refreshMenusRef();
     }).catch(() => { /* ignore */ });
-  }, 2500);
+  }, 400);
 }
 
 // ---------------------------------------------------------------------------
@@ -407,7 +409,7 @@ const securityModule = createSecurityModule({ app, path });
 const { secureWebPreferences } = securityModule;
 
 const miscWindowsModule = createMiscWindowsModule({
-  BrowserWindow, app, dialog, path,
+  BrowserWindow, app, dialog, path, nativeTheme, // v0.9.9：窗口背景跟随外观
   appendLog, appName: APP_NAME,
   getSettings: () => settings,
   setCloseChoice: (action, remember) => settingsApi.setCloseChoice(action, remember),
@@ -422,7 +424,7 @@ const miscWindowsModule = createMiscWindowsModule({
 const { openChangelogWindow, openNoticeWindow, hasNewNotices, openPromptLibWindow, openCloseChoiceWindow, openBackupProgress, updateBackupProgress, closeBackupProgress } = miscWindowsModule;
 
 const mainWindowModule = createMainWindowModule({
-  BrowserWindow, app, dialog, shell, screen, path,
+  BrowserWindow, app, dialog, shell, screen, path, nativeTheme, // v0.9.9：窗口背景跟随外观
   appendLog, logPath, appName: APP_NAME,
   getSettings: () => settings,
   saveSettings: () => settingsApi.saveSettings(),
@@ -437,7 +439,7 @@ const mainWindowModule = createMainWindowModule({
 const { attachWebDiagnostics, createMainWindow } = mainWindowModule;
 
 const dialogWindowsModule = createDialogWindowsModule({
-  BrowserWindow, app, path,
+  BrowserWindow, app, path, nativeTheme, // v0.9.9：窗口背景跟随外观
   getMainWindow: () => mainWindow,
   getUpdateWin: () => updateWin, setUpdateWin: (v) => { updateWin = v; },
   getContactWin: () => contactWin, setContactWin: (v) => { contactWin = v; },
@@ -447,7 +449,7 @@ const dialogWindowsModule = createDialogWindowsModule({
 const { openUpdateWindow, openContactWindow, openAboutWindow } = dialogWindowsModule;
 
 const loadingWindowModule = createLoadingWindowModule({
-  BrowserWindow, app, path, appName: APP_NAME,
+  BrowserWindow, app, path, nativeTheme, // v0.9.9：窗口背景跟随外观 appName: APP_NAME,
   getResolvedPort: () => resolvedPort,
   getLoadingWindow: () => loadingWindow,
   setLoadingWindow: (v) => { loadingWindow = v; },

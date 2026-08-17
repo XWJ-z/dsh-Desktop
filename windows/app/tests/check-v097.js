@@ -99,6 +99,12 @@ function testMain() {
   ok(src.includes('.then(() => refreshMenusRef())'), '拉取后刷新菜单（公告条即时更新）');
   ok(src.includes('startNoticeAutoRefresh();'), '启动流程调用 startNoticeAutoRefresh');
   ok(src.includes('clearInterval(noticeRefreshTimer)'), '退出时清理定时器');
+  // v0.9.9（老大反馈：壳延迟大）：反向同步轮询 2.5s → 400ms
+  ok(src.includes('}, 400);'), '外观反向同步轮询 = 400ms（壳跟随 DSH 面板延迟 ≤0.4s）');
+  ok(!src.includes('}, 2500);'), '旧的 2500ms 轮询已移除');
+  ok(src.includes('setTimeout(() => r(wasOpen), 400)'), '同步 DSH 面板打开等待 400ms');
+  ok(src.includes('}, 300);'), '同步后面板关闭等待 300ms');
+  ok(src.includes('nativeTheme, // v0.9.9'), '窗口模块注入 nativeTheme（背景跟随外观）');
 }
 
 // ---------------------------------------------------------------------------
@@ -127,6 +133,27 @@ function testChangelog() {
   const v097 = cl.versions.find((v) => v.version === '0.9.7');
   ok(!!v097 && Array.isArray(v097.notes) && v097.notes.length === 3, '0.9.7 条目存在（3 条）');
 
+  // v0.9.9（老大指令）：released 标记 —— 已发布 12 版，内部版本 false
+  const releasedCount = cl.versions.filter((v) => v.released === true).length;
+  ok(releasedCount === 12, `released=true 共 12 个已发布版本（实际 ${releasedCount}）`);
+  ok(cl.versions.find((v) => v.version === '0.9.6').released === true, '0.9.6 released=true');
+  ok(cl.versions.find((v) => v.version === '0.8.30').released === true, '0.8.30 released=true');
+  ok(cl.versions.find((v) => v.version === '0.9.8').released === false, '0.9.8（内部）released=false');
+  ok(cl.versions.find((v) => v.version === '0.9.9').released === false, '0.9.9（内部）released=false');
+
+  // v0.9.9：更新日志窗口只渲染 released 版本 + 内部版提示
+  const cljs = read('renderer/changelog.js');
+  ok(cljs.includes('filter((v) => v.released !== false)'), 'changelog.js 过滤 released 版本');
+  ok(cljs.includes('current-tip'), 'changelog.js 读取 current-tip（内部测试版提示）');
+  ok(cljs.includes('内部测试版'), 'changelog.js 含内部测试版文案');
+  const clhtml = read('renderer/changelog.html');
+  ok(clhtml.includes('id="current-tip"'), 'changelog.html 有 current-tip 容器');
+
+  // v0.9.9：壳弹窗跟随外观 —— shared.css 浅色主题
+  const css = read('renderer/shared.css');
+  ok(css.includes('@media (prefers-color-scheme: light)'), 'shared.css 浅色主题 media query');
+  ok(css.includes('--bg-input: #f2f4f7'), 'shared.css 浅色 --bg-input');
+
   // v0.9.6 条目 = version.json release_notes（GitHub Release body 同源）
   const v096 = cl.versions.find((v) => v.version === '0.9.6');
   const expected = vj.release_notes.split('\n').filter(Boolean);
@@ -151,7 +178,7 @@ function testChangelog() {
 function testVersion() {
   console.log('[6] package.json 版本');
   const pkg = JSON.parse(fs.readFileSync(path.join(APP, 'package.json'), 'utf8'));
-  ok(pkg.version === '0.9.8', `version = 0.9.8（实际 ${pkg.version}）`);
+  ok(pkg.version === '0.9.9', `version = 0.9.9（实际 ${pkg.version}）`);
 }
 
 // ---------------------------------------------------------------------------
