@@ -144,9 +144,9 @@ function testChangelog() {
   const v097 = cl.versions.find((v) => v.version === '0.9.7');
   ok(!!v097 && Array.isArray(v097.notes) && v097.notes.length === 3, '0.9.7 条目存在（3 条）');
 
-  // v0.9.9（老大指令）：released 标记 —— 已发布 15 版（v1.0.3 发布），内部版本 false
+  // v0.9.9（老大指令）：released 标记 —— 已发布 16 版（v1.0.5 发布），内部版本 false
   const releasedCount = cl.versions.filter((v) => v.released === true).length;
-  ok(releasedCount === 15, `released=true 共 15 个已发布版本（含 1.0.3，实际 ${releasedCount}）`);
+  ok(releasedCount === 16, `released=true 共 16 个已发布版本（含 1.0.5，实际 ${releasedCount}）`);
   ok(cl.versions.find((v) => v.version === '0.9.6').released === true, '0.9.6 released=true');
   ok(cl.versions.find((v) => v.version === '0.8.30').released === true, '0.8.30 released=true');
   ok(cl.versions.find((v) => v.version === '0.9.8').released === false, '0.9.8（内部）released=false');
@@ -170,10 +170,12 @@ function testChangelog() {
   const v096 = cl.versions.find((v) => v.version === '0.9.6');
   ok(!!v096 && Array.isArray(v096.notes) && v096.notes.length === 12,
     `0.9.6 条目 12 条（实际 ${v096 ? v096.notes.length : 0}）`);
-  // v1.0.3（已发布）：version.json 三处一致（实测 hash）+ CHANGELOG 1.0.3 released=true
-  ok(vj.version === '1.0.3', `version.json version = 1.0.3（实际 ${vj.version}）`);
+  // v1.0.5（待发布）：version.json 三处一致（hash 打包后实测）+ CHANGELOG 1.0.5 条目
+  ok(vj.version === '1.0.5', `version.json version = 1.0.5（实际 ${vj.version}）`);
   ok(vj.hash && /^[0-9a-f]{64}$/.test(vj.hash), 'version.json hash 为 64 位 SHA256');
-  ok(Array.isArray(vj.download_urls) && vj.download_urls.length >= 1 && vj.download_urls.every((u) => u.includes('v1.0.3')), 'version.json download_urls 指向 v1.0.3 资产');
+  ok(Array.isArray(vj.download_urls) && vj.download_urls.length >= 1 && vj.download_urls.every((u) => u.includes('v1.0.5')), 'version.json download_urls 指向 v1.0.5 资产');
+  const v105 = cl.versions.find((v) => v.version === '1.0.5');
+  ok(!!v105 && Array.isArray(v105.notes) && v105.notes.length >= 1, 'CHANGELOG 1.0.5 条目存在（待发布 released:false）');
   const v103 = cl.versions.find((v) => v.version === '1.0.3');
   ok(!!v103 && Array.isArray(v103.notes) && v103.notes.length >= 1 && v103.released === true,
     'CHANGELOG 1.0.3 条目存在（released:true，已发布）');
@@ -505,7 +507,10 @@ async function testGlobalMemoryBehavior() {
   const d0 = api.data();
   ok(d0.exists === false, '首次 data.exists=false');
   ok(Array.isArray(d0.defaultFields) && d0.defaultFields.includes('用户的称呼'), 'data 带默认字段');
-  const r1 = api.save({ users: [{ name: '用户的称呼', value: '小六' }], dsh: [], sections: [] });
+  // v1.0.5（删除生效语义）：模拟窗口流程 —— 首次先加载模板 long 区块（含「其他记忆」）再提交，避免误删模板区块
+  const tplLongs = (d0.sections || []).filter((s) => s.kind === 'long')
+    .map((s) => ({ title: s.title, body: (s.body || []).join('\n') }));
+  const r1 = api.save({ users: [{ name: '用户的称呼', value: '小六' }], dsh: [], sections: tplLongs });
   ok(r1.ok === true && fs.existsSync(target), 'save 自动创建 AGENTS.md');
   const raw1 = fs.readFileSync(target, 'utf8');
   ok(raw1.includes('# AGENTS.md（全局记忆）'), '模板头部正确');
@@ -755,7 +760,7 @@ $env:PATH = "..."
 function testVersion() {
   console.log('[7] package.json 版本');
   const pkg = JSON.parse(fs.readFileSync(path.join(APP, 'package.json'), 'utf8'));
-  ok(pkg.version === '1.0.3', `version = 1.0.3（实际 ${pkg.version}）`);
+  ok(pkg.version === '1.0.5', `version = 1.0.5（实际 ${pkg.version}）`);
 }
 
 // ---------------------------------------------------------------------------
@@ -791,7 +796,8 @@ function testV103() {
   ok(prompts.categories.length === 6 && prompts.categories.every((c) => Array.isArray(c.subs) && c.subs.length >= 2),
     'prompts.json：6 个分类全部含二级子分类（每类 ≥2 个）');
   const totalItems = prompts.categories.reduce((n, c) => n + c.subs.reduce((m, s) => m + s.items.length, 0), 0);
-  ok(totalItems === 101, `prompts.json：条目总数 101（不增不减，实际 ${totalItems}）`);
+  ok(totalItems === 201, `prompts.json：条目总数 201（v1.0.5 新增 100 条，实际 ${totalItems}）`);
+  ok(prompts.version === 6, `prompts.json：version 6（实际 ${prompts.version}）`);
   const plib = read('renderer/promptlib.js');
   ok(plib.includes('expandedCats') && plib.includes('cat-head') && plib.includes('selectSub') && plib.includes('currentSub'),
     'promptlib：一级分类可折叠 + 二级子分类选中（老大反馈 5 修正）');
@@ -816,6 +822,36 @@ function testV103() {
 }
 
 // ---------------------------------------------------------------------------
+// 9. v1.0.5（老大反馈 1-4）：提示词 +100 / 区块删除生效 / 角色记忆说明 / 备份恢复
+// ---------------------------------------------------------------------------
+function testV105() {
+  console.log('[9] v1.0.5 修复验证');
+  // 问题②：区块删除生效 —— 主进程长区块以窗口提交集合为准（删除后不再 fallback 原文件）
+  const gm = read('modules/global-memory.js');
+  ok(gm.includes('submittedLongs') && gm.includes('usedTitles'), 'global-memory：长区块按窗口提交集合合并（标题匹配原位覆盖 / 删除生效）');
+  ok(!gm.includes('incoming ? incoming.title : s.title'), 'global-memory：已移除"缺失区块 fallback 原文件"逻辑（修复删除后刷新回来）');
+  // 问题③：角色记忆说明句
+  ok(gm.includes('ROLE_NOTE_FIELD') && gm.includes('ROLE_NOTE_TEXT') && gm.includes('roleNote'),
+    'global-memory：角色记忆说明句常量 + roleNote 标记');
+  ok(gm.includes('name === ROLE_NOTE_FIELD') && gm.includes('cur.roleNote = true'),
+    'parse：说明句识别为 roleNote（不算角色字段，防重复累积）');
+  ok(gm.includes('if (roleNote) lines.push'), 'renderRoles：roleNote=true 时输出说明句');
+  ok(gm.includes('ROLE_NOTE_FIELD}：${ROLE_NOTE_TEXT}'), 'TEMPLATE：角色记忆说明句（新用户首次创建即含）');
+  // 问题④：备份 / 一键恢复
+  ok(gm.includes('writeBackup') && gm.includes('backupFile') && gm.includes('restoreBackup') && gm.includes('isCorrupt'),
+    'global-memory：备份 / 一键恢复 / 损坏检测函数');
+  ok(gm.includes('if (raw !== null) writeBackup()'), 'save()：保存前自动备份（有旧内容时）');
+  const ipc = read('modules/ipc.js');
+  ok(ipc.includes('memory:restore-backup'), 'ipc：memory:restore-backup handler');
+  const pre = read('preload.js');
+  ok(pre.includes('restoreGlobalMemoryBackup'), 'preload：restoreGlobalMemoryBackup API');
+  const rjs = read('renderer/global-memory.js');
+  ok(rjs.includes('fileCorrupt') && rjs.includes('updateCorruptBar'), 'renderer：损坏状态跟踪 + 恢复条显隐');
+  const rhtml = read('renderer/global-memory.html');
+  ok(rhtml.includes('corrupt-bar') && rhtml.includes('btn-restore-bak'), 'global-memory.html：恢复提示条 + 一键恢复按钮');
+}
+
+// ---------------------------------------------------------------------------
 // 主流程
 // ---------------------------------------------------------------------------
 async function main() {
@@ -827,6 +863,7 @@ async function main() {
   testPet();
   testVersion();
   testV103(); // v1.0.3：6 项修复断言
+  testV105(); // v1.0.5：提示词 +100 / 区块删除 / 角色记忆说明 / 备份恢复
   testUpdaterTrust();
   testRuntimePin();
   testExternalWhitelist();

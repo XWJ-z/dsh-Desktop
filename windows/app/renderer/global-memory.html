@@ -25,6 +25,20 @@
     .banner.show { display: block; }
     .banner.ok { color: var(--success); background: rgba(16,185,129,.1); border: 1px solid rgba(16,185,129,.3); }
     .banner.fail { color: var(--warn); background: rgba(245,166,35,.1); border: 1px solid rgba(245,166,35,.3); }
+    /* v1.0.5（老大反馈 4）：解析异常恢复提示条（一键从 .bak 恢复） */
+    .corrupt-bar {
+      display: none; align-items: center; gap: 10px; margin-bottom: 12px;
+      padding: 9px 14px; border-radius: var(--radius-btn); font-size: 12.5px; line-height: 1.6;
+      color: #e5484d; background: rgba(229,72,77,.08); border: 1px solid rgba(229,72,77,.35);
+    }
+    .corrupt-bar.show { display: flex; }
+    .corrupt-bar span { flex: 1; }
+    .corrupt-bar .restore-bak {
+      padding: 6px 14px; border: none; border-radius: var(--radius-btn); cursor: pointer;
+      font-size: 12.5px; font-weight: 590; background: #e5484d; color: #fff; flex-shrink: 0;
+    }
+    .corrupt-bar .restore-bak:hover { background: #d63b40; }
+    .corrupt-bar .restore-bak:disabled { opacity: .5; cursor: default; }
     /* 左右分栏（参考提示词库） */
     .layout { display: flex; gap: 16px; flex: 1; min-height: 0; }
     .left {
@@ -267,6 +281,11 @@
   <!-- v1.0.3（老大反馈 2）：默认角色实际在「我的设定」里选择，提示文案修正 -->
   <div class="tip-red">⚠️ 双击对话框选择角色，默认角色请在[我的设定]中选择</div>
   <div id="banner" class="banner"></div>
+  <!-- v1.0.5（老大反馈 4）：解析异常 → 一键恢复备份 -->
+  <div id="corrupt-bar" class="corrupt-bar">
+    <span>⚠️ 检测到记忆文件解析异常（可能被外部修改损坏），保存会覆盖异常内容。</span>
+    <button id="btn-restore-bak" class="restore-bak">从备份恢复（.bak）</button>
+  </div>
   <div class="layout">
     <div class="left" id="cats"></div>
     <div class="right">

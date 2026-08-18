@@ -1,12 +1,12 @@
 {
-  "version": "1.0.3",
+  "version": "1.0.5",
   "minVersion": "0.7.4",
   "author": "zx(xwj)",
-  "release_notes": "🎉 v1.0.3 —— 设置与角色体验优化 + 更新回退修复\n1. 修复（设置菜单）：最小化到托盘与关闭行为联动 —— 勾选「最小化到托盘」后关闭窗口直接驻留托盘（不再每次弹窗询问）；「关闭时总是询问」改为独立开关，勾选后每次关闭都询问；询问弹窗选择「记住退出」后自动取消「最小化到托盘」勾选，设置状态与行为不再矛盾\n2. 优化（全局记忆窗口）：提示文案修正 —— 双击对话框选择角色，默认角色请在「我的设定」中选择\n3. 优化（角色选择）：双击输入框选择角色改为竖排列表窗口 —— 每个角色一行（角色名 + 定位摘要），角色名称过长不再横向挤压，窗口高度随角色数量自适应\n4. 优化（DSH 角色配置）：角色编辑改为「点击角色进入编辑」—— 左侧角色列表、右侧编辑面板（角色名 + 定位 + 详细记忆固定字段，结构字段不会误删）；角色名限制不超过 30 字符\n5. 优化（提示词库）：内置库分类下细分二级子分类 —— 学习 / 写作 / 工作 / 生活 / 编程 / DSH 任务 6 大类下共 26 个二级子分类，可折叠浏览；我的提示词不受影响\n6. 修复（DSH 更新）：更新 DSH 后升级壳不再回退旧版本 —— 用户选择的 DSH 版本持久化到用户数据目录，覆盖安装壳时不再丢失（此前升级壳会重置配置导致 DSH 版本回退）",
+  "release_notes": "🎉 v1.0.5 —— 提示词库扩充至 201 条 + 全局记忆增强\n1. 扩充（提示词库）：内置库新增 100 条提示词（101 → 201）—— 学习 / 写作 / 工作 / 生活 / 编程 / DSH 任务 6 大类 26 个子分类全面补充（学习方法、考试备考、文章创作、职场文书、美食烹饪、健康生活、代码理解、调试排错等），我的提示词不受影响\n2. 修复（全局记忆）：删除 ## 区块后保存不再“刷新回来” —— 删除即生效，保存后不会重现（此前删除的区块保存后会按原文件位置重新出现）\n3. 优化（全局记忆）：## DSH 角色 区块加入「角色记忆」说明句 —— 明确标注各角色详细记忆写入 ~/.dsh/roles/ 下对应角色文件，DSH 对话时能知道记忆文件位置\n4. 新增（全局记忆）：保存前自动备份（AGENTS.md.bak）—— 记忆文件被外部修改导致解析异常时，窗口提示一键从备份恢复，不怕手改或程序写坏文件",
   "force": false,
-  "hash": "969c008a3d22924e5406ec154b9b824b01b17ed0ebcbe28739c70bb1abc6fd50",
+  "hash": "e2867da229c96cc400584545971a02114c02e05755a9be476be632fa4ae19f9a",
   "download_urls": [
-    "https://ghfast.top/https://github.com/XWJ-z/dsh-Desktop/releases/download/v1.0.3/DSH-Desktop-Setup-1.0.3.exe",
-    "https://gh-proxy.com/https://github.com/XWJ-z/dsh-Desktop/releases/download/v1.0.3/DSH-Desktop-Setup-1.0.3.exe"
+    "https://ghfast.top/https://github.com/XWJ-z/dsh-Desktop/releases/download/v1.0.5/DSH-Desktop-Setup-1.0.5.exe",
+    "https://gh-proxy.com/https://github.com/XWJ-z/dsh-Desktop/releases/download/v1.0.5/DSH-Desktop-Setup-1.0.5.exe"
   ]
 }

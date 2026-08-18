@@ -26,8 +26,8 @@
 
 > 📌 **声明**：DSH-Desktop 壳由 **zx 个人团队**开发维护，如使用遇到任何问题，欢迎加入 QQ 群 **916607090** 联系反馈；壳内嵌的 DSH（DeepSeek Harness Web GUI）**完全为 DeepSeek 官方发布**，可通过「检查更新」**单独更新**，并支持自由**配置插件**。
 
-<a href="https://github.com/XWJ-z/dsh-Desktop/releases/download/v1.0.3/DSH-Desktop-Setup-1.0.3.exe">
-<img src="https://img.shields.io/badge/下载安装包-DSH--Desktop--Setup--1.0.3.exe%20%E7%BA%A6114MB-2ea44f?style=for-the-badge&logo=windows&logoColor=white" alt="下载 DSH-Desktop 安装包"/>
+<a href="https://github.com/XWJ-z/dsh-Desktop/releases/download/v1.0.5/DSH-Desktop-Setup-1.0.5.exe">
+<img src="https://img.shields.io/badge/下载安装包-DSH--Desktop--Setup--1.0.5.exe%20%E7%BA%A6114MB-2ea44f?style=for-the-badge&logo=windows&logoColor=white" alt="下载 DSH-Desktop 安装包"/>
 </a>
 
 📖 详细说明（特性 / 打包 / 安装 / 升级 / 目录结构 / 运行原理）→ **[windows/README.md](windows/README.md)**
@@ -63,6 +63,7 @@
 | v1.0.1 | v1正式版本,此后按例周更|
 | v1.0.2 | 修复版：下载提速 / 全局记忆 4 类别 + 角色文件全文同步 / 窗口更宽 / 默认角色不可删 |
 | v1.0.3 | 修复与优化：托盘/关闭询问联动 / 角色竖排选择 / 点击角色编辑（名称≤30字）/ 提示词二级子分类 / 更新回退修复 |
+| v1.0.5 | 提示词库扩充至 201 条 / 全局记忆：区块删除生效 + 角色记忆说明 + 自动备份一键恢复 |
 
 > 本项目（Windows 版 & 飞牛版）版本号统一遵循 `vX.Y.Z` 三段式规则（Z 从 1 开始，无 0）：
 

@@ -175,6 +175,15 @@ function registerIpc(deps) {
     shell.openPath(dir);
     return true;
   });
+  // v1.0.5（老大反馈 4）：解析异常时从 .bak 一键恢复全局记忆
+  ipcMain.handle('memory:restore-backup', () => {
+    try {
+      return globalMemory.restoreBackup();
+    } catch (err) {
+      appendLog('error', `恢复全局记忆异常：${err.message}`);
+      return { ok: false, message: err.message };
+    }
+  });
   // v0.9.13（老大反馈）：双击 DSH 输入框重选角色 —— 弹窗选角色并注入
   ipcMain.handle('role:choose', () => pickAndInjectRole());
   // 联系我们窗口：向渲染进程提供二维码路径与群号（文件路径经 IPC 传递最稳）

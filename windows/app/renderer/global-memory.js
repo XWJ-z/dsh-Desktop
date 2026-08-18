@@ -47,6 +47,7 @@ let activeKey = USERS_KEY;
 let fileExists = false;
 let filePath = '';
 let fileSignature = ''; // v1.0.2b：AGENTS.md + 角色文件 变更指纹（聚焦自动刷新依据）
+let fileCorrupt = false; // v1.0.5（老大反馈 4）：记忆文件解析异常 → 显示一键恢复条
 let guidePending = false; // 未配置引导标记（文件用户设定区有引导句）
 let bannerTimer = null;
 let confirmTimer = null; // 保存二次确认计时
@@ -57,6 +58,12 @@ function showBanner(text, ok) {
   b.className = 'banner show ' + (ok ? 'ok' : 'fail');
   clearTimeout(bannerTimer);
   bannerTimer = setTimeout(() => { b.className = 'banner'; }, 3000);
+}
+
+/** v1.0.5（老大反馈 4）：解析异常恢复条显隐 */
+function updateCorruptBar() {
+  const bar = el('corrupt-bar');
+  if (bar) bar.classList.toggle('show', !!fileCorrupt);
 }
 
 function escapeHtml(s) {
@@ -441,6 +448,8 @@ async function loadData() {
   filePath = (data && data.file) || '';
   fileExists = !!(data && data.exists);
   fileSignature = (data && data.signature) || ''; // v1.0.2b：AGENTS.md + 角色文件 变更指纹
+  fileCorrupt = !!(data && data.corrupt); // v1.0.5（老大反馈 4）：解析异常 → 显示一键恢复条
+  updateCorruptBar();
   const list = (data && Array.isArray(data.sections)) ? data.sections : [];
   // 用户设定 / DSH 设定 / DSH 角色 三个独立顶层区块
   const usersSec = list.find((s) => s.kind === 'users');
@@ -493,6 +502,27 @@ async function init() {
   });
   el('btn-open-roles').addEventListener('click', () => {
     if (dsh && dsh.openGlobalMemoryRoles) dsh.openGlobalMemoryRoles();
+  });
+  // v1.0.5（老大反馈 4）：解析异常 → 从备份一键恢复（AGENTS.md.bak）
+  const restoreBtn = el('btn-restore-bak');
+  if (restoreBtn) restoreBtn.addEventListener('click', async () => {
+    if (!dsh || !dsh.restoreGlobalMemoryBackup) return;
+    restoreBtn.disabled = true;
+    try {
+      const r = await dsh.restoreGlobalMemoryBackup();
+      if (r && r.ok) {
+        fileCorrupt = false;
+        await loadData();
+        renderAll();
+        showBanner('✅ 已从备份恢复（AGENTS.md.bak）', true);
+      } else {
+        showBanner('恢复失败：' + ((r && r.message) || '没有可用备份'), false);
+      }
+    } catch (err) {
+      showBanner('恢复失败：' + String((err && err.message) || err), false);
+    } finally {
+      restoreBtn.disabled = false;
+    }
   });
   // v1.0.2b（老大反馈 2026-08-18：改角色 .md 后需重开窗口才刷新）：聚焦时对比
   // AGENTS.md + 角色文件 变更指纹（signature），任何一处被外部修改都自动同步最新内容

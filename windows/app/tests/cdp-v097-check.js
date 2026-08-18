@@ -182,7 +182,7 @@ async function main() {
     const ver = await cdp.send('Runtime.evaluate', {
       expression: 'window.dshDesktop.getVersion()', returnByValue: true, awaitPromise: true,
     });
-    ok(ver.result && ver.result.value === '1.0.3', `壳版本 = 1.0.3（实际 ${ver.result && ver.result.value}）`);
+    ok(ver.result && ver.result.value === '1.0.5', `壳版本 = 1.0.5（实际 ${ver.result && ver.result.value}）`);
 
     // ①.5 宠物注入正常（v0.9.10 间歇提示改动不破坏注入）+ 气泡元素存在
     // 注：injectPet 在 did-finish-load 后执行，需轮询等待注入完成
@@ -497,8 +497,8 @@ async function main() {
     ok(!!cv && typeof cv.first096 === 'string' && cv.first096.startsWith('1. '), '0.9.6 首条带编号（与 GitHub body 相同）');
     ok(!!cv && cv.r096 === true, 'changelog:data 0.9.6 released=true');
     ok(!!cv && cv.r098 === false, 'changelog:data 0.9.8（内部）released=false');
-    ok(!!cv && cv.releasedCount === 15, `released=true 共 15 个（含 1.0.3，实际 ${cv && cv.releasedCount}）`);
-    ok(!!cv && cv.sortedFirst === '1.0.3', `changelog:data 降序首条 = 1.0.3（P3-3 共享比较，实际 ${cv && cv.sortedFirst}）`);
+    ok(!!cv && cv.releasedCount === 16, `released=true 共 16 个（含 1.0.5，实际 ${cv && cv.releasedCount}）`);
+    ok(!!cv && cv.sortedFirst === '1.0.5', `changelog:data 降序首条 = 1.0.5（P3-3 共享比较，实际 ${cv && cv.sortedFirst}）`);
 
     // ③b v1.0.3（老大反馈：展开一次后不能再点开收起）：提示词库分类头可反复展开/收起
     // （修复：事件委托只绑定一次，防监听器累积导致多次 toggle 抵消）
@@ -549,6 +549,17 @@ async function main() {
           await sleep(150); // 等 renderCats 重建落定
           return subCountAt();
         };
+        // v1.0.5（老大反馈 1）：内置库总条数 201（窗口 data 直接统计）
+        const totalExpr = `(() => {
+          if (typeof data === 'undefined' || !data || !data.categories) return -1;
+          return data.categories.reduce((n, c) => n + (c.subs || []).reduce((m, s) => m + (s.items || []).length, 0), 0);
+        })()`;
+        for (let i = 0; i < 20; i++) {
+          const r = await plibCdp.send('Runtime.evaluate', { expression: totalExpr, returnByValue: true });
+          const v = r.result && r.result.value;
+          if (v > 0) { ok(v === 201, `提示词库内置库总条数 = 201（v1.0.5 新增 100 条，实际 ${v}）`); break; }
+          await sleep(150);
+        }
         const s0 = await subCountAt(); // 初始（第一个分类默认展开 → 有子分类）
         const e1 = await clickAndRead();
         const e2 = await clickAndRead();

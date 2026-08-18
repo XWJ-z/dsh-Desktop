@@ -62,6 +62,13 @@ const ROLES_DIR = 'roles';
 /** 角色名长度上限（v1.0.3 老大反馈 2：不超过 30 字符） */
 const MAX_ROLE_NAME = 30;
 
+/** v1.0.5（老大反馈 3）：DSH 角色区块的「角色记忆」说明句 —— 对话时 DSH 能知道各角色记忆文件的地址 */
+const ROLE_NOTE_FIELD = '**角色记忆**';
+const ROLE_NOTE_TEXT = '各角色的详细记忆写入 `~/.dsh/roles/` 下对应角色文件。';
+
+/** v1.0.5（老大反馈 4）：全局记忆备份文件名（保存前自动备份上一次版本，解析异常时可一键恢复） */
+const BACKUP_NAME = 'AGENTS.md.bak';
+
 /** 未配置引导句的字段名与内容（老大指令 2026-08-17：第一次对话引导用户配置全局记忆） */
 const GUIDE_FIELD = '引导提示';
 const GUIDE_TEXT = '【请在对话中引导用户点击宠物/工具箱图标 进行配置全局记忆，或者发送给我进行配置。配置完成后删除此句】';
@@ -90,6 +97,7 @@ const FORMAT_TIDY_PROMPT = `请按照以下标准格式整理你的全局记忆�
 
 ## DSH 角色
 
+- ${ROLE_NOTE_FIELD}：${ROLE_NOTE_TEXT}
 - 角色 1：角色定位（文件：~/.dsh/roles/角色 1.md）
 - 角色 2：角色定位（文件：~/.dsh/roles/角色 2.md）
 - 角色 3：角色定位（文件：~/.dsh/roles/角色 3.md）
@@ -124,6 +132,7 @@ ${DEFAULT_DSH_FIELDS.map((f) => `- ${f}：`).join('\n')}
 
 ## ${ROLES_SECTION}
 
+- ${ROLE_NOTE_FIELD}：${ROLE_NOTE_TEXT}
 ${DEFAULT_ROLES.map((f) => `- ${f}：`).join('\n')}
 
 ## 其他记忆
@@ -233,6 +242,8 @@ function createGlobalMemory(deps) {
           if (m) {
             const name = m[1].trim();
             if (name === GUIDE_FIELD) { cur.guide = true; continue; }
+            // v1.0.5（老大反馈 3）：「角色记忆」说明句是固定引导行，不算字段（防保存时重复累积）
+            if (cur.kind === 'roles' && name === ROLE_NOTE_FIELD) { cur.roleNote = true; continue; }
             cur.fields.push({ name: migrateName(name), value: m[2].trim() });
           }
         } else {
@@ -272,9 +283,11 @@ function createGlobalMemory(deps) {
     return lines.join('\n');
   }
 
-  /** 渲染 DSH 角色区块（字段行；始终输出区块标题，保证标准格式完整） */
-  function renderRoles(fields) {
+  /** 渲染 DSH 角色区块（字段行；始终输出区块标题，保证标准格式完整）
+   *  v1.0.5（老大反馈 3）：roleNote=true 时固定输出「角色记忆」说明句（DSH 对话时知道角色记忆文件地址） */
+  function renderRoles(fields, roleNote) {
     const lines = [`## ${ROLES_SECTION}`, ''];
+    if (roleNote) lines.push(`- ${ROLE_NOTE_FIELD}：${ROLE_NOTE_TEXT}`);
     (fields || []).forEach((it) => {
       const name = String(it.name || '').trim();
       if (!name) return;
@@ -434,7 +447,7 @@ function createGlobalMemory(deps) {
     for (const s of sections) {
       if (s.kind === 'users') usersBlock = renderUsers(s.fields || [], !!s.guide);
       else if (s.kind === 'dsh') dshBlock = renderDsh(s.fields || []);
-      else if (s.kind === 'roles') rolesBlock = renderRoles(s.fields || []);
+      else if (s.kind === 'roles') rolesBlock = renderRoles(s.fields || [], !!s.roleNote);
       else if (s.kind === 'long') others.push(renderLong(s.title, s.body));
     }
     if (usersBlock === null) usersBlock = renderUsers([], false);
@@ -501,6 +514,8 @@ function createGlobalMemory(deps) {
       .map((s) => ({ title: String((s && s.title) || '').trim(), body: String((s && s.body) || '') }))
       .filter((s) => s.title !== '');
     const raw = readRaw();
+    // v1.0.5（老大反馈 4）：保存前自动备份上一次版本（.bak；有旧内容才备份，首次保存无需）
+    if (raw !== null) writeBackup();
     // v1.0.2（老大反馈 5①）：改名/删除 → 角色 .md 文件同步（旧文件不再残留堆积）
     const prevParsed = raw === null ? parse(TEMPLATE) : parse(raw);
     const prevRolesSec = prevParsed.sections.find((s) => s.kind === 'roles');
@@ -516,7 +531,11 @@ function createGlobalMemory(deps) {
     let usersPlaced = false;
     let dshPlaced = false;
     let rolesPlaced = false;
-    let li = 0;
+    // v1.0.5（老大反馈 1）：修复「删除 ## 区块后保存又刷新出来」——
+    // 长区块以窗口提交集合为最终状态：原文件有、窗口未提交的区块 = 已删除（不保留）；
+    // 同标题匹配原位覆盖（标题/内容以窗口为准）；窗口新增标题追加末尾。
+    const submittedLongs = longSections.slice();
+    const usedTitles = new Set();
     for (const s of sections) {
       if (s.kind === 'users') {
         merged.push({ title: USER_SECTION, kind: 'users', fields: users, guide });
@@ -525,26 +544,24 @@ function createGlobalMemory(deps) {
         merged.push({ title: DSH_SECTION, kind: 'dsh', fields: dsh });
         dshPlaced = true;
       } else if (s.kind === 'roles') {
-        merged.push({ title: ROLES_SECTION, kind: 'roles', fields: roleLines });
+        merged.push({ title: ROLES_SECTION, kind: 'roles', fields: roleLines, roleNote: true });
         rolesPlaced = true;
       } else {
-        const incoming = longSections[li] || null;
-        li++;
-        merged.push({
-          title: incoming ? incoming.title : s.title,
-          kind: 'long',
-          body: incoming ? incoming.body : s.body,
-        });
+        const idx = submittedLongs.findIndex((it) => it.title === s.title && !usedTitles.has(it.title));
+        if (idx >= 0) {
+          usedTitles.add(submittedLongs[idx].title);
+          merged.push({ title: submittedLongs[idx].title, kind: 'long', body: submittedLongs[idx].body });
+        }
+        // 原文件有、窗口未提交 → 不 push（删除生效）
       }
     }
     if (!usersPlaced) merged.unshift({ title: USER_SECTION, kind: 'users', fields: users, guide });
-    if (!rolesPlaced) merged.push({ title: ROLES_SECTION, kind: 'roles', fields: roleLines });
+    if (!rolesPlaced) merged.push({ title: ROLES_SECTION, kind: 'roles', fields: roleLines, roleNote: true });
     if (!dshPlaced) merged.splice(merged.findIndex((s) => s.kind === 'users') + 1, 0, { title: DSH_SECTION, kind: 'dsh', fields: dsh });
-    // 窗口新增区块（原文件区块数之后）追加末尾
-    const originalLong = sections.filter((s) => s.kind === 'long').length;
-    for (let i = originalLong; i < longSections.length; i++) {
-      merged.push({ title: longSections[i].title, kind: 'long', body: longSections[i].body });
-    }
+    // 窗口新增的 ## 区块（原文件没有的标题）追加末尾
+    submittedLongs.forEach((it) => {
+      if (!usedTitles.has(it.title)) merged.push({ title: it.title, kind: 'long', body: it.body });
+    });
     const content = render(head, merged);
     try {
       const f = file();
@@ -608,14 +625,80 @@ function createGlobalMemory(deps) {
   }
 
   /**
+   * 保存前自动备份：把当前 AGENTS.md 复制为 AGENTS.md.bak（每次保存覆盖为"上一次版本"）。
+   * v1.0.5（老大反馈 4）：怕手改/程序写坏文件 → 备份 + 解析异常一键恢复。
+   * @returns {boolean} 是否成功备份（无旧文件返回 true，无需备份）
+   */
+  function writeBackup() {
+    try {
+      const f = file();
+      if (fs.existsSync(f)) {
+        fs.copyFileSync(f, backupFile());
+        appendLog('debug', `全局记忆已备份：${backupFile()}`);
+      }
+      return true;
+    } catch (err) {
+      appendLog('warn', `备份全局记忆失败：${err.message}`);
+      return false;
+    }
+  }
+
+  /** 备份文件路径：~/.dsh/AGENTS.md.bak */
+  function backupFile() {
+    return path.join(os.homedir(), '.dsh', BACKUP_NAME);
+  }
+
+  /**
+   * 一键恢复：把 AGENTS.md.bak 复制回 AGENTS.md（恢复前把当前文件保留为 .corrupt 防二次丢失）。
+   * @returns {{ ok: boolean, file?: string, message?: string }}
+   */
+  function restoreBackup() {
+    const bak = backupFile();
+    if (!fs.existsSync(bak)) return { ok: false, message: '没有可用备份（AGENTS.md.bak）' };
+    try {
+      const f = file();
+      if (fs.existsSync(f)) {
+        fs.copyFileSync(f, `${f}.corrupt`);
+        appendLog('info', `恢复前已保留当前文件：${f}.corrupt`);
+      }
+      fs.copyFileSync(bak, f);
+      appendLog('info', `已从备份恢复全局记忆：${f}`);
+      return { ok: true, file: f };
+    } catch (err) {
+      appendLog('error', `恢复全局记忆失败：${err.message}`);
+      return { ok: false, message: err.message };
+    }
+  }
+
+  /**
+   * 解析异常检测：文件存在、内容非空、但解析不出任何区块 → 视为损坏
+   * （正常 AGENTS.md 必有 ## 区块；空文件/全空白不算损坏）。
+   * v1.0.5（老大反馈 4）：窗口据此提示「从备份一键恢复」。
+   * @returns {boolean}
+   */
+  function isCorrupt() {
+    try {
+      const raw = readRaw();
+      if (raw === null) return false;
+      const parsed = parse(raw);
+      return raw.trim() !== '' && parsed.sections.length === 0;
+    } catch {
+      return true;
+    }
+  }
+
+  /**
    * 读取窗口数据：头部 + 全部区块 + 默认字段 + 文件路径 + 角色目录。
    * v1.0.2（老大反馈 5②）：DSH 角色 fields 的 value = 角色 .md 文件全文，desc = 定位。
    * v1.0.2b（老大反馈 2026-08-18：外部改角色 .md 后需重开窗口才刷新）：返回 signature =
    * AGENTS.md mtime + 各角色文件 mtime/size —— 聚焦刷新对比 signature，角色文件变更也能检测到。
+   * v1.0.5（老大反馈 4）：返回 corrupt —— 解析异常标记，窗口提示一键恢复。
    */
   function data() {
     const raw = readRaw();
-    const parsed = raw === null ? parse('') : parse(raw);
+    // v1.0.5：首次（无文件）也用模板解析 —— 窗口首次打开即可见「其他记忆」等模板区块，
+    // 保存时窗口提交完整集合（v1.0.5 起区块集合 = 最终状态，模板区块不提交会被视为删除）
+    const parsed = raw === null ? parse(TEMPLATE) : parse(raw);
     const rolesSec = parsed.sections.find((s) => s.kind === 'roles');
     const roleNames = rolesSec && rolesSec.fields.length > 0
       ? rolesSec.fields.map((f) => f.name)
@@ -650,6 +733,7 @@ function createGlobalMemory(deps) {
       rolesDir: path.join(os.homedir(), '.dsh', ROLES_DIR), // v1.0.1（老大指令）：窗口左下角显示角色文件目录
       mtime,
       signature: `${String(mtime)}|${rolesStamp}`, // v1.0.2b：AGENTS.md + 角色文件 变更指纹
+      corrupt: isCorrupt(), // v1.0.5（老大反馈 4）：解析异常标记 → 窗口提示一键恢复
     };
   }
 
@@ -658,9 +742,11 @@ function createGlobalMemory(deps) {
     roleFile, roleFileTemplate, ensureRoleFiles, safeRoleFileName,
     readRoleFile, extractRoleDesc, ensureRoleTitle, syncRoleFiles, // v1.0.2：角色文件全文同步
     parseRoleContent, renderRoleContent, // v1.0.3：角色字段输入化（定位/详细记忆）
+    writeBackup, restoreBackup, isCorrupt, backupFile, // v1.0.5：备份 / 一键恢复 / 损坏检测
     DEFAULT_FIELDS, DEFAULT_DSH_FIELDS, DEFAULT_ROLES, USER_SECTION, DSH_SECTION, ROLES_SECTION,
     GUIDE_FIELD, GUIDE_TEXT, FORMAT_TIDY_PROMPT,
     MAX_ROLE_NAME, // v1.0.3：角色名长度上限（30）
+    ROLE_NOTE_FIELD, ROLE_NOTE_TEXT, // v1.0.5：DSH 角色区块「角色记忆」说明句
   };
 }
 
@@ -668,4 +754,5 @@ module.exports = {
   createGlobalMemory, FILE_NAME, USER_SECTION, DSH_SECTION, ROLES_SECTION, LEGACY_SECTION, LEGACY_DSH_SECTION, LEGACY_ROLE_TITLE,
   GUIDE_FIELD, GUIDE_TEXT, FORMAT_TIDY_PROMPT, DEFAULT_FIELDS, DEFAULT_DSH_FIELDS, DEFAULT_ROLES, TEMPLATE,
   MAX_ROLE_NAME, // v1.0.3：角色名长度上限（30）
+  ROLE_NOTE_FIELD, ROLE_NOTE_TEXT, BACKUP_NAME, // v1.0.5：角色记忆说明句 / 备份文件名
 };
