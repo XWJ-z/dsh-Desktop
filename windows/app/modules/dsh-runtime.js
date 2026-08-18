@@ -171,7 +171,19 @@ function createDshRuntime(deps) {
    * @returns 安装后的 DSH 入口 bin.js
    */
   async function ensureDshRuntime() {
-    const cfg = readShellConfig();
+    let cfg = readShellConfig();
+    // v1.0.3（老大反馈 6 完整修复）：升级壳兼容迁移 —— 旧版（v1.0.2 及以前）用户升级
+    // DSH 时只写了 config.json（无 userData 记录），升级壳覆盖安装后 config 被重置为内置
+    // 版本，若此时已安装版本与内置不同，则视为「用户此前选择过该版本」并持久化到
+    // userData，避免启动时按内置旧版本重装导致「升级壳后 DSH 版本回退」。
+    if (!readUserDshVersion()) {
+      const installed = installedDshVersion();
+      if (installed && cfg.dshVersion !== 'latest' && installed !== cfg.dshVersion) {
+        appendLog('info', `检测到已安装 DSH v${installed} 与壳内置版本 ${cfg.dshVersion} 不一致（升级壳场景），持久化为用户选择，避免回退`);
+        saveUserDshVersion(installed, '');
+        cfg = readShellConfig(); // 重新读取（userData 记录已生效）
+      }
+    }
     if (dshUpToDate(cfg)) {
       appendLog('info', `DSH 运行时已就绪：${cfg.dshPackage}@${installedDshVersion()}`);
       pushStage('start');

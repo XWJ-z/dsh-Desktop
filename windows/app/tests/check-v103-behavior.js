@@ -249,7 +249,7 @@ function testRoleFields() {
 }
 
 // ── 问题⑥：DSH 版本选择持久化 ──
-function testDshVersionPersist() {
+async function testDshVersionPersist() {
   console.log('[3] 问题⑥ DSH 版本选择持久化（升级壳不回退）');
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-v103-ver-'));
   const appPath = path.join(tmp, 'app');
@@ -317,13 +317,41 @@ function testDshVersionPersist() {
   const rt4 = mkRuntime();
   ok(rt4.readShellConfig().dshVersion === 'latest', '无 userData 记录 + config=latest → 保持 latest 语义');
 
+  // ⑥ 升级壳兼容迁移（老大反馈 6 完整覆盖）：v1.0.2 时代用户曾把 config.json 升级 DSH 到
+  // rc.7（当时无 userData 记录）→ 升级壳 v1.0.3 后 config 被重置为内置 rc.6 →
+  // ensureDshRuntime 检测到已装版本与内置不一致 → 持久化已装版本，不再回退重装
+  {
+    const pkgDir = path.join(userData, 'dshenv', 'node_modules', '@deepseek-ai', 'dsh');
+    fs.mkdirSync(path.join(pkgDir, 'lib'), { recursive: true });
+    fs.writeFileSync(path.join(pkgDir, 'package.json'), JSON.stringify({ version: '0.1.0-rc.7' }), 'utf8');
+    fs.writeFileSync(path.join(pkgDir, 'lib', 'bin.js'), '// dsh bin', 'utf8');
+    fs.writeFileSync(path.join(appPath, 'config.json'), JSON.stringify({ dshVersion: '0.1.0-rc.6', dshPackage: '@deepseek-ai/dsh' }, null, 2), 'utf8');
+    fs.rmSync(path.join(userData, 'dsh-version.json'), { force: true });
+    let spawned = 0;
+    const rtM = createDshRuntime({
+      app: { getAppPath: () => appPath, getPath: () => userData },
+      fs, path,
+      spawn: () => { spawned++; return { stdout: new EventEmitter(), stderr: new EventEmitter(), on: () => {}, kill: () => {} }; },
+      appendLog: () => {}, pushStage: () => {}, pushProgress: () => {},
+      dirSizeMBAsync: async () => '0.0', logPath: () => '',
+      resolveRunner: () => ({ execPath: 'node', env: {} }),
+      trackChild: (c) => c, npmInstallTimeoutMs: 60000,
+      fetchLatestDshInfo: async () => null,
+    });
+    const bin = await rtM.ensureDshRuntime();
+    ok(!!bin && bin.includes('bin.js'), '升级壳场景：ensureDshRuntime 返回已安装 bin（未重装）');
+    ok(spawned === 0, '升级壳场景：未触发 npm install（不回退重装 rc.6）');
+    ok(rtM.readUserDshVersion() && rtM.readUserDshVersion().version === '0.1.0-rc.7',
+      '升级壳场景：已安装 rc.7 已持久化到 userData（升级壳不再回退）');
+  }
+
   fs.rmSync(tmp, { recursive: true, force: true });
 }
 
 async function main() {
   testSettingsLink();
   testRoleFields();
-  testDshVersionPersist();
+  await testDshVersionPersist();
   await testRolePicker();
   console.log(`\n结果：${passed} 通过 / ${failed} 失败`);
   process.exit(failed === 0 ? 0 : 1);
