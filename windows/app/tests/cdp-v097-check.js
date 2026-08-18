@@ -500,6 +500,73 @@ async function main() {
     ok(!!cv && cv.releasedCount === 14, `released=true 共 14 个（含 1.0.1/1.0.2，实际 ${cv && cv.releasedCount}）`);
     ok(!!cv && cv.sortedFirst === '1.0.3', `changelog:data 降序首条 = 1.0.3（P3-3 共享比较，实际 ${cv && cv.sortedFirst}）`);
 
+    // ③b v1.0.3（老大反馈：展开一次后不能再点开收起）：提示词库分类头可反复展开/收起
+    // （修复：事件委托只绑定一次，防监听器累积导致多次 toggle 抵消）
+    await cdp.send('Runtime.evaluate', {
+      expression: 'window.dshDesktop.openPromptLib()', returnByValue: true, awaitPromise: true,
+    });
+    const plibWin = await waitTarget(SIM_DEBUG_PORT, (t) => /promptlib\.html/.test(t.url), 15_000);
+    ok(!!plibWin, '提示词库窗口已打开（promptlib.html）');
+    if (plibWin && plibWin.webSocketDebuggerUrl) {
+      const plibCdp = cdpConnect(plibWin.webSocketDebuggerUrl);
+      try {
+        let ready = false;
+        const t2 = Date.now();
+        while (Date.now() - t2 < 10_000) {
+          const r = await plibCdp.send('Runtime.evaluate', {
+            expression: `(() => {
+              const cats = document.getElementById('cats');
+              return { hasCats: !!cats, hasHead: !!(cats && cats.querySelector('.cat-head')), hasSub: !!(cats && cats.querySelector('.cat.sub')) };
+            })()`,
+            returnByValue: true,
+          });
+          const v = r.result && r.result.value;
+          if (v && v.hasCats && v.hasHead) { ready = true; break; }
+          await sleep(400);
+        }
+        ok(ready, '提示词库内置库渲染完成（分类头存在）');
+        // 逐次点击 + 等待渲染再读取（evaluate 内同步 click 的效果延迟一拍可见，需异步轮询）
+        const clickHeadExpr = `(() => {
+          const h = document.querySelector('#cats .cat-head');
+          if (h) h.click();
+          return !!h;
+        })()`;
+        const readSubsExpr = `(() => {
+          const n = document.querySelectorAll('#cats .cat.sub').length;
+          return { n, arrow: (document.querySelector('#cats .cat-arrow') || {}).textContent || '' };
+        })()`;
+        const subCountAt = async () => {
+          for (let i = 0; i < 20; i++) {
+            const r = await plibCdp.send('Runtime.evaluate', { expression: readSubsExpr, returnByValue: true });
+            const v = r.result && r.result.value;
+            if (v && v.n !== undefined) return v;
+            await sleep(80);
+          }
+          return { n: -1, arrow: '' };
+        };
+        const clickAndRead = async () => {
+          await plibCdp.send('Runtime.evaluate', { expression: clickHeadExpr, returnByValue: true });
+          await sleep(150); // 等 renderCats 重建落定
+          return subCountAt();
+        };
+        const s0 = await subCountAt(); // 初始（第一个分类默认展开 → 有子分类）
+        const e1 = await clickAndRead();
+        const e2 = await clickAndRead();
+        const e3 = await clickAndRead();
+        const e4 = await clickAndRead();
+        ok(typeof s0.n === 'number', `内置库初始渲染（默认展开第一个分类，子分类 ${s0.n} 个）`);
+        // 点击序列：每次点击都应翻转展开/收起（老大反馈：展开一次后不能再点开收起 → 已修复）
+        ok(e1.n !== s0.n, `第一次点击状态翻转（${s0.n} → ${e1.n}，箭头 ${e1.arrow}）`);
+        ok(e2.n !== e1.n, `第二次点击状态翻转（${e1.n} → ${e2.n}，箭头 ${e2.arrow}）`);
+        ok(e3.n !== e2.n, `第三次点击状态翻转（${e2.n} → ${e3.n}，箭头 ${e3.arrow}）`);
+        ok(e4.n !== e3.n, `第四次点击状态翻转（${e3.n} → ${e4.n}，箭头 ${e4.arrow}）—— 可反复展开/收起，监听器未累积`);
+        // 展开态子分类应存在
+        ok(e1.n > 0 || e2.n > 0 || e3.n > 0 || e4.n > 0, '点击序列中出现过展开态（子分类可见）');
+      } finally {
+        plibCdp.close();
+      }
+    }
+
     // ④ 日志：公告自动刷新已启动 + fetchLatest 已执行
     await sleep(1500); // 等 checkUpdatesOnStart 的 fetchLatest 落日志
     const logDir = path.join(userData, 'logs');

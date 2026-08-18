@@ -795,6 +795,8 @@ function testV103() {
   const plib = read('renderer/promptlib.js');
   ok(plib.includes('expandedCats') && plib.includes('cat-head') && plib.includes('selectSub') && plib.includes('currentSub'),
     'promptlib：一级分类可折叠 + 二级子分类选中（老大反馈 5 修正）');
+  ok(plib.includes('promptlibBound') && plib.includes('dataset.promptlibBound'),
+    'promptlib：分类头事件委托只绑定一次（防监听器累积导致展开/收起失效，老大反馈）');
   ok(plib.includes('customGroups') && plib.includes('filteredCustom'), 'promptlib：我的提示词分组逻辑保留（不受影响）');
   // 问题⑥：DSH 版本选择持久化到 userData（升级壳不回退）
   const rt = read('modules/dsh-runtime.js');

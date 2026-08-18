@@ -164,18 +164,23 @@ function renderCats() {
   cats.querySelectorAll('.cat.sub').forEach((c) => {
     c.classList.toggle('active', c.dataset.sub === currentSub);
   });
-  cats.addEventListener('click', (e) => {
-    const head = e.target.closest('.cat-head');
-    if (head) {
-      const cid = head.dataset.cat;
-      if (expandedCats.has(cid)) expandedCats.delete(cid);
-      else expandedCats.add(cid);
-      renderCats();
-      return;
-    }
-    const subEl = e.target.closest('.cat.sub');
-    if (subEl) selectSub(subEl.dataset.sub);
-  });
+  // v1.0.3（老大反馈：展开一次后不能再点开收起）：事件委托**只绑定一次** ——
+  // 此前每次 renderCats 重建都往 #cats 追加监听器，点击被多个监听器多次 toggle 抵消
+  if (!cats.dataset.promptlibBound) {
+    cats.dataset.promptlibBound = '1';
+    cats.addEventListener('click', (e) => {
+      const head = e.target.closest('.cat-head');
+      if (head) {
+        const cid = head.dataset.cat;
+        if (expandedCats.has(cid)) expandedCats.delete(cid);
+        else expandedCats.add(cid);
+        renderCats();
+        return;
+      }
+      const subEl = e.target.closest('.cat.sub');
+      if (subEl) selectSub(subEl.dataset.sub);
+    });
+  }
 }
 
 /** 选中二级子分类 */
