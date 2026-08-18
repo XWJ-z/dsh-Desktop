@@ -466,6 +466,8 @@ async function loadData() {
     roleFields = defs.map((n) => ({ name: n, desc: '', memory: '' }));
   }
   guidePending = !!(usersSec && usersSec.guide);
+  // v1.0.3：聚焦刷新/外部变更后角色列表可能变化，选中下标越界时回落到最后一个
+  if (selectedRoleIndex >= roleFields.length) selectedRoleIndex = roleFields.length - 1;
   sections = list
     .filter((s) => s.kind === 'long')
     .map((s) => ({ title: s.title, body: (s.body || []).join('\n'), collapsed: false }));
