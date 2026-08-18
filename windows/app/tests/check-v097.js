@@ -144,9 +144,9 @@ function testChangelog() {
   const v097 = cl.versions.find((v) => v.version === '0.9.7');
   ok(!!v097 && Array.isArray(v097.notes) && v097.notes.length === 3, '0.9.7 条目存在（3 条）');
 
-  // v0.9.9（老大指令）：released 标记 —— 已发布 12 版，内部版本 false
+  // v0.9.9（老大指令）：released 标记 —— 已发布 15 版（v1.0.3 发布），内部版本 false
   const releasedCount = cl.versions.filter((v) => v.released === true).length;
-  ok(releasedCount === 14, `released=true 共 14 个已发布版本（含 1.0.2，实际 ${releasedCount}）`);
+  ok(releasedCount === 15, `released=true 共 15 个已发布版本（含 1.0.3，实际 ${releasedCount}）`);
   ok(cl.versions.find((v) => v.version === '0.9.6').released === true, '0.9.6 released=true');
   ok(cl.versions.find((v) => v.version === '0.8.30').released === true, '0.8.30 released=true');
   ok(cl.versions.find((v) => v.version === '0.9.8').released === false, '0.9.8（内部）released=false');
@@ -170,13 +170,13 @@ function testChangelog() {
   const v096 = cl.versions.find((v) => v.version === '0.9.6');
   ok(!!v096 && Array.isArray(v096.notes) && v096.notes.length === 12,
     `0.9.6 条目 12 条（实际 ${v096 ? v096.notes.length : 0}）`);
-  // v1.0.3（待发布）：version.json 三处一致（实测 hash 构建后填写）+ CHANGELOG 1.0.3 released=false
+  // v1.0.3（已发布）：version.json 三处一致（实测 hash）+ CHANGELOG 1.0.3 released=true
   ok(vj.version === '1.0.3', `version.json version = 1.0.3（实际 ${vj.version}）`);
   ok(vj.hash && /^[0-9a-f]{64}$/.test(vj.hash), 'version.json hash 为 64 位 SHA256');
   ok(Array.isArray(vj.download_urls) && vj.download_urls.length >= 1 && vj.download_urls.every((u) => u.includes('v1.0.3')), 'version.json download_urls 指向 v1.0.3 资产');
   const v103 = cl.versions.find((v) => v.version === '1.0.3');
-  ok(!!v103 && Array.isArray(v103.notes) && v103.notes.length >= 1 && v103.released === false,
-    'CHANGELOG 1.0.3 条目存在（released:false，待发布）');
+  ok(!!v103 && Array.isArray(v103.notes) && v103.notes.length >= 1 && v103.released === true,
+    'CHANGELOG 1.0.3 条目存在（released:true，已发布）');
   const v102b = cl.versions.find((v) => v.version === '1.0.2');
   ok(!!v102b && v102b.released === true, 'CHANGELOG 1.0.2 released=true（已发布）');
   const v101b = cl.versions.find((v) => v.version === '1.0.1');
