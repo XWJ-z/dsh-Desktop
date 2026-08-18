@@ -148,6 +148,60 @@
     .memo-card .fold:hover { color: var(--text-primary); background: var(--bg-hover); }
     .role-card .role-icon { font-size: 15px; }
     .role-card-body { min-height: 120px; }
+    /* v1.0.3（老大反馈 2）：角色列表 + 点击进入编辑（角色名 ≤30 字符） */
+    .role-layout { display: flex; gap: 12px; flex: 1; min-height: 0; }
+    .role-list {
+      width: 210px; flex-shrink: 0; display: flex; flex-direction: column; gap: 6px;
+      overflow-y: auto; align-content: flex-start; padding-right: 2px;
+    }
+    .role-item {
+      display: flex; align-items: center; gap: 7px;
+      padding: 9px 10px; border-radius: var(--radius-btn); cursor: pointer;
+      background: var(--bg-input); border: 1px solid var(--border-standard);
+      color: var(--text-secondary); flex-shrink: 0;
+    }
+    .role-item:hover { border-color: rgba(94,106,210,.5); }
+    .role-item.active { background: var(--bg-surface); border-color: rgba(94,106,210,.55); color: var(--text-primary); }
+    .role-item-icon { font-size: 13px; flex-shrink: 0; }
+    .role-item-name {
+      font-size: 12.5px; font-weight: 590; flex: 1; min-width: 0;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .role-item-desc {
+      font-size: 10.5px; color: var(--text-quaternary); max-width: 70px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 0;
+    }
+    .role-item .del { width: 22px; height: 22px; flex-shrink: 0; border: none; background: transparent; cursor: pointer; color: var(--text-quaternary); font-size: 12px; border-radius: 6px; }
+    .role-item .del:hover { color: #ff6b6b; background: rgba(255,107,107,.12); }
+    .role-editor {
+      flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px;
+      background: var(--bg-input); border: 1px solid var(--border-standard);
+      border-radius: var(--radius-btn); padding: 12px 14px; overflow-y: auto;
+    }
+    .role-editor-head { display: flex; align-items: center; gap: 8px; }
+    .role-editor-name {
+      flex: 1; min-width: 0; padding: 8px 11px; font-size: 13.5px; font-weight: 590;
+      background: var(--bg-input); border: 1px solid var(--border-standard);
+      border-radius: 8px; color: var(--text-primary); outline: none;
+    }
+    .role-editor-name:focus { border-color: rgba(94,106,210,.55); }
+    .role-editor-count { font-size: 11px; color: var(--text-quaternary); flex-shrink: 0; }
+    /* v1.0.3（老大反馈 4）：角色字段输入化 —— 定位 / 详细记忆 固定字段，结构标题不可删 */
+    .role-field { display: flex; flex-direction: column; gap: 5px; }
+    .role-field-label {
+      font-size: 12px; font-weight: 590; color: var(--brand);
+      font-family: Consolas, "Courier New", "Microsoft YaHei", monospace;
+    }
+    .role-field-label .role-field-hint { font-weight: 400; color: var(--text-quaternary); margin-left: 6px; font-family: inherit; font-size: 11px; }
+    .role-field-input {
+      min-height: 44px; resize: vertical; width: 100%; box-sizing: border-box;
+      padding: 8px 11px;
+      background: var(--bg-input); border: 1px solid var(--border-standard);
+      border-radius: var(--radius-btn); color: var(--text-primary); outline: none;
+      font: 12.5px/1.6 Consolas, "Courier New", "Microsoft YaHei", monospace;
+      white-space: pre-wrap;
+    }
+    .role-field-input:focus { border-color: rgba(94,106,210,.55); }
     /* v1.0.1（老大指令）：去掉左下角双路径显示（按钮直达目录即可） */
     .path {
       font-size: 11px; color: var(--text-quaternary); flex: 1; min-width: 0;
@@ -210,8 +264,8 @@
 <body>
   <h1>🧠 全局记忆 <span class="dsh-view">(DSH 视角)</span></h1>
   <div class="subtitle">写入 <code>~/.dsh/AGENTS.md</code>（DSH 的视角）：「用户设定」记用户是谁、「我的设定」记 DSH 自己（含默认角色下拉）、「全局记忆区块」汇总其他 ## 区块、「DSH 角色」每个角色对应 <code>~/.dsh/roles/</code> 一个文件（输入框即文件全文，两边同步）。覆盖已有内容保存时需二次确认。</div>
-  <!-- v0.9.16（老大指令）：红色提示移到全局记忆介绍下面（默认角色可改：在 DSH 角色中修改） -->
-  <div class="tip-red">⚠️ 双击对话框选择角色，默认角色请在[DSH角色中修改]</div>
+  <!-- v1.0.3（老大反馈 2）：默认角色实际在「我的设定」里选择，提示文案修正 -->
+  <div class="tip-red">⚠️ 双击对话框选择角色，默认角色请在[我的设定]中选择</div>
   <div id="banner" class="banner"></div>
   <div class="layout">
     <div class="left" id="cats"></div>

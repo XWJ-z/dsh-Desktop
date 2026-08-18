@@ -182,7 +182,7 @@ async function main() {
     const ver = await cdp.send('Runtime.evaluate', {
       expression: 'window.dshDesktop.getVersion()', returnByValue: true, awaitPromise: true,
     });
-    ok(ver.result && ver.result.value === '1.0.2', `壳版本 = 1.0.2（实际 ${ver.result && ver.result.value}）`);
+    ok(ver.result && ver.result.value === '1.0.3', `壳版本 = 1.0.3（实际 ${ver.result && ver.result.value}）`);
 
     // ①.5 宠物注入正常（v0.9.10 间歇提示改动不破坏注入）+ 气泡元素存在
     // 注：injectPet 在 did-finish-load 后执行，需轮询等待注入完成
@@ -360,26 +360,34 @@ async function main() {
         while (Date.now() - tr < 5000) {
           const s = await memCdp.send('Runtime.evaluate', {
             expression: `(() => {
-              const cards = Array.from(document.querySelectorAll('#role-cards .role-card'));
+              // v1.0.3：先点击第一个角色进入编辑（编辑面板默认空态）
+              const firstItem = document.querySelector('#role-list .role-item');
+              if (firstItem && !document.querySelector('.role-editor-name')) firstItem.click();
+              const items = Array.from(document.querySelectorAll('#role-list .role-item'));
               return {
-                hasRoleCards: !!document.getElementById('role-cards'),
-                roleCount: cards.length,
-                roleNames: cards.map((c) => (c.querySelector('.role-card-name') || {}).value || '').filter(Boolean),
+                hasRoleList: !!document.getElementById('role-list'),
+                hasRoleEditor: !!document.getElementById('role-editor'),
+                roleCount: items.length,
+                roleNames: items.map((c) => (c.querySelector('.role-item-name') || {}).textContent || '').filter(Boolean),
                 hasAddRole: !!document.getElementById('btn-add-role'),
-                hasRoleName: !!document.querySelector('.role-card-name'),
-                hasRoleBody: !!document.querySelector('.role-card-body'),
+                hasEditorName: !!document.querySelector('.role-editor-name'),
+                hasRoleFields: !!document.querySelector('.role-field-input'),
+                hasRoleLabels: !!document.querySelector('.role-field-label'),
+                editorNameMax: (document.querySelector('.role-editor-name') || {}).maxLength || 0,
               };
             })()`,
             returnByValue: true,
           });
           rv = s.result && s.result.value;
-          if (rv && rv.hasRoleCards && rv.roleCount >= 1) break;
+          if (rv && rv.hasRoleList && rv.roleCount >= 1) break;
           await sleep(400);
         }
-        ok(!!rv && rv.hasRoleCards && rv.roleCount >= 1, `DSH 角色卡片列表视图（${rv && rv.roleCount} 个角色，v1.0.2）`);
-        ok(!!rv && rv.roleNames.includes('角色 1') && rv.roleNames.includes('角色 3'), '默认角色卡片：角色 1/2/3');
+        ok(!!rv && rv.hasRoleList && rv.roleCount >= 1, `DSH 角色列表视图（${rv && rv.roleCount} 个角色，v1.0.3）`);
+        ok(!!rv && rv.roleNames.includes('角色 1') && rv.roleNames.includes('角色 3'), '默认角色列表：角色 1/2/3');
         ok(!!rv && rv.hasAddRole, '有「＋ 添加角色」按钮');
-        ok(!!rv && rv.hasRoleName && rv.hasRoleBody, '每张角色卡：角色名输入 + 文件全文大输入框（v1.0.2）');
+        ok(!!rv && rv.hasRoleEditor && rv.hasEditorName && rv.hasRoleFields && rv.hasRoleLabels,
+          '点击角色进入编辑：编辑面板含角色名 + 定位/详细记忆固定字段（v1.0.3 老大反馈 2/4）');
+        ok(!!rv && rv.editorNameMax === 30, `角色名输入 maxlength=30（v1.0.3 老大反馈 2，实际 ${rv && rv.editorNameMax}）`);
         // v0.9.16（老大指令）：标题红色标注（DSH 视角）+ 红色提示移到窗口介绍下方、文案更新
         const tip = await memCdp.send('Runtime.evaluate', {
           expression: `(() => {
@@ -395,8 +403,8 @@ async function main() {
           returnByValue: true,
         });
         const tipV = tip.result && tip.result.value;
-        ok(!!tipV && tipV.hasTip && tipV.tipText.includes('双击对话框选择角色') && tipV.tipText.includes('默认角色请在[DSH角色中修改]'),
-          `全局红色提示（介绍下方）：双击对话框选择角色，默认角色请在[DSH角色中修改]（v0.9.16，实际 ${tipV && tipV.tipText}）`);
+        ok(!!tipV && tipV.hasTip && tipV.tipText.includes('双击对话框选择角色') && tipV.tipText.includes('默认角色请在[我的设定]中选择'),
+          `全局红色提示（介绍下方）：双击对话框选择角色，默认角色请在[我的设定]中选择（v1.0.3，实际 ${tipV && tipV.tipText}）`);
         ok(!!tipV && tipV.title.includes('(DSH 视角)'), `标题红色标注（DSH 视角）（v0.9.16，实际 ${tipV && tipV.title}）`);
         ok(!!tipV && !tipV.bodyHasTip, 'DSH 角色页不再内嵌红色提示（已移到窗口介绍下方全局显示）');
         // v1.0.2（老大指令 2）：点击「全局记忆区块」→ 内部列出所有 ## 区块卡片（可折叠）
@@ -490,7 +498,7 @@ async function main() {
     ok(!!cv && cv.r096 === true, 'changelog:data 0.9.6 released=true');
     ok(!!cv && cv.r098 === false, 'changelog:data 0.9.8（内部）released=false');
     ok(!!cv && cv.releasedCount === 14, `released=true 共 14 个（含 1.0.1/1.0.2，实际 ${cv && cv.releasedCount}）`);
-    ok(!!cv && cv.sortedFirst === '1.0.2', `changelog:data 降序首条 = 1.0.2（P3-3 共享比较，实际 ${cv && cv.sortedFirst}）`);
+    ok(!!cv && cv.sortedFirst === '1.0.3', `changelog:data 降序首条 = 1.0.3（P3-3 共享比较，实际 ${cv && cv.sortedFirst}）`);
 
     // ④ 日志：公告自动刷新已启动 + fetchLatest 已执行
     await sleep(1500); // 等 checkUpdatesOnStart 的 fetchLatest 落日志

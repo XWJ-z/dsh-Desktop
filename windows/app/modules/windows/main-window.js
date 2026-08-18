@@ -201,9 +201,15 @@ function createMainWindowModule(deps) {
         if (settings.closeChoice === 'quit') { setQuitting(true); return; } // 记忆=退出：放行
         if (settings.closeChoice === 'tray') { event.preventDefault(); win.hide(); return; } // 记忆=托盘
       }
-      // 未记住选择：弹窗询问
+      // v1.0.3（老大反馈 1）：勾选「关闭时总是询问」才每次弹窗；
+      // 未勾选且未记住选择 → 直接驻留托盘（不再每次询问）
+      if (settings.closeAsk) {
+        event.preventDefault();
+        openCloseChoiceWindow(win);
+        return;
+      }
       event.preventDefault();
-      openCloseChoiceWindow(win);
+      win.hide();
     });
     win.on('closed', () => { if (getMainWindow() === win) setMainWindow(null); });
 

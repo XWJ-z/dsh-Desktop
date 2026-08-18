@@ -29,7 +29,7 @@ function createMenu(deps) {
     Menu, shell, app, path,
     logPath,
     getSettings,
-    setAutostart, setMinimizeToTray, setCheckUpdateOnStart, clearCloseChoice, saveSettings,
+    setAutostart, setMinimizeToTray, setCloseAsk, setCheckUpdateOnStart, clearCloseChoice, saveSettings,
     setHotkey,
     backupUserData, restoreUserData,
     openUpdateWindow, openNoticeWindow, openChangelogWindow, openContactWindow, openAboutWindow,
@@ -124,6 +124,16 @@ function createMenu(deps) {
             click: (item) => setMinimizeToTray(item.checked),
           },
           {
+            // v1.0.3（老大反馈 1）：「关闭时总是询问」改为真正的开关 —— 勾选后每次
+            // 关闭窗口都弹窗询问；不勾选时（且未记住选择）关闭直接驻留托盘。
+            // 已记住选择时显示未勾选（记忆优先于询问）；未开启托盘时该开关无意义（禁用）。
+            label: '关闭时总是询问',
+            type: 'checkbox',
+            checked: !!settings.closeAsk && !settings.rememberCloseChoice,
+            enabled: settings.minimizeToTray,
+            click: (item) => setCloseAsk(item.checked),
+          },
+          {
             // v0.6.5（T-030）：启动时检查更新（默认开启）
             label: '启动时检查更新',
             type: 'checkbox',
@@ -158,8 +168,10 @@ function createMenu(deps) {
           { type: 'separator' },
           // ── 清除记忆（重置"记住我的选择"）──
           {
-            // 清除「记住我的选择」，关闭窗口时恢复询问
-            label: '关闭时总是询问',
+            // v1.0.3：动态显示当前记住的选择（退出/关闭到托盘），点击清除恢复询问
+            label: settings.rememberCloseChoice
+              ? `清除「记住：${settings.closeChoice === 'quit' ? '退出' : '关闭到托盘'}」`
+              : '清除关闭行为记忆',
             enabled: settings.rememberCloseChoice,
             click: () => clearCloseChoice(),
           },

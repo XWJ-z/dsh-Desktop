@@ -44,6 +44,7 @@ const { createDropFiles } = require('./modules/drop-files');        // v0.9（T4
 const { createCustomPrompts } = require('./modules/custom-prompts'); // v0.9.5（T2）：自定义提示词
 const { createGlobalMemory } = require('./modules/global-memory');   // v0.9.12：全局记忆（宠物菜单）
 const { createRoleSelector } = require('./modules/role-selector');   // v0.9.13：新对话选择角色
+const { createRolePicker } = require('./modules/role-picker');       // v1.0.3（老大反馈 3）：角色选择竖排窗口
 const { createNoticeModule } = require('./modules/notice');          // v0.9.5（T3）：公告条/公告源
 const { createMenu } = require('./modules/menu');
 const { registerIpc } = require('./modules/ipc');
@@ -374,6 +375,7 @@ const customPromptsApi = createCustomPrompts({ fs, path, app, appendLog });
 const globalMemoryApi = createGlobalMemory({ app, fs, os, path, appendLog });
 
 // v0.9.15（老大指令）：新建对话不再弹窗提示角色 —— 角色切换改为双击 DSH 输入框随时重选
+// v1.0.3（老大反馈 3）：选择弹窗从原生横排按钮改为竖排列表窗口（rolePickerApi 晚绑定组装）
 const roleSelectorApi = createRoleSelector({
   dialog, appName: APP_NAME, appendLog,
   getMainWindow: () => mainWindow,
@@ -384,6 +386,7 @@ const roleSelectorApi = createRoleSelector({
   },
   roleFilePath: (name) => globalMemoryApi.roleFile(name),
   injectText: (win, text, opts) => promptInject.injectTextIntoInput(win, text, opts),
+  openRolePicker: (roles) => rolePickerApi.openRolePicker(roles),
 });
 
 // ----
@@ -449,6 +452,12 @@ const miscWindowsModule = createMiscWindowsModule({
   secureWebPreferences,
 });
 const { openChangelogWindow, openNoticeWindow, hasNewNotices, openPromptLibWindow, openGlobalMemoryWindow, openCloseChoiceWindow, openBackupProgress, updateBackupProgress, closeBackupProgress } = miscWindowsModule;
+
+// v1.0.3（老大反馈 3）：角色选择竖排窗口 —— 依赖 secureWebPreferences（组装于其后）
+const rolePickerApi = createRolePicker({
+  BrowserWindow, app, path, nativeTheme, ipcMain,
+  secureWebPreferences,
+});
 
 const mainWindowModule = createMainWindowModule({
   BrowserWindow, app, dialog, shell, screen, path, nativeTheme, // v0.9.9：窗口背景跟随外观
@@ -569,6 +578,7 @@ let settings = {
   minimizeToTray: true,
   closeChoice: null,
   rememberCloseChoice: false,
+  closeAsk: false,            // v1.0.3：关闭时总是询问（勾选后每次关闭弹窗；默认不询问=直接托盘）
   checkUpdateOnStart: true,   // v0.6.5（T-030）：启动时检查更新并弹窗询问（默认开启）
   winBounds: null,            // T5（v0.6.6）：主窗口位置/大小 {x,y,width,height}
   winMaximized: false,        // T5：最大化状态
@@ -595,6 +605,7 @@ const menuApi = createMenu({
   getSettings: () => settings,
   setAutostart: settingsApi.setAutostart,
   setMinimizeToTray: settingsApi.setMinimizeToTray,
+  setCloseAsk: settingsApi.setCloseAsk, // v1.0.3：关闭时总是询问开关
   setCheckUpdateOnStart: settingsApi.setCheckUpdateOnStart,
   clearCloseChoice: settingsApi.clearCloseChoice,
   saveSettings: settingsApi.saveSettings,

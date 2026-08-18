@@ -170,13 +170,15 @@ function testChangelog() {
   const v096 = cl.versions.find((v) => v.version === '0.9.6');
   ok(!!v096 && Array.isArray(v096.notes) && v096.notes.length === 12,
     `0.9.6 条目 12 条（实际 ${v096 ? v096.notes.length : 0}）`);
-  // v1.0.2（已发布 2026-08-18）：version.json 三处一致（实测 hash）+ CHANGELOG 1.0.2 released=true
-  ok(vj.version === '1.0.2', `version.json version = 1.0.2（实际 ${vj.version}）`);
+  // v1.0.3（待发布）：version.json 三处一致（实测 hash 构建后填写）+ CHANGELOG 1.0.3 released=false
+  ok(vj.version === '1.0.3', `version.json version = 1.0.3（实际 ${vj.version}）`);
   ok(vj.hash && /^[0-9a-f]{64}$/.test(vj.hash), 'version.json hash 为 64 位 SHA256');
-  ok(Array.isArray(vj.download_urls) && vj.download_urls.length >= 1 && vj.download_urls.every((u) => u.includes('v1.0.2')), 'version.json download_urls 指向 v1.0.2 资产');
-  const v102 = cl.versions.find((v) => v.version === '1.0.2');
-  ok(!!v102 && Array.isArray(v102.notes) && v102.notes.length >= 1 && v102.released === true,
-    'CHANGELOG 1.0.2 条目存在（released:true，已发布）');
+  ok(Array.isArray(vj.download_urls) && vj.download_urls.length >= 1 && vj.download_urls.every((u) => u.includes('v1.0.3')), 'version.json download_urls 指向 v1.0.3 资产');
+  const v103 = cl.versions.find((v) => v.version === '1.0.3');
+  ok(!!v103 && Array.isArray(v103.notes) && v103.notes.length >= 1 && v103.released === false,
+    'CHANGELOG 1.0.3 条目存在（released:false，待发布）');
+  const v102b = cl.versions.find((v) => v.version === '1.0.2');
+  ok(!!v102b && v102b.released === true, 'CHANGELOG 1.0.2 released=true（已发布）');
   const v101b = cl.versions.find((v) => v.version === '1.0.1');
   ok(!!v101b && v101b.released === true, 'CHANGELOG 1.0.1 released=true（已发布）');
   // 开发视角技术细节已从 CHANGELOG 移除（移入开发日志）
@@ -407,8 +409,13 @@ function testGlobalMemory() {
   ok(rjs0.includes('const delBtn = row.querySelector(\'.del\')') && rjs0.includes('if (delBtn)'), '删除按钮监听做空值保护（无删除按钮的行不报错）');
   ok(rjs0.includes('btn-add-field'), '窗口有「＋ 添加字段」按钮逻辑');
   ok(rjs0.includes('btn-add-dsh'), '窗口有「＋ 添加 DSH 设定」按钮逻辑');
-  ok(rjs0.includes('btn-add-role') && rjs0.includes('role-cards') && rjs0.includes('role-card-name') && rjs0.includes('role-card-body'),
-    'DSH 角色页：卡片列表式（每角色 = 角色名 + 文件全文大输入框，v1.0.2 老大指令 3）');
+  ok(rjs0.includes('btn-add-role') && rjs0.includes('role-list') && rjs0.includes('role-item') && rjs0.includes('role-editor-name') && rjs0.includes('role-field-input') && rjs0.includes('data-field'),
+    'DSH 角色页：左侧角色列表 + 点击进入编辑（定位/详细记忆固定字段，v1.0.3 老大反馈 2/4）');
+  ok(rjs0.includes('role-field-label') && rjs0.includes('## 定位') && rjs0.includes('## 详细记忆'),
+    '角色字段标签：## 定位 / ## 详细记忆（v1.0.3 字段输入化）');
+  ok(rjs0.includes('MAX_ROLE_NAME = 30') && rjs0.includes('maxlength="') && rjs0.includes('role-editor-count'),
+    '角色名长度限制：前端 maxlength=30 + 字数计数（v1.0.3 老大反馈 2）');
+  ok(rjs0.includes('selectedRoleIndex') && rjs0.includes('点击左侧角色进入编辑'), '点击角色进入编辑：selectedRoleIndex 选中态 + 引导文案');
   ok(!rjs0.includes('role-tabs') && !rjs0.includes('renderRoleTabs') && !rjs0.includes('activeRole'),
     '角色页不再用顶部 tab / activeRole 状态（v1.0.2 改卡片列表）');
   ok(rjs0.includes('addEventListener(\'focus\'') && rjs0.includes('signature'), '窗口聚焦时按 变更指纹（signature：AGENTS.md+角色文件）自动刷新（v1.0.2b 老大反馈）');
@@ -418,8 +425,8 @@ function testGlobalMemory() {
   const ghtml = read('renderer/global-memory.html');
   ok(ghtml.includes('dsh-view') && ghtml.includes('(DSH 视角)'), '标题红色标注（DSH 视角）（v0.9.16 老大指令）');
   ok(ghtml.includes('记忆文件位置(AGENTS)'), '按钮文案：记忆文件位置(AGENTS)（v1.0.1 老大指令）');
-  ok(ghtml.includes('tip-red') && ghtml.includes('双击对话框选择角色') && ghtml.includes('默认角色请在[DSH角色中修改]'),
-    '红色提示在全局记忆介绍下方、文案完整：双击对话框选择角色，默认角色请在[DSH角色中修改]（v0.9.16）');
+  ok(ghtml.includes('tip-red') && ghtml.includes('双击对话框选择角色') && ghtml.includes('默认角色请在[我的设定]中选择'),
+    '红色提示文案：双击对话框选择角色，默认角色请在[我的设定]中选择（v1.0.3 老大反馈 2）');
   ok(!rjs0.includes('tip-red'), 'DSH 角色页不再内嵌红色提示（已移到窗口介绍下方全局显示）');
   ok(!rjs0.includes('新对话时会弹窗选择角色'), '窗口不再说明新对话弹窗选角色（v0.9.15：新建对话不提示）');
   const rsel = read('modules/role-selector.js');
@@ -707,8 +714,8 @@ $env:PATH = "..."
   const d9 = api.data();
   const rolesSec9 = d9.sections.find((s) => s.kind === 'roles');
   ok(!!rolesSec9 && rolesSec9.fields.length === 2 && rolesSec9.fields[1].name === '角色 2', 'DSH 角色解析回填（重开窗口仍在）');
-  ok(!!rolesSec9 && rolesSec9.fields[0].value === full1 && rolesSec9.fields[0].desc === '工作编程助手（文件：~/.dsh/roles/角色 1.md）',
-    'v1.0.2：data() 角色 value = 文件全文、desc = 定位（UI 编辑框与文件一致，老大反馈 5②）');
+  ok(!!rolesSec9 && rolesSec9.fields[0].value === '## 详细记忆\n\n详细记忆内容A' && rolesSec9.fields[0].desc === '工作编程助手（文件：~/.dsh/roles/角色 1.md）',
+    'v1.0.3：data() 角色拆字段 —— value = 详细记忆及剩余内容、desc = ## 定位 全文（字段输入化，老大反馈 4）');
   ok(typeof d9.mtime === 'number' && d9.mtime > 0, 'v1.0.2：data() 返回 mtime（AGENTS.md 修改时间）');
   ok(typeof d9.signature === 'string' && d9.signature.length > 0 && d9.signature.includes('角色'), 'v1.0.2b：data() 返回 signature（AGENTS.md+角色文件 变更指纹）');
   // 10) v1.0.2（老大反馈 5①）：角色改名 → 旧文件删除 + 新文件建立（内容保留、标题更新）；删除角色 → 文件同步删除
@@ -748,7 +755,62 @@ $env:PATH = "..."
 function testVersion() {
   console.log('[7] package.json 版本');
   const pkg = JSON.parse(fs.readFileSync(path.join(APP, 'package.json'), 'utf8'));
-  ok(pkg.version === '1.0.2', `version = 1.0.2（实际 ${pkg.version}）`);
+  ok(pkg.version === '1.0.3', `version = 1.0.3（实际 ${pkg.version}）`);
+}
+
+// ---------------------------------------------------------------------------
+// 8. v1.0.3（老大反馈 1-6）：设置联动 / 角色字段输入 / 竖排选择 / 二级分类 / DSH 版本持久化
+// ---------------------------------------------------------------------------
+function testV103() {
+  console.log('[8] v1.0.3 修复验证');
+  // 问题①：最小化到托盘 / 关闭时总是询问 / 记住选择 三向联动
+  const settingsSrc = read('modules/settings.js');
+  ok(settingsSrc.includes('setCloseAsk') && settingsSrc.includes('closeAsk'), 'settings：新增 setCloseAsk（关闭时总是询问开关）');
+  ok(settingsSrc.includes('开启最小化到托盘：已清除「记住退出」记忆'), 'setMinimizeToTray：开启时清除「记住退出」（防矛盾状态）');
+  ok(settingsSrc.includes('s.minimizeToTray = false') && settingsSrc.includes('action === \'quit\''), 'setCloseChoice：记住退出 → 取消最小化到托盘勾选');
+  ok(settingsSrc.includes('s.closeAsk = false') && settingsSrc.includes('action === \'tray\''), 'setCloseChoice：记住托盘 → 保持托盘勾选、取消总是询问');
+  const mwSrc = read('modules/windows/main-window.js');
+  ok(mwSrc.includes('settings.closeAsk') && mwSrc.includes('openCloseChoiceWindow(win)') && mwSrc.includes('win.hide();'),
+    'close 逻辑：closeAsk 才询问；未勾选且未记忆 → 直接驻留托盘（不再每次弹窗）');
+  const menuSrc2 = read('modules/menu.js');
+  ok(menuSrc2.includes('label: \'关闭时总是询问\',') && menuSrc2.includes('type: \'checkbox\''), '菜单：「关闭时总是询问」改为 checkbox 开关');
+  ok(menuSrc2.includes('清除「记住：') && menuSrc2.includes('关闭到托盘'), '菜单：清除记忆按钮动态显示当前记住的选择');
+  // 问题③：角色选择竖排窗口
+  const rp = read('modules/role-picker.js');
+  ok(rp.includes('openRolePicker') && rp.includes('role-picker:select') && rp.includes('list.find'),
+    'role-picker 模块：竖排选择窗口 + IPC 结果回传');
+  const rsel2 = read('modules/role-selector.js');
+  ok(rsel2.includes('openRolePicker') && rsel2.includes('chosen.index'), 'role-selector：pickRole 改走竖排窗口');
+  const preload2 = read('preload.js');
+  ok(preload2.includes('rolePickerResult'), 'preload：rolePickerResult API（选择结果上报）');
+  const rphtml = read('renderer/role-picker.html');
+  ok(rphtml.includes('role-picker.js') && rphtml.includes('id="list"') && rphtml.includes('不选择'), 'role-picker.html：独立竖排列表页面（含取消按钮）');
+  // 问题⑤：内置库二级子分类（在现有分类下细分，我的提示词不受影响）
+  const prompts = JSON.parse(fs.readFileSync(path.join(APP, 'prompts.json'), 'utf8'));
+  ok(!('groups' in prompts) && Array.isArray(prompts.categories), 'prompts.json：无一级分组（改为分类内二级子分类）');
+  ok(prompts.categories.length === 6 && prompts.categories.every((c) => Array.isArray(c.subs) && c.subs.length >= 2),
+    'prompts.json：6 个分类全部含二级子分类（每类 ≥2 个）');
+  const totalItems = prompts.categories.reduce((n, c) => n + c.subs.reduce((m, s) => m + s.items.length, 0), 0);
+  ok(totalItems === 101, `prompts.json：条目总数 101（不增不减，实际 ${totalItems}）`);
+  const plib = read('renderer/promptlib.js');
+  ok(plib.includes('expandedCats') && plib.includes('cat-head') && plib.includes('selectSub') && plib.includes('currentSub'),
+    'promptlib：一级分类可折叠 + 二级子分类选中（老大反馈 5 修正）');
+  ok(plib.includes('customGroups') && plib.includes('filteredCustom'), 'promptlib：我的提示词分组逻辑保留（不受影响）');
+  // 问题⑥：DSH 版本选择持久化到 userData（升级壳不回退）
+  const rt = read('modules/dsh-runtime.js');
+  ok(rt.includes('userDshVersionFile') && rt.includes('saveUserDshVersion') && rt.includes('readUserDshVersion'),
+    'dsh-runtime：userData 版本持久化 API（dsh-version.json）');
+  ok(rt.includes('const userVer = readUserDshVersion()') && rt.includes('String(userVer.version)'),
+    'readShellConfig：userData 记录优先于 config.json（升级壳覆盖 config 不回退）');
+  ok(rt.includes('config.json 写入失败（安装目录只读？）'), 'updateDshVersion：config 写失败也以 userData 记录为准');
+  ok(rt.includes('cfg.dshVersion !== \'latest\'') && rt.includes('saveUserDshVersion(installedDshVersion()'),
+    'ensureDshRuntime：精确版本安装后持久化（latest 语义不受影响）');
+  // 问题④：角色字段输入化（主进程解析/组装）
+  const gmSrc = read('modules/global-memory.js');
+  ok(gmSrc.includes('parseRoleContent') && gmSrc.includes('renderRoleContent'), 'global-memory：角色字段解析（定位/详细记忆）与组装函数');
+  ok(gmSrc.includes('value: rest') && gmSrc.includes('desc'), 'data()：角色 value = 详细记忆及剩余、desc = 定位全文');
+  ok(gmSrc.includes('it.desc != null') && gmSrc.includes('parseRoleContent(String((it && it.value)'),
+    'save()：兼容旧 payload（value=全文）→ 解析拆分再组装（不丢数据）');
 }
 
 // ---------------------------------------------------------------------------
@@ -762,6 +824,7 @@ async function main() {
   testChangelog();
   testPet();
   testVersion();
+  testV103(); // v1.0.3：6 项修复断言
   testUpdaterTrust();
   testRuntimePin();
   testExternalWhitelist();

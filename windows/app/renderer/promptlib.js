@@ -17,10 +17,12 @@ const el = (id) => document.getElementById(id);
 const dsh = window.dshDesktop;
 
 let data = null;
-let currentCat = null;
+let currentSub = null;   // v1.0.3（老大反馈 5 修正）：当前选中的二级子分类 id
 let keyword = '';
 let bannerTimer = null;
 let bannerTimer2 = null;
+// v1.0.3（老大反馈 5 修正）：展开的一级分类（默认展开第一个），点击分类头折叠/展开
+let expandedCats = new Set();
 
 // v0.9.5：自定义提示词状态
 let customData = { categories: [], items: [] };
@@ -80,14 +82,19 @@ async function copyOnly(item) {
 // 内置库（原逻辑）
 // ---------------------------------------------------------------------------
 
-/** 当前分类 + 关键字过滤后的条目 */
+/** 当前二级子分类 + 关键字过滤后的条目 */
 function filteredItems() {
-  const cat = data.categories.find((c) => c.id === currentCat);
-  if (!cat) return [];
   const kw = keyword.trim().toLowerCase();
-  if (!kw) return cat.items;
-  return cat.items.filter((it) =>
-    it.title.toLowerCase().includes(kw) || it.text.toLowerCase().includes(kw));
+  for (const c of data.categories) {
+    for (const s of (c.subs && c.subs.length > 0 ? c.subs : [{ id: c.id, name: c.name, items: c.items || [] }])) {
+      if (s.id === currentSub) {
+        if (!kw) return s.items;
+        return s.items.filter((it) =>
+          it.title.toLowerCase().includes(kw) || it.text.toLowerCase().includes(kw));
+      }
+    }
+  }
+  return [];
 }
 
 function renderItems() {
@@ -128,20 +135,54 @@ function renderItems() {
   });
 }
 
-function selectCat(id) {
-  currentCat = id;
-  document.querySelectorAll('.cat').forEach((c) => c.classList.toggle('active', c.dataset.id === id));
-  renderItems();
-}
-
+/**
+ * v1.0.3（老大反馈 5 修正）：内置库二级分类 —— 左侧 = 一级分类（可折叠），
+ * 每个分类下缩进显示其**二级子分类**（点击子分类选中显示条目）。
+ * 数据结构：categories[].subs[]（无 subs 的旧数据兜底为单子类）。
+ */
 function renderCats() {
   const cats = el('cats');
-  cats.innerHTML = data.categories.map((c) =>
-    `<div class="cat" data-id="${escapeHtml(c.id)}">${escapeHtml(c.icon)} ${escapeHtml(c.name)}<span class="count">${c.items.length}</span></div>`).join('');
-  cats.addEventListener('click', (e) => {
-    const catEl = e.target.closest('.cat');
-    if (catEl) selectCat(catEl.dataset.id);
+  let html = '';
+  for (const c of data.categories) {
+    const subs = (Array.isArray(c.subs) && c.subs.length > 0)
+      ? c.subs
+      : [{ id: c.id, name: c.name, items: c.items || [] }];
+    const expanded = expandedCats.has(c.id);
+    const total = subs.reduce((n, s) => n + (s.items ? s.items.length : 0), 0);
+    html += `
+      <div class="cat-group" data-cat="${escapeHtml(c.id)}">
+        <div class="cat cat-head" data-cat="${escapeHtml(c.id)}">
+          <span class="cat-arrow">${expanded ? '▾' : '▸'}</span>
+          ${escapeHtml(c.icon)} ${escapeHtml(c.name)}<span class="count">${total}</span>
+        </div>
+        ${expanded ? subs.map((s) => `
+          <div class="cat sub" data-sub="${escapeHtml(s.id)}">${escapeHtml(s.name)}<span class="count">${s.items.length}</span></div>`).join('') : ''}
+      </div>`;
+  }
+  cats.innerHTML = html;
+  // v1.0.3：重建后恢复当前子分类选中态（折叠/展开不丢 active）
+  cats.querySelectorAll('.cat.sub').forEach((c) => {
+    c.classList.toggle('active', c.dataset.sub === currentSub);
   });
+  cats.addEventListener('click', (e) => {
+    const head = e.target.closest('.cat-head');
+    if (head) {
+      const cid = head.dataset.cat;
+      if (expandedCats.has(cid)) expandedCats.delete(cid);
+      else expandedCats.add(cid);
+      renderCats();
+      return;
+    }
+    const subEl = e.target.closest('.cat.sub');
+    if (subEl) selectSub(subEl.dataset.sub);
+  });
+}
+
+/** 选中二级子分类 */
+function selectSub(id) {
+  currentSub = id;
+  document.querySelectorAll('.cat.sub').forEach((c) => c.classList.toggle('active', c.dataset.sub === id));
+  renderItems();
 }
 
 // ---------------------------------------------------------------------------
@@ -368,8 +409,14 @@ async function init() {
     el('items').innerHTML = '<div class="empty">暂无提示词</div>';
     return;
   }
+  // v1.0.3（老大反馈 5 修正）：默认展开第一个分类 + 选中其第一个二级子分类
+  const firstCat = data.categories[0];
+  const firstSub = (Array.isArray(firstCat.subs) && firstCat.subs.length > 0)
+    ? firstCat.subs[0]
+    : { id: firstCat.id, items: firstCat.items || [] };
+  expandedCats = new Set([firstCat.id]);
   renderCats();
-  selectCat(data.categories[0].id); // 默认选中第一个分类
+  selectSub(firstSub.id); // 默认选中第一个子分类
   // 搜索：输入即过滤（标题+内容）
   el('search').addEventListener('input', (e) => {
     keyword = e.target.value;

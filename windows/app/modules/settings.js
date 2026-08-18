@@ -54,18 +54,53 @@ function createSettings(deps) {
     refreshMenus();
   }
 
-  /** 最小化到托盘总开关 */
+  /** 最小化到托盘总开关（v1.0.3：与关闭行为记忆联动 —— 开启托盘时清除「记住退出」，消除矛盾状态） */
   function setMinimizeToTray(enabled) {
-    getSettings().minimizeToTray = !!enabled;
+    const s = getSettings();
+    s.minimizeToTray = !!enabled;
+    // v1.0.3（老大反馈 1）：记忆=退出 与 托盘常驻 语义矛盾 ——
+    // 开启托盘时清除「记住退出」，避免「勾着最小化到托盘，关闭却直接退出」
+    if (enabled && s.rememberCloseChoice && s.closeChoice === 'quit') {
+      s.closeChoice = null;
+      s.rememberCloseChoice = false;
+      appendLog('info', '开启最小化到托盘：已清除「记住退出」记忆（关闭行为已改为托盘驻留）');
+    }
     saveSettings();
-    appendLog('info', `最小化到托盘已${enabled ? '开启' : '关闭'}（关闭窗口${enabled ? '将询问/驻留托盘' : '将直接退出'}）`);
+    appendLog('info', `最小化到托盘已${enabled ? '开启' : '关闭'}（关闭窗口${enabled ? '将按设置执行' : '将直接退出'}）`);
     refreshMenus();
   }
 
-  /** 记住关闭选择（action: 'quit' | 'tray'） */
+  /** 关闭时总是询问开关（v1.0.3：独立开关；勾选后每次关闭都弹窗询问） */
+  function setCloseAsk(enabled) {
+    const s = getSettings();
+    s.closeAsk = !!enabled;
+    // 勾选「总是询问」→ 清除记忆（询问优先于记忆，避免两个开关语义冲突）
+    if (enabled && s.rememberCloseChoice) {
+      s.closeChoice = null;
+      s.rememberCloseChoice = false;
+      appendLog('info', '开启「关闭时总是询问」：已清除关闭行为记忆');
+    }
+    saveSettings();
+    appendLog('info', `关闭时总是询问已${enabled ? '开启' : '关闭'}`);
+    refreshMenus();
+  }
+
+  /** 记住关闭选择（action: 'quit' | 'tray'；v1.0.3：联动最小化到托盘勾选状态） */
   function setCloseChoice(action, remember) {
-    getSettings().closeChoice = action;
-    getSettings().rememberCloseChoice = !!remember;
+    const s = getSettings();
+    s.closeChoice = action;
+    s.rememberCloseChoice = !!remember;
+    if (remember) {
+      s.closeAsk = false; // 已记住选择：不再总是询问
+      if (action === 'quit') {
+        // v1.0.3（老大反馈 1）：记住退出 = 关闭即退出 → 托盘常驻失去意义，
+        // 取消勾选「最小化到托盘」（避免「勾着托盘却关闭即退出」的矛盾显示）
+        s.minimizeToTray = false;
+      } else if (action === 'tray') {
+        s.minimizeToTray = true;
+      }
+      appendLog('info', `已记住关闭行为：${action === 'quit' ? '退出' : '关闭到托盘'}（最小化到托盘=${s.minimizeToTray ? '开启' : '关闭'}）`);
+    }
     saveSettings();
     refreshMenus();
   }
@@ -93,6 +128,7 @@ function createSettings(deps) {
     saveSettings,
     setAutostart,
     setMinimizeToTray,
+    setCloseAsk, // v1.0.3：关闭时总是询问开关
     setCloseChoice,
     clearCloseChoice,
     setCheckUpdateOnStart,

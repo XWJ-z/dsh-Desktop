@@ -32,26 +32,58 @@ function createDshRuntime(deps) {
     fetchLatestDshInfo, // P1-2：晚绑定（main.js 组装，updaterApi 就绪后可调用）
   } = deps;
 
-  /** 读取壳配置（app/config.json）：DSH 包名 + 版本号，用户改版本号即升级 DSH */
+  /** 读取壳配置（app/config.json）：DSH 包名 + 版本号，用户改版本号即升级 DSH。
+   *  v1.0.3（老大反馈 6）：config.json 位于**安装目录**，升级壳覆盖安装会被重置为
+   *  内置版本 → 重启后按旧版本重装，表现为「更新壳后 DSH 版本回退」。
+   *  修复：用户升级/安装 DSH 的选择持久化到 userData（dsh-version.json，升级壳不覆盖），
+   *  此处优先取 userData 记录，config.json 仅作默认值兜底。 */
   function readShellConfig() {
     const file = path.join(app.getAppPath(), 'config.json');
+    let cfg = {};
     try {
-      const cfg = JSON.parse(fs.readFileSync(file, 'utf8'));
-      return {
-        dshPackage: String(cfg.dshPackage || '@deepseek-ai/dsh'),
-        dshVersion: String(cfg.dshVersion || 'latest'),
-        registry: String(cfg.registry || 'https://registry.npmmirror.com'),
-        qqGroup: cfg.qqGroup && typeof cfg.qqGroup === 'object'
-          ? { number: String(cfg.qqGroup.number || ''), qrImage: String(cfg.qqGroup.qrImage || '') }
-          : null,
-      };
+      cfg = JSON.parse(fs.readFileSync(file, 'utf8'));
+    } catch { /* 缺省/损坏 → 默认值 */ }
+    const userVer = readUserDshVersion();
+    const dshVersion = (userVer && userVer.version)
+      ? String(userVer.version)
+      : String(cfg.dshVersion || 'latest');
+    return {
+      dshPackage: String(cfg.dshPackage || '@deepseek-ai/dsh'),
+      dshVersion,
+      registry: String(cfg.registry || 'https://registry.npmmirror.com'),
+      qqGroup: cfg.qqGroup && typeof cfg.qqGroup === 'object'
+        ? { number: String(cfg.qqGroup.number || ''), qrImage: String(cfg.qqGroup.qrImage || '') }
+        : null,
+    };
+  }
+
+  /** 用户选择的 DSH 版本记录（userData/dsh-version.json）——
+   *  v1.0.3（老大反馈 6）：升级壳覆盖安装不碰 userData，用户选择的 DSH 版本不丢 */
+  function userDshVersionFile() {
+    return path.join(app.getPath('userData'), 'dsh-version.json');
+  }
+
+  /** 读取用户选择的 DSH 版本 { version, integrity }；无记录返回 null */
+  function readUserDshVersion() {
+    try {
+      return JSON.parse(fs.readFileSync(userDshVersionFile(), 'utf8'));
     } catch {
-      return {
-        dshPackage: '@deepseek-ai/dsh',
-        dshVersion: 'latest',
-        registry: 'https://registry.npmmirror.com',
-        qqGroup: null,
-      };
+      return null;
+    }
+  }
+
+  /** 保存用户选择的 DSH 版本（userData；升级壳不覆盖） */
+  function saveUserDshVersion(version, integrity) {
+    try {
+      fs.mkdirSync(dshRuntimeDir(), { recursive: true });
+      fs.writeFileSync(userDshVersionFile(), JSON.stringify({
+        version: String(version || ''),
+        integrity: String(integrity || ''),
+        updatedAt: new Date().toISOString(),
+      }, null, 2), 'utf8');
+      return true;
+    } catch {
+      return false;
     }
   }
 
@@ -289,33 +321,47 @@ function createDshRuntime(deps) {
           appendLog('warn', `写入安装记录失败（不影响运行）：${err.message}`);
         }
         appendLog('info', `DSH 运行时安装完成：${cfg.dshPackage}@${installedDshVersion()}`);
+        // v1.0.3（老大反馈 6）：安装的是精确版本（非 latest 语义）→ 持久化到 userData，
+        // 升级壳覆盖安装 config.json 被重置后仍按用户选择的版本（不回退）
+        if (cfg.dshVersion !== 'latest') {
+          saveUserDshVersion(installedDshVersion(), targetIntegrity);
+        }
         pushStage('start');
         resolve(bin);
       });
     });
   }
 
-  /** 备份并改写 config.json 的 dshVersion；成功返回 true。P1-2：一并落盘目标版本 + integrity */
+  /** 备份并改写 config.json 的 dshVersion；成功返回 true。P1-2：一并落盘目标版本 + integrity。
+   *  v1.0.3（老大反馈 6）：主存储 = userData/dsh-version.json（升级壳不覆盖），
+   *  config.json 尽力写（安装目录可能只读）；两者都失败才返回 false。 */
   function updateDshVersion(newVersion, integrity) {
     const file = path.join(app.getAppPath(), 'config.json');
+    let configOk = false;
     try {
       fs.copyFileSync(file, `${file}.bak`);          // 先备份
       const cfg = JSON.parse(fs.readFileSync(file, 'utf8'));
       cfg.dshVersion = newVersion;
       fs.writeFileSync(file, JSON.stringify(cfg, null, 2), 'utf8');
-      // P1-2：目标版本 + integrity 落盘（重启安装完成后与 .installed.json 核对）
-      try {
-        fs.mkdirSync(dshRuntimeDir(), { recursive: true });
-        fs.writeFileSync(installRecordFile(), JSON.stringify({
-          version: newVersion,
-          integrity: String(integrity || ''),
-          targetAt: new Date().toISOString(),
-        }, null, 2), 'utf8');
-      } catch (err) {
-        appendLog('warn', `写入安装目标记录失败（不影响配置更新）：${err.message}`);
-      }
-      return true;
-    } catch { return false; }
+      configOk = true;
+    } catch {
+      appendLog('warn', 'config.json 写入失败（安装目录只读？），改用 userData 记录 DSH 版本选择');
+    }
+    // v1.0.3：userData 持久化（升级壳覆盖安装不丢）—— 主存储
+    const userOk = saveUserDshVersion(newVersion, integrity);
+    // P1-2：目标版本 + integrity 落盘（重启安装完成后与 .installed.json 核对）
+    try {
+      fs.mkdirSync(dshRuntimeDir(), { recursive: true });
+      fs.writeFileSync(installRecordFile(), JSON.stringify({
+        version: newVersion,
+        integrity: String(integrity || ''),
+        targetAt: new Date().toISOString(),
+      }, null, 2), 'utf8');
+    } catch (err) {
+      appendLog('warn', `写入安装目标记录失败（不影响配置更新）：${err.message}`);
+    }
+    if (!configOk && !userOk) return false;
+    return true;
   }
 
   return {
@@ -331,6 +377,7 @@ function createDshRuntime(deps) {
     updateDshVersion,
     readDshInstallRecord,   // P1-2：安装记录读取/核对（诊断/启动告警用）
     verifyInstallRecord,
+    userDshVersionFile, readUserDshVersion, saveUserDshVersion, // v1.0.3：用户 DSH 版本选择持久化
   };
 }
 

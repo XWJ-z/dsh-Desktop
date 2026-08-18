@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' file: data:; style-src 'self' file: 'unsafe-inline'; script-src 'self' file:; img-src 'self' file: data:" />
+  <title>选择角色</title>
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    body {
+      margin: 0; padding: 14px 16px 16px;
+      height: 100vh; box-sizing: border-box;
+      display: flex; flex-direction: column;
+      background: var(--bg-app, #0f1115);
+    }
+    h1 { font-size: 15px; font-weight: 590; margin: 0 0 4px; color: var(--text-primary); }
+    .sub { font-size: 11.5px; color: var(--text-quaternary); margin-bottom: 12px; }
+    /* v1.0.3（老大反馈 3）：竖排选项列表 —— 每个角色一行，名称 + 定位摘要 */
+    .list { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+    .opt {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--bg-input, #161a22); border: 1px solid var(--border-standard);
+      border-radius: var(--radius-btn, 10px);
+      padding: 10px 12px; cursor: pointer; text-align: left;
+      color: var(--text-primary); font: inherit;
+      flex-shrink: 0;
+    }
+    .opt:hover { border-color: rgba(94,106,210,.55); background: var(--bg-hover, #1b2029); }
+    .opt .icon { font-size: 16px; flex-shrink: 0; }
+    .opt .name { font-size: 13.5px; font-weight: 590; }
+    .opt .desc {
+      font-size: 11.5px; color: var(--text-quaternary); font-weight: 400;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0;
+    }
+    .opt .arrow { color: var(--text-quaternary); font-size: 12px; flex-shrink: 0; }
+    .cancel {
+      margin-top: 12px; padding: 9px 0; border-radius: var(--radius-btn, 10px);
+      border: 1px solid var(--border-standard); background: transparent;
+      color: var(--text-secondary); font-size: 12.5px; font-weight: 590; cursor: pointer;
+    }
+    .cancel:hover { color: var(--text-primary); background: var(--bg-hover, #1b2029); }
+    .empty { color: var(--text-quaternary); text-align: center; padding: 30px 0; font-size: 12.5px; }
+  </style>
+</head>
+<body>
+  <h1>🎭 选择角色</h1>
+  <div class="sub">本次对话使用哪个角色？双击输入框可随时切换</div>
+  <div class="list" id="list"></div>
+  <button class="cancel" id="cancel">不选择</button>
+  <script src="role-picker.js"></script>
+</body>
+</html>

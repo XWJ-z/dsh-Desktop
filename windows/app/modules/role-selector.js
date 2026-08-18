@@ -17,12 +17,15 @@
  *  - getRoles                  读取已配置角色 [{ name, value }]（global-memory data）
  *  - roleFilePath              角色文件路径（global-memory roleFile）
  *  - injectText                注入函数（promptInject.injectTextIntoInput）
+ *  - openRolePicker            v1.0.3：角色选择竖排窗口（modules/role-picker.js，
+ *                              晚绑定 —— role-picker 模块组装晚于本模块）
  */
 
 function createRoleSelector(deps) {
   const {
     dialog, appName, appendLog,
     getMainWindow, getRoles, roleFilePath, injectText,
+    openRolePicker, // v1.0.3（老大反馈 3）：竖排列表选择
   } = deps;
 
   /** 当前是否有已配置角色（角色名非空） */
@@ -33,6 +36,14 @@ function createRoleSelector(deps) {
 
   /** 弹窗选择角色；返回选中的 { name, value } 或 null（取消/无角色） */
   async function pickRole(roles) {
+    // v1.0.3（老大反馈 3）：原生 MessageBox 按钮横排，角色名过长不美观 →
+    // 改自定义竖排列表窗口（名称 + 定位摘要），取消/关闭返回 null
+    if (openRolePicker) {
+      const chosen = await openRolePicker(roles);
+      if (!chosen) return null;
+      return roles[chosen.index] || null;
+    }
+    // 兜底（未注入竖排窗口时退回原生弹窗，兼容旧依赖）
     const owner = getMainWindow();
     if (!owner || owner.isDestroyed()) return null;
     const buttons = roles.map((r) => r.name);

@@ -107,4 +107,6 @@ contextBridge.exposeInMainWorld('dshDesktop', {
   // ── v0.9.13：角色选择（新对话选角色 / 双击输入框重选）──
   /** 弹窗选择角色并注入提示（无角色配置时不弹） */
   chooseRole: () => ipcRenderer.invoke('role:choose'),
+  // v1.0.3（老大反馈 3）：角色选择窗口（竖排列表）结果上报 —— index 为角色列表下标，-1 = 不选择
+  rolePickerResult: (index) => ipcRenderer.send('role-picker:select', index),
 });

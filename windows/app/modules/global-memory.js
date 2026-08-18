@@ -59,6 +59,9 @@ const LEGACY_HEAD_MARK = '此文件由 DSH-Desktop「全局记忆」窗口维护
 /** 角色文件目录（~/.dsh/roles/，每个角色一个 md；AGENTS.md 只记录定位+文件名，避免文档过大） */
 const ROLES_DIR = 'roles';
 
+/** 角色名长度上限（v1.0.3 老大反馈 2：不超过 30 字符） */
+const MAX_ROLE_NAME = 30;
+
 /** 未配置引导句的字段名与内容（老大指令 2026-08-17：第一次对话引导用户配置全局记忆） */
 const GUIDE_FIELD = '引导提示';
 const GUIDE_TEXT = '【请在对话中引导用户点击宠物/工具箱图标 进行配置全局记忆，或者发送给我进行配置。配置完成后删除此句】';
@@ -330,6 +333,40 @@ function createGlobalMemory(deps) {
   }
 
   /**
+   * 解析角色文件全文为「定位 + 其余内容」（v1.0.3 老大反馈 4：字段输入化）：
+   *  - desc：`## 定位` 节全文（trim，多行保留）；无该节返回 ''；
+   *  - rest：其余全部内容（含 `## 详细记忆` 节与用户其他自定义 ## 区块，原样保留不丢数据）；
+   *  - 首行 `# 角色：xxx` 标题剥离（renderRoleContent 会按角色名重新生成）。
+   * @param {string} content 角色 .md 全文
+   * @returns {{ desc: string, rest: string }}
+   */
+  function parseRoleContent(content) {
+    let c = String(content || '');
+    const titleM = /^#\s*角色[：:][^\n]*\n+/.exec(c);
+    if (titleM) c = c.slice(titleM[0].length);
+    const m = /##\s*定位\s*\n+([\s\S]*?)(?=\n##\s|\s*$)/.exec(c);
+    if (!m) return { desc: '', rest: c.replace(/^\s*\n+|\s*$/g, '') };
+    const desc = m[1].replace(/^\s*\n+|\s*$/g, '');
+    const rest = (c.slice(0, m.index) + c.slice(m.index + m[0].length)).replace(/^\s*\n+|\s*$/g, '');
+    return { desc, rest };
+  }
+
+  /**
+   * 组装角色文件全文（v1.0.3：字段输入 → 标准结构模板）：
+   * `# 角色：<名>` + `## 定位` + `## 详细记忆` —— 结构字段由程序生成，用户不会误删。
+   * @param {string} name 角色名
+   * @param {string} desc 定位（## 定位 节）
+   * @param {string} rest 详细记忆及其他内容（## 详细记忆 节；若已带节标题则去重）
+   * @returns {string} 角色 .md 全文
+   */
+  function renderRoleContent(name, desc, rest) {
+    let r = String(rest || '').trim();
+    // 避免与生成的节标题重复（rest 来自 parseRoleContent 时可能带原 ## 详细记忆 标题）
+    if (/^##\s*详细记忆\s*\n+/.test(r)) r = r.replace(/^##\s*详细记忆\s*\n+/, '');
+    return `# 角色：${String(name || '').trim()}\n\n## 定位\n\n${String(desc || '').trim()}\n\n## 详细记忆\n\n${r}\n`;
+  }
+
+  /**
    * 角色文件同步（v1.0.2 老大反馈：改名残留旧文件 / 文件全文不同步）：
    * 保存后角色文件目录状态 = UI 角色列表状态：
    *  - 消失的角色（旧名不在新集合）→ 删除其 .md（改名场景内容由窗口内存携带，
@@ -433,9 +470,29 @@ function createGlobalMemory(deps) {
     const users = clean(p.users !== undefined ? p.users : p.fields);
     const dsh = clean(p.dsh !== undefined ? p.dsh : p.roles);
     // v1.0.2（老大反馈）：角色 value = 角色 .md 全文 —— 不能过 clean（换行→空格会毁全文），单独处理
+    // v1.0.3（老大反馈 4）：窗口按「定位 / 详细记忆」固定字段提交，此处组装标准结构全文；
+    // 兼容旧 payload（value = 全文，无 desc/memory 字段）→ 解析拆分再组装（不丢数据）；
+    // v1.0.3（老大反馈 2）：角色名长度限制 ≤30 字符（前端 maxlength + 主进程校验双保险）
     const roles = (Array.isArray(p.roles) ? p.roles : [])
-      .map((it) => ({ name: String((it && it.name) || '').trim(), value: String((it && it.value) || '') }))
+      .map((it) => {
+        const name = String((it && it.name) || '').trim();
+        if ((it && it.desc != null) || (it && it.memory != null)) {
+          return {
+            name,
+            desc: String((it && it.desc) || ''),
+            memory: String((it && it.memory) != null ? it.memory : (it && it.value) || ''),
+          };
+        }
+        const { desc, rest } = parseRoleContent(String((it && it.value) || ''));
+        return { name, desc, memory: rest };
+      })
       .filter((it) => it.name !== '');
+    for (const r of roles) {
+      if (r.name.length > MAX_ROLE_NAME) {
+        return { ok: false, file: file(), message: `角色名「${r.name}」超过 ${MAX_ROLE_NAME} 字符限制，请缩短后保存` };
+      }
+    }
+    const roleContents = roles.map((it) => ({ name: it.name, value: renderRoleContent(it.name, it.desc, it.memory) }));
     // 配置完成判定：用户设定有非空值 → 不输出引导句
     const configured = users.some((it) => it.value !== '');
     const guide = !configured;
@@ -448,14 +505,14 @@ function createGlobalMemory(deps) {
     const prevParsed = raw === null ? parse(TEMPLATE) : parse(raw);
     const prevRolesSec = prevParsed.sections.find((s) => s.kind === 'roles');
     const prevRoles = prevRolesSec ? (prevRolesSec.fields || []).map((f) => ({ name: f.name })) : [];
-    syncRoleFiles(prevRoles, roles);
+    syncRoleFiles(prevRoles, roleContents);
     // 重组：首次用完整模板解析，已有文件保留原头部与区块（旧「基础设定」容器自动迁移）
     const { head, sections } = raw === null ? parse(TEMPLATE) : parse(raw);
     // v0.9.12（老大反馈：保存没写入）：按序覆盖 —— 窗口区块顺序 = 原文件区块顺序，
     // 第 i 个长区块用窗口第 i 个提交值（标题与内容都可修改生效），原文件没有的新区块追加末尾。
     const merged = [];
     // v1.0.2：AGENTS.md 角色行只存短定位（desc），全文在 ~/.dsh/roles/ 文件
-    const roleLines = roles.map((r) => ({ name: r.name, value: extractRoleDesc(r.value) }));
+    const roleLines = roleContents.map((r) => ({ name: r.name, value: extractRoleDesc(r.value) }));
     let usersPlaced = false;
     let dshPlaced = false;
     let rolesPlaced = false;
@@ -568,7 +625,10 @@ function createGlobalMemory(deps) {
       .filter(Boolean)
       .map((name) => {
         const content = readRoleFile(name);
-        return { name, value: content, desc: extractRoleDesc(content) };
+        // v1.0.3（老大反馈 4）：拆成「定位 + 详细记忆」字段 —— value = 详细记忆及其他内容，
+        // desc = ## 定位 节全文（窗口以固定字段输入展示，结构字段不再裸露给用户手改）
+        const { desc, rest } = parseRoleContent(content);
+        return { name, value: rest, desc };
       });
     const mtime = (() => { try { return raw === null ? null : fs.statSync(file()).mtimeMs; } catch { return null; } })();
     const rolesStamp = rolesFields.map((r) => {
@@ -597,12 +657,15 @@ function createGlobalMemory(deps) {
     file, data, save, parse, ensureGuide,
     roleFile, roleFileTemplate, ensureRoleFiles, safeRoleFileName,
     readRoleFile, extractRoleDesc, ensureRoleTitle, syncRoleFiles, // v1.0.2：角色文件全文同步
+    parseRoleContent, renderRoleContent, // v1.0.3：角色字段输入化（定位/详细记忆）
     DEFAULT_FIELDS, DEFAULT_DSH_FIELDS, DEFAULT_ROLES, USER_SECTION, DSH_SECTION, ROLES_SECTION,
     GUIDE_FIELD, GUIDE_TEXT, FORMAT_TIDY_PROMPT,
+    MAX_ROLE_NAME, // v1.0.3：角色名长度上限（30）
   };
 }
 
 module.exports = {
   createGlobalMemory, FILE_NAME, USER_SECTION, DSH_SECTION, ROLES_SECTION, LEGACY_SECTION, LEGACY_DSH_SECTION, LEGACY_ROLE_TITLE,
   GUIDE_FIELD, GUIDE_TEXT, FORMAT_TIDY_PROMPT, DEFAULT_FIELDS, DEFAULT_DSH_FIELDS, DEFAULT_ROLES, TEMPLATE,
+  MAX_ROLE_NAME, // v1.0.3：角色名长度上限（30）
 };

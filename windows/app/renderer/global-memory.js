@@ -41,7 +41,7 @@ const SAVE_TIMEOUT_MS = 8000; // 保存超时兜底（任何挂起 8s 必恢复�
 
 let userFields = [];   // 用户设定 [{name,value}]
 let dshFields = [];    // DSH 设定 [{name,value}]
-let roleFields = [];   // DSH 角色 [{name, value: 角色 .md 全文, desc}]（v1.0.2：value=全文）
+let roleFields = [];   // DSH 角色 [{name, desc: 定位, memory: 详细记忆+其他}]（v1.0.3：字段输入化）
 let sections = [];     // 其他 ## 区块 [{title, body}]（全局记忆区块类别下展示）
 let activeKey = USERS_KEY;
 let fileExists = false;
@@ -121,13 +121,18 @@ function renderRight() {
     return;
   }
   if (activeKey === ROLES_KEY) {
-    // v1.0.2（老大指令 3）：DSH 角色 = 卡片列表式（参考全局记忆区块），排在全局记忆区块后面
-    head.innerHTML = 'DSH 角色 <span class="tag">每个角色一个文件 · 可增删</span>';
+    // v1.0.2（老大指令 3）：DSH 角色 = 卡片列表式
+    // v1.0.3（老大反馈 2）：改为「左侧角色列表 + 右侧点击进入编辑」—— 角色名 ≤30 字符
+    head.innerHTML = 'DSH 角色 <span class="tag">点击角色进入编辑 · 可增删</span>';
     body.innerHTML = `
-      <div class="guide-tip">💡 每个角色的输入框 = 该角色文件（~/.dsh/roles/）全部内容，两边同步；「我的设定 → 默认角色」选默认角色；双击 DSH 输入框可随时切换角色。</div>
-      <div class="role-cards" id="role-cards"></div>
+      <div class="guide-tip">💡 点击左侧角色进入编辑；「我的设定 → 默认角色」选默认角色；双击 DSH 输入框可随时切换角色。</div>
+      <div class="role-layout">
+        <div class="role-list" id="role-list"></div>
+        <div class="role-editor" id="role-editor"></div>
+      </div>
       <button id="btn-add-role" class="add-field">＋ 添加角色</button>`;
-    renderRoleCards();
+    renderRoleList();
+    renderRoleEditor();
     const addBtn = el('btn-add-role');
     if (addBtn) addBtn.addEventListener('click', addRole);
     return;
@@ -238,33 +243,78 @@ function addSection() {
   if (t) { t.focus(); t.select(); }
 }
 
-// ── v1.0.2（老大指令 3）：DSH 角色 —— 卡片列表式（每角色 = 角色名 + 文件全文大输入框）──
-function renderRoleCards() {
-  const list = el('role-cards');
+// ── v1.0.2（老大指令 3）/ v1.0.3（老大反馈 2）：DSH 角色 —— 左侧列表 + 右侧点击进入编辑
+// 角色名 ≤30 字符（前端 maxlength + 主进程保存校验双保险）；结构字段（# 角色：/ ## 定位 /
+// ## 详细记忆）由程序组装，用户不直接编辑全文，防误删。
+const MAX_ROLE_NAME = 30; // v1.0.3：角色名长度上限
+let selectedRoleIndex = -1; // 当前编辑的角色下标（-1 = 无）
+
+/** 左侧角色列表：每行 = 🎭 角色名 + 定位摘要，点击选中进入编辑 */
+function renderRoleList() {
+  const list = el('role-list');
   if (!list) return;
   list.innerHTML = roleFields.map((r, i) => `
-    <div class="role-card" data-i="${i}">
-      <div class="role-card-head">
-        <span class="role-icon">🎭</span>
-        <input class="role-card-name" value="${escapeHtml(r.name || '')}" placeholder="角色名（如：学习导师）" />
-        <button class="del" data-i="${i}" title="删除此角色（同时删除 ~/.dsh/roles/ 角色文件）">✕</button>
-      </div>
-      <textarea class="role-card-body sec-body" rows="10" placeholder="角色文件全文（# 角色：… / ## 定位 / ## 详细记忆），保存后写入 ~/.dsh/roles/ 对应文件，两边同步…">${escapeHtml(r.value || '')}</textarea>
+    <div class="role-item${i === selectedRoleIndex ? ' active' : ''}" data-i="${i}" title="点击编辑此角色">
+      <span class="role-item-icon">🎭</span>
+      <span class="role-item-name">${escapeHtml(r.name || '（未命名）')}</span>
+      ${r.desc ? `<span class="role-item-desc">${escapeHtml(String(r.desc).split('\n')[0])}</span>` : ''}
+      <button class="del" data-i="${i}" title="删除此角色（同时删除 ~/.dsh/roles/ 角色文件）">✕</button>
     </div>`).join('')
-    + (roleFields.length === 0 ? '<div class="sec-empty">还没有角色 —— 点下方「＋ 添加角色」新建</div>' : '');
-  list.querySelectorAll('.role-card-name').forEach((n) => {
-    const i = Number(n.closest('.role-card').dataset.i);
-    n.addEventListener('input', () => { roleFields[i].name = n.value; });
-  });
-  list.querySelectorAll('.role-card-body').forEach((b) => {
-    const i = Number(b.closest('.role-card').dataset.i);
-    b.addEventListener('input', () => { roleFields[i].value = b.value; });
-  });
-  list.querySelectorAll('.role-card .del').forEach((b) => {
-    b.addEventListener('click', () => {
-      roleFields.splice(Number(b.closest('.role-card').dataset.i), 1);
-      renderRoleCards();
+    + (roleFields.length === 0 ? '<div class="sec-empty">还没有角色</div>' : '');
+  list.querySelectorAll('.role-item').forEach((row) => {
+    row.addEventListener('click', (e) => {
+      if (e.target.closest('.del')) return;
+      selectedRoleIndex = Number(row.dataset.i);
+      renderRoleList();
+      renderRoleEditor();
     });
+  });
+  list.querySelectorAll('.role-item .del').forEach((b) => {
+    b.addEventListener('click', (e) => {
+      e.stopPropagation();
+      roleFields.splice(Number(b.closest('.role-item').dataset.i), 1);
+      if (selectedRoleIndex >= roleFields.length) selectedRoleIndex = roleFields.length - 1;
+      renderRoleList();
+      renderRoleEditor();
+    });
+  });
+}
+
+/** 右侧编辑面板：角色名（≤30）+ ## 定位 + ## 详细记忆 */
+function renderRoleEditor() {
+  const ed = el('role-editor');
+  if (!ed) return;
+  const r = roleFields[selectedRoleIndex];
+  if (!r) {
+    ed.innerHTML = '<div class="sec-empty">点击左侧角色进入编辑，或「＋ 添加角色」新建</div>';
+    return;
+  }
+  const name = String(r.name || '');
+  ed.innerHTML = `
+    <div class="role-editor-head">
+      <input class="role-editor-name" maxlength="${MAX_ROLE_NAME}" value="${escapeHtml(name)}" placeholder="角色名（≤30 字符，如：学习导师）" />
+      <span class="role-editor-count">${name.length}/${MAX_ROLE_NAME}</span>
+    </div>
+    <div class="role-field">
+      <div class="role-field-label">## 定位<span class="role-field-hint">（AGENTS.md 角色行显示首行摘要）</span></div>
+      <textarea class="role-field-input" data-field="desc" rows="2" placeholder="这个角色是做什么的（定位）…">${escapeHtml(r.desc || '')}</textarea>
+    </div>
+    <div class="role-field">
+      <div class="role-field-label">## 详细记忆<span class="role-field-hint">（DSH 切换到此角色时按此扮演）</span></div>
+      <textarea class="role-field-input" data-field="memory" rows="9" placeholder="角色的详细记忆、知识、风格…">${escapeHtml(r.memory || '')}</textarea>
+    </div>`;
+  const nameInput = ed.querySelector('.role-editor-name');
+  const countEl = ed.querySelector('.role-editor-count');
+  nameInput.addEventListener('input', () => {
+    roleFields[selectedRoleIndex].name = nameInput.value;
+    countEl.textContent = `${nameInput.value.length}/${MAX_ROLE_NAME}`;
+    // 实时同步列表里的名称显示
+    const item = document.querySelector(`.role-item[data-i="${selectedRoleIndex}"] .role-item-name`);
+    if (item) item.textContent = nameInput.value || '（未命名）';
+  });
+  ed.querySelectorAll('.role-field-input').forEach((b) => {
+    const field = b.dataset.field;
+    b.addEventListener('input', () => { roleFields[selectedRoleIndex][field] = b.value; });
   });
 }
 
@@ -272,10 +322,11 @@ function addRole() {
   let n = `角色 ${roleFields.length + 1}`;
   let i = 1;
   while (roleFields.some((r) => r.name === n)) { i++; n = `角色 ${i}`; }
-  roleFields.push({ name: n, value: '' });
-  renderRoleCards();
-  const cards = document.querySelectorAll('.role-card .role-card-name');
-  const ni = cards[cards.length - 1];
+  roleFields.push({ name: n, desc: '', memory: '' });
+  selectedRoleIndex = roleFields.length - 1;
+  renderRoleList();
+  renderRoleEditor();
+  const ni = document.querySelector('.role-editor-name');
   if (ni) { ni.focus(); ni.select(); }
 }
 
@@ -297,8 +348,9 @@ function collectPayload() {
       return true;
     });
   // v1.0.2：角色 value = 角色 .md 全文（保留格式，不做 trim/换行替换）
+  // v1.0.3：角色拆「定位 / 详细记忆」固定字段（desc / memory），主进程组装全文
   const cleanRoles = roleFields
-    .map((it) => ({ name: String(it.name || '').trim(), value: String(it.value || '') }))
+    .map((it) => ({ name: String(it.name || '').trim(), desc: String(it.desc || ''), memory: String(it.memory || '') }))
     .filter((it) => it.name !== '');
   return { users: clean(userFields), dsh: clean(dshFields), roles: cleanRoles, sections: cleanSections };
 }
@@ -407,11 +459,11 @@ async function loadData() {
     dshFields = defs.map((n) => ({ name: n, value: '' }));
   }
   if (rolesSec && Array.isArray(rolesSec.fields) && rolesSec.fields.length > 0) {
-    // v1.0.2：value = 角色 .md 全文（data() 已注入），desc = 定位
-    roleFields = rolesSec.fields.map((it) => ({ name: it.name || '', value: it.value || '', desc: it.desc || '' }));
+    // v1.0.2：value = 角色 .md 全文；v1.0.3：desc = ## 定位 全文（窗口字段输入），value = 详细记忆+其他
+    roleFields = rolesSec.fields.map((it) => ({ name: it.name || '', desc: it.desc || '', memory: it.value || '' }));
   } else {
     const defs = (data && Array.isArray(data.defaultRoles)) ? data.defaultRoles : DEFAULT_ROLES;
-    roleFields = defs.map((n) => ({ name: n, value: '', desc: '' }));
+    roleFields = defs.map((n) => ({ name: n, desc: '', memory: '' }));
   }
   guidePending = !!(usersSec && usersSec.guide);
   sections = list
@@ -428,7 +480,7 @@ async function init() {
   } catch {
     userFields = DEFAULT_FIELDS.map((n) => ({ name: n, value: '' }));
     dshFields = DEFAULT_DSH_FIELDS.map((n) => ({ name: n, value: '' }));
-    roleFields = DEFAULT_ROLES.map((n) => ({ name: n, value: '' }));
+    roleFields = DEFAULT_ROLES.map((n) => ({ name: n, desc: '', memory: '' }));
     sections = [];
   }
   renderAll();

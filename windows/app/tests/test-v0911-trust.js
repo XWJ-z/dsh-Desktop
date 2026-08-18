@@ -142,7 +142,7 @@ async function testHashLedger() {
   ok(r2.ok === false && r2.reason === 'hash-mismatch', '台账内版本 + 错误 hash → 拒绝（投毒拦截）');
   const r3 = verifyKnownHash('0.9.6', '');
   ok(r3.ok === false, '台账内版本 + 空 hash → 拒绝');
-  const r4 = verifyKnownHash('1.0.1', 'whatever');
+  const r4 = verifyKnownHash('2.0.0', 'whatever');
   ok(r4.ok === true && r4.reason === 'unknown-version', '台账外版本（比壳新）→ 放行（交多数一致兜底）');
 }
 
