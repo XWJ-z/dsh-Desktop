@@ -144,6 +144,11 @@ async function testHashLedger() {
   ok(r3.ok === false, '台账内版本 + 空 hash → 拒绝');
   const r4 = verifyKnownHash('2.0.0', 'whatever');
   ok(r4.ok === true && r4.reason === 'unknown-version', '台账外版本（比壳新）→ 放行（交多数一致兜底）');
+  // v1.0.5（S12）：台账补齐 1.0.3 实测 hash —— 升级链路 1.0.3 重放投毒防护
+  const r5 = verifyKnownHash('1.0.3', '969c008a3d22924e5406ec154b9b824b01b17ed0ebcbe28739c70bb1abc6fd50');
+  ok(r5.ok === true, '台账：1.0.3 + 正确 hash → 放行（v1.0.5 补齐）');
+  const r6 = verifyKnownHash('1.0.3', 'deadbeef');
+  ok(r6.ok === false && r6.reason === 'hash-mismatch', '台账：1.0.3 + 错误 hash → 拒绝（升级链路防投毒）');
 }
 
 async function testDshInfo() {

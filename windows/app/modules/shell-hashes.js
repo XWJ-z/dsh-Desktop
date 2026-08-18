@@ -22,6 +22,8 @@ const KNOWN_SHELL_HASHES = Object.freeze({
   '1.0.1': '07b376bb6a9d59068c1b048a5fdcbc7d6c6d122894f71a6cdfe03705ba0e92da',
   // v1.0.3：台账补齐 1.0.2 实测 hash（发布流程约定：随下一次壳版本一起分发）
   '1.0.2': '47f7098ddacea3c9dd2dd295232d40f66c710a3574b02f94fc68786cb49d2dd7',
+  // v1.0.5：台账补齐 1.0.3 实测 hash（发布流程约定：随下一次壳版本一起分发，S12）
+  '1.0.3': '969c008a3d22924e5406ec154b9b824b01b17ed0ebcbe28739c70bb1abc6fd50',
 });
 
 /**
