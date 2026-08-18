@@ -25,10 +25,8 @@ function ok(cond, name) {
 }
 
 async function getJson(url) {
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), 15000);
   try {
-    const res = await fetch(url, { signal: ctrl.signal, headers: { 'User-Agent': 'dsh-verify' } });
+    const res = await fetch(url, { headers: { 'User-Agent': 'dsh-verify' } });
     if (res.status !== 200) return null;
     const text = await res.text();
     // api 源返回 base64 内容
@@ -37,7 +35,7 @@ async function getJson(url) {
       if (j && j.content) return JSON.parse(Buffer.from(j.content, 'base64').toString('utf8'));
       return j;
     } catch { return null; }
-  } catch { return null; } finally { clearTimeout(t); }
+  } catch { return null; }
 }
 
 async function main() {
