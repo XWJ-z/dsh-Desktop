@@ -11,9 +11,11 @@
 
 /** 允许打开外部浏览器的域名（主机名精确匹配或其后缀 `.域名` 匹配） */
 const ALLOWED_EXTERNAL_HOSTS = Object.freeze([
-  'github.com',        // 项目仓库 / Releases 下载页
-  'deepseek.com',      // DeepSeek 官网
-  'qq.com',            // QQ 群链接（群号 916607090）
+  'github.com', // 项目仓库 / Releases 下载页
+  'deepseek.com', // DeepSeek 官网
+  'qq.com', // QQ 群链接（群号 916607090）
+  'raw.githubusercontent.com', // v1.1.1：帮助文档远程下发（仅限 help.html 路径）
+  'cdn.jsdelivr.net', // v1.1.1：帮助文档远程下发（仅限 help.html 路径）
   // 本地回环：宠物菜单「网页打开」打开壳自身承载的 DSH GUI（getWebUrl，
   // http://127.0.0.1:<port>）—— 非外部站点，属产品功能，必须放行
   '127.0.0.1',
@@ -23,6 +25,7 @@ const ALLOWED_EXTERNAL_HOSTS = Object.freeze([
 /**
  * 判断 URL 是否可安全打开（https/http + 域名在白名单内）。
  * 非字符串 / 非 http(s) / 域名不在白名单 → false。
+ * v1.1.1：raw.githubusercontent.com 和 cdn.jsdelivr.net 仅允许 help.html 路径。
  * @param {string} url
  * @returns {boolean}
  */
@@ -36,10 +39,23 @@ function isAllowedExternalUrl(url) {
   }
   if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false;
   const host = parsed.hostname.toLowerCase();
-  return ALLOWED_EXTERNAL_HOSTS.some((allowed) => {
+
+  // 检查域名是否在白名单
+  const hostAllowed = ALLOWED_EXTERNAL_HOSTS.some((allowed) => {
     const a = allowed.toLowerCase();
     return host === a || host.endsWith('.' + a);
   });
+
+  if (!hostAllowed) return false;
+
+  // v1.1.1：raw.githubusercontent.com 和 cdn.jsdelivr.net 仅允许 help.html 路径
+  if (host === 'raw.githubusercontent.com' || host === 'cdn.jsdelivr.net') {
+    const pathname = parsed.pathname.toLowerCase();
+    // 只允许 help.html 路径（精确匹配或以 /help.html 结尾）
+    return pathname === '/xwj-z/dsh-desktop/main/help.html' || pathname.endsWith('/help.html');
+  }
+
+  return true;
 }
 
 module.exports = { ALLOWED_EXTERNAL_HOSTS, isAllowedExternalUrl };

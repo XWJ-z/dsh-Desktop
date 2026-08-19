@@ -24,6 +24,7 @@ async function load() {
   // 初始状态
   el('dsh-status').textContent = '查询中…';
   el('shell-status').textContent = '查询中…';
+  el('prompts-status').textContent = '查询中…';
   if (!dsh || !dsh.queryUpdate) return;
 
   const info = await dsh.queryUpdate();
@@ -73,7 +74,56 @@ async function load() {
     setBadge('shell-badge', 'unknown', '未知');
   }
   el('shell-status').textContent = '';
+
+  // ── v1.1.1：提示词库卡片 ──
+  await loadPrompts();
 }
+
+// ── 提示词库：查询 + 立即更新（v1.1.1 单独远程升级）──
+let promptsUpdating = false;
+
+async function loadPrompts() {
+  if (!dsh || !dsh.queryPromptsUpdate) return;
+  el('prompts-status').textContent = '查询中…';
+  const info = await dsh.queryPromptsUpdate();
+  if (!info || !info.ok) {
+    // 远程查询失败：仍显示本地当前版本（缓存或包内置），最新/徽章回退未知
+    el('prompts-current').textContent = info && info.current != null ? `v${info.current}` : '-';
+    el('prompts-latest').textContent = '未知';
+    el('prompts-updated').textContent = '-';
+    setBadge('prompts-badge', 'unknown', '未知');
+    el('prompts-status').textContent = '查询失败（请检查网络）';
+    return;
+  }
+  el('prompts-current').textContent = `v${info.current}`;
+  el('prompts-latest').textContent = info.latest != null ? `v${info.latest}` : '未知';
+  el('prompts-updated').textContent = info.updated || '-';
+  setBadge('prompts-badge', info.hasUpdate ? 'update' : 'latest', info.hasUpdate ? '可更新' : '最新');
+  el('prompts-update').style.display = info.hasUpdate ? '' : 'none';
+  el('prompts-status').textContent = '';
+}
+
+el('prompts-update').addEventListener('click', async () => {
+  if (promptsUpdating || !dsh || !dsh.updatePrompts) return;
+  promptsUpdating = true;
+  el('prompts-update').disabled = true;
+  el('prompts-status').innerHTML = '<span class="spinner"></span> 正在更新…';
+  const r = await dsh.updatePrompts();
+  promptsUpdating = false;
+  if (r && r.ok && r.updated) {
+    el('prompts-status').textContent = `已更新到 v${r.info.latest}，打开提示词库即可看到新内容`;
+    el('prompts-update').style.display = 'none';
+    setBadge('prompts-badge', 'latest', '最新');
+    el('prompts-latest').textContent = `v${r.info.latest}`;
+  } else if (r && r.ok && !r.updated) {
+    el('prompts-status').textContent = '当前已是最新版本';
+  } else {
+    el('prompts-update').disabled = false;
+    el('prompts-status').textContent = (r && r.reason === 'data-fetch-failed')
+      ? '拉取提示词库数据失败（请检查网络后重试）'
+      : '检查更新失败（请检查网络后重试）';
+  }
+});
 
 // ── DSH 立即升级 ──
 el('dsh-upgrade').addEventListener('click', async () => {

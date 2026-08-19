@@ -1,6 +1,6 @@
 {
-  "version": 6,
-  "description": "DSH-Desktop 内置提示词库（v1.0.5：6 分类下细分二级子分类，共 201 条；我的提示词不受影响）",
+  "version": "2026-08-19",
+  "description": "DSH-Desktop 内置提示词库（v1.1.1：6 分类下细分二级子分类，共 201 条；我的提示词不受影响；版本按日期命名）",
   "categories": [
     {
       "id": "study",

@@ -22,18 +22,17 @@
  */
 
 function createPet(deps) {
-  const {
-    app, fs, path, appendLog,
-    getSettings, saveSettings,
-    getMainWindow, getWebUrl,
-  } = deps;
+  const { app, fs, path, appendLog, getSettings, saveSettings, getMainWindow, getWebUrl } = deps;
 
   /** v0.8.11（T1）：读取 Q 版鲸鱼 SVG（内联注入用；失败返回空串，前端兜底 emoji） */
   let petSvgCache = null;
   function petSvgText() {
     if (petSvgCache === null) {
-      try { petSvgCache = fs.readFileSync(path.join(app.getAppPath(), 'assets', 'pet-whale.svg'), 'utf8'); }
-      catch { petSvgCache = ''; }
+      try {
+        petSvgCache = fs.readFileSync(path.join(app.getAppPath(), 'assets', 'pet-whale.svg'), 'utf8');
+      } catch {
+        petSvgCache = '';
+      }
     }
     return petSvgCache;
   }
@@ -42,8 +41,11 @@ function createPet(deps) {
   let toolboxSvgCache = null;
   function toolboxSvgText() {
     if (toolboxSvgCache === null) {
-      try { toolboxSvgCache = fs.readFileSync(path.join(app.getAppPath(), 'assets', 'toolbox.svg'), 'utf8'); }
-      catch { toolboxSvgCache = ''; }
+      try {
+        toolboxSvgCache = fs.readFileSync(path.join(app.getAppPath(), 'assets', 'toolbox.svg'), 'utf8');
+      } catch {
+        toolboxSvgCache = '';
+      }
     }
     return toolboxSvgCache;
   }
@@ -67,7 +69,9 @@ function createPet(deps) {
     const petHidden = !!getSettings().petHidden;
     const petSvg = petSvgText();
     const toolboxSvg = toolboxSvgText();
-    win.webContents.executeJavaScript(`
+    win.webContents
+      .executeJavaScript(
+        `
       (() => {
         // 已安装自愈（同一页面生命周期内幂等）：仅做可见性检查，缺失/不可见则重建
         if (window.__dshPetSelfHeal) {
@@ -148,6 +152,8 @@ function createPet(deps) {
           // v0.9.12（老大指令）：全局记忆入口放提示词库前面（点击打开记忆文件，首次自动建立）
           +   '<div class="pet-item" data-action="memory">🧠 全局记忆</div>'
           +   '<div class="pet-item" data-action="promptlib">💡 提示词库</div>'
+          // v1.1.1：插件市场入口（老大指令：保留 💎 图标）
+          +   '<div class="pet-item" data-action="pluginmarket">💎 插件市场</div>'
           +   '<div class="pet-item" data-action="webopen">🌐 网页打开</div>'
           +   (petHidden
               ? '<div class="pet-item" data-action="showpet">🐋 显示宠物</div>'
@@ -354,6 +360,9 @@ function createPet(deps) {
               if (window.dshDesktop && window.dshDesktop.openGlobalMemory) window.dshDesktop.openGlobalMemory();
             } else if (it.dataset.action === 'promptlib') {
               if (window.dshDesktop && window.dshDesktop.openPromptLib) window.dshDesktop.openPromptLib();
+            } else if (it.dataset.action === 'pluginmarket') {
+              // v1.1.1：打开插件市场窗口
+              if (window.dshDesktop && window.dshDesktop.openPluginMarket) window.dshDesktop.openPluginMarket();
             } else if (it.dataset.action === 'webopen') {
               if (window.dshDesktop && window.dshDesktop.openExternal) window.dshDesktop.openExternal(url);
             } else if (it.dataset.action === 'hide') {
@@ -473,7 +482,11 @@ function createPet(deps) {
         // 首次创建
         window.__dshEnsurePet();
       })()
-    `).catch(() => { /* ignore */ });
+    `,
+      )
+      .catch(() => {
+        /* ignore */
+      });
   }
 
   /** v0.7.6（T-037）/ v0.8.11（T5）/ v0.8.17：恢复默认布局 —— 清除位置记忆，宠物/工具箱回底部居中 */
@@ -482,16 +495,23 @@ function createPet(deps) {
     saveSettings();
     const mainWindow = getMainWindow();
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.executeJavaScript(`
+      mainWindow.webContents
+        .executeJavaScript(
+          `
         // v0.8.23：重置页面内自愈状态（断开 observer + 移除节点），
         // 再走主进程 injectPet 完整重装（新位置=底部居中）
         if (window.__dshPetObserver) { window.__dshPetObserver.disconnect(); window.__dshPetObserver = null; }
         window.__dshPetSelfHeal = false;
         const pet = document.getElementById('dsh-pet');
         if (pet) pet.remove();
-      `).catch(() => { /* ignore */ }).then(() => {
-        injectPet(mainWindow); // v0.8.17：按 petHidden 注入宠物或工具箱（底部居中）
-      });
+      `,
+        )
+        .catch(() => {
+          /* ignore */
+        })
+        .then(() => {
+          injectPet(mainWindow); // v0.8.17：按 petHidden 注入宠物或工具箱（底部居中）
+        });
     }
     appendLog('info', '已恢复默认布局（宠物/工具箱回底部居中）');
   }
@@ -503,7 +523,9 @@ function createPet(deps) {
    */
   function petBubble(win, text) {
     if (!win || win.isDestroyed()) return;
-    win.webContents.executeJavaScript(`
+    win.webContents
+      .executeJavaScript(
+        `
       (() => {
         const p = document.getElementById('dsh-pet');
         if (p) {
@@ -532,7 +554,11 @@ function createPet(deps) {
         clearTimeout(t._timer);
         t._timer = setTimeout(() => { t.style.display = 'none'; }, 2600);
       })()
-    `).catch(() => { /* ignore */ });
+    `,
+      )
+      .catch(() => {
+        /* ignore */
+      });
   }
 
   return { petSvgText, toolboxSvgText, injectPet, resetWebOpenBtnLayout, petBubble };

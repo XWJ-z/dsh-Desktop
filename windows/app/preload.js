@@ -89,7 +89,12 @@ contextBridge.exposeInMainWorld('dshDesktop', {
    */
   getPathForFile: (file) => {
     // v0.9.16（外审 zx(29) S13）：异常时 console.warn 辅助排查（渲染进程无 appendLog）
-    try { return webUtils.getPathForFile(file); } catch (err) { console.warn('[dshDesktop] getPathForFile 失败：', (err && err.message) || err); return ''; }
+    try {
+      return webUtils.getPathForFile(file);
+    } catch (err) {
+      console.warn('[dshDesktop] getPathForFile 失败：', (err && err.message) || err);
+      return '';
+    }
   },
   /** 拖拽文件 → 主进程处理（复制进工作区 + 注入提示词） */
   dropFiles: (paths) => ipcRenderer.invoke('drop:files', paths),
@@ -111,4 +116,24 @@ contextBridge.exposeInMainWorld('dshDesktop', {
   chooseRole: () => ipcRenderer.invoke('role:choose'),
   // v1.0.3（老大反馈 3）：角色选择窗口（竖排列表）结果上报 —— index 为角色列表下标，-1 = 不选择
   rolePickerResult: (index) => ipcRenderer.send('role-picker:select', index),
+  // ── v1.1.1：插件市场 ──
+  /** 打开插件市场窗口 */
+  openPluginMarket: () => ipcRenderer.invoke('toolbox:open-plugin-market'),
+  /** 获取插件市场分类列表（含「全部」以外的 14 分类） */
+  getPluginCategories: () => ipcRenderer.invoke('plugin-market:categories'),
+  /** 获取全部插件（缓存优先，过期自动刷新） */
+  getPlugins: () => ipcRenderer.invoke('plugin-market:get-plugins'),
+  /** 搜索插件（按名称/描述模糊匹配） */
+  searchPlugins: (query) => ipcRenderer.invoke('plugin-market:search', query),
+  /** 按分类筛选插件（'all' = 全部） */
+  getPluginsByCategory: (categoryId) => ipcRenderer.invoke('plugin-market:get-plugins-by-category', categoryId),
+  /** 复制安装命令到剪贴板 */
+  copyPluginCommand: (command) => ipcRenderer.invoke('plugin-market:copy-command', command),
+  /** 打开插件 GitHub 仓库（白名单外链） */
+  openPluginRepo: (url) => ipcRenderer.invoke('plugin-market:open-repo', url),
+  // ── v1.1.1：提示词库单独升级（更新窗口）──
+  /** 查询提示词库更新信息（{ current, latest, hasUpdate }） */
+  queryPromptsUpdate: () => ipcRenderer.invoke('prompts:query'),
+  /** 立即更新提示词库（拉远程数据落缓存，返回 { ok, updated }） */
+  updatePrompts: () => ipcRenderer.invoke('prompts:update'),
 });

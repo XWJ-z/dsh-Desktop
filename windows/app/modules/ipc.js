@@ -11,20 +11,45 @@
 
 function registerIpc(deps) {
   const {
-    ipcMain, app, clipboard, shell, path, fs,
+    ipcMain,
+    app,
+    clipboard,
+    shell,
+    path,
+    fs,
     appendLog, // v0.9.12：memory:save 异常记录
-    readShellConfig, installedDshVersion,
-    fetchLatestDshVersion, fetchLatestShellVersion, compareSemver, effectiveLatest,
-    queryUpdateInfo, upgradeDshVersion, downloadShellUpdate,
-    getMainWindow, getUpdateWin, getAboutWin,
-    getSettings, saveSettings, refreshMenus,
-    openPromptLibWindow, openUpdateWindow, getWebUrl,
+    readShellConfig,
+    installedDshVersion,
+    fetchLatestDshVersion,
+    fetchLatestShellVersion,
+    compareSemver,
+    effectiveLatest,
+    queryUpdateInfo,
+    upgradeDshVersion,
+    downloadShellUpdate,
+    getMainWindow,
+    getUpdateWin,
+    getAboutWin,
+    getSettings,
+    saveSettings,
+    refreshMenus,
+    openPromptLibWindow,
+    openPluginMarketWindow,
+    openUpdateWindow,
+    getWebUrl,
     // v0.9：提示词注入公共链路 + 拖文件处理（drop:files）
-    promptInject, handleDropFiles,
+    promptInject,
+    handleDropFiles,
     // v0.9.5（T2）：自定义提示词 + （T3）公告条
-    customPrompts, noticeApi,
+    customPrompts,
+    noticeApi,
+    // v1.1.1：提示词库远程更新
+    promptsUpdater,
+    // v1.1.1：插件市场
+    pluginMarket,
     // v0.9.12（老大指令）：全局记忆（读写 ~/.dsh/AGENTS.md + 打开编辑窗口）
-    globalMemory, openGlobalMemoryWindow,
+    globalMemory,
+    openGlobalMemoryWindow,
     // v0.9.13：角色选择（新对话选角色 / 双击输入框重选）
     pickAndInjectRole,
   } = deps;
@@ -52,7 +77,10 @@ function registerIpc(deps) {
     const ids = (settings.readNotices || []).slice();
     let changed = false;
     for (const n of notices) {
-      if (n.id && !ids.includes(n.id)) { ids.push(n.id); changed = true; }
+      if (n.id && !ids.includes(n.id)) {
+        ids.push(n.id);
+        changed = true;
+      }
     }
     if (changed) {
       settings.readNotices = ids;
@@ -80,7 +108,9 @@ function registerIpc(deps) {
     const text = texts[key];
     const mainWindow = getMainWindow();
     if (text && mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.executeJavaScript(`
+      mainWindow.webContents
+        .executeJavaScript(
+          `
         (() => {
           const p = document.getElementById('dsh-pet');
           if (!p || p.dataset.mode !== 'pet') return; // v0.8.16：工具箱形态无宠物气泡
@@ -91,7 +121,11 @@ function registerIpc(deps) {
           clearTimeout(p._bt);
           p._bt = setTimeout(() => { b.style.display = 'none'; }, 2200);
         })()
-      `).catch(() => { /* ignore */ });
+      `,
+        )
+        .catch(() => {
+          /* ignore */
+        });
     }
     return true;
   });
@@ -104,7 +138,8 @@ function registerIpc(deps) {
   ipcMain.handle('changelog:data', () => {
     try {
       const changelogData = require(path.join(app.getAppPath(), 'CHANGELOG.json'));
-      const versions = (changelogData.versions || []).slice()
+      const versions = (changelogData.versions || [])
+        .slice()
         .sort((a, b) => (compareSemver(b.version, a.version) < 0 ? -1 : 1));
       return { versions, current: app.getVersion() };
     } catch {
@@ -112,9 +147,10 @@ function registerIpc(deps) {
     }
   });
   // v0.8.3（T1/T4）：提示词库 —— 数据（内置 prompts.json）/ 注入输入框 / 工具箱入口
+  // v1.1.1：使用 promptsUpdater 模块，优先级：缓存 > 包内置
   ipcMain.handle('promptlib:data', () => {
     try {
-      return require(path.join(app.getAppPath(), 'prompts.json')) || { categories: [] };
+      return promptsUpdater.getData() || { categories: [] };
     } catch {
       return { categories: [] };
     }
@@ -134,7 +170,15 @@ function registerIpc(deps) {
   ipcMain.handle('promptlib:custom-delete', (_e, id) => customPrompts.remove(String(id || '')));
   // v0.9（T4）：拖文件 → 复制进工作区 + 注入提示词（处理逻辑见 drop-files 模块）
   ipcMain.handle('drop:files', (_e, paths) => handleDropFiles(paths));
-  ipcMain.handle('toolbox:open-promptlib', () => { openPromptLibWindow(); return true; });
+  ipcMain.handle('toolbox:open-promptlib', () => {
+    openPromptLibWindow();
+    return true;
+  });
+  // v1.1.1：插件市场窗口
+  ipcMain.handle('toolbox:open-plugin-market', () => {
+    openPluginMarketWindow();
+    return true;
+  });
   ipcMain.handle('update:dsh-upgrade', () => upgradeDshVersion());
   ipcMain.handle('update:shell-download', () => {
     return downloadShellUpdate(getUpdateWin() || getMainWindow(), (percent) => {
@@ -153,7 +197,10 @@ function registerIpc(deps) {
   // v0.9.12（老大指令）：全局记忆 —— 读写 ~/.dsh/AGENTS.md（DSH 自动读取）
   // 覆盖确认由前端按钮二次确认（v0.9.12 修复：主进程 dialog 在 modal:false 子窗口
   // 上可能不弹/挂起导致"保存中"卡死 → 确认移前端，本 handler 只保存，绝不挂起）
-  ipcMain.handle('memory:open-window', () => { openGlobalMemoryWindow(); return true; });
+  ipcMain.handle('memory:open-window', () => {
+    openGlobalMemoryWindow();
+    return true;
+  });
   ipcMain.handle('memory:data', () => globalMemory.data());
   ipcMain.handle('memory:save', async (_e, payload) => {
     try {
@@ -171,7 +218,11 @@ function registerIpc(deps) {
   // v1.0.1（老大指令）：全局记忆窗口底部「角色文件位置」—— 打开 ~/.dsh/roles（不存在则先创建）
   ipcMain.handle('memory:open-roles', () => {
     const dir = path.join(path.dirname(globalMemory.file()), 'roles');
-    try { fs.mkdirSync(dir, { recursive: true }); } catch { /* ignore */ }
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+    } catch {
+      /* ignore */
+    }
     shell.openPath(dir);
     return true;
   });
@@ -204,10 +255,7 @@ function registerIpc(deps) {
   // 关于窗口：版本信息 + 图标 + 动作
   ipcMain.handle('about:info', async () => {
     const cfg = readShellConfig();
-    const [dshLatest, shellLatest] = await Promise.all([
-      fetchLatestDshVersion(),
-      fetchLatestShellVersion(),
-    ]);
+    const [dshLatest, shellLatest] = await Promise.all([fetchLatestDshVersion(), fetchLatestShellVersion()]);
     const iconPath = path.join(app.getAppPath(), 'assets', 'icon.png');
     return {
       appVersion: app.getVersion(),
@@ -232,6 +280,35 @@ function registerIpc(deps) {
   ipcMain.handle('app:open-external', (_e, url) => {
     if (isAllowedExternalUrl(url)) shell.openExternal(url);
     return true;
+  });
+
+  // v1.1.1：插件市场 IPC 处理器
+  ipcMain.handle('plugin-market:categories', () => {
+    return pluginMarket.getCategories();
+  });
+  ipcMain.handle('plugin-market:get-plugins', async () => {
+    return await pluginMarket.getPlugins();
+  });
+  ipcMain.handle('plugin-market:search', async (_e, query) => {
+    return await pluginMarket.searchPlugins(query);
+  });
+  ipcMain.handle('plugin-market:get-plugins-by-category', async (_e, categoryId) => {
+    return await pluginMarket.getPluginsByCategory(categoryId);
+  });
+  ipcMain.handle('plugin-market:copy-command', (_e, command) => {
+    pluginMarket.copyInstallCommand(command);
+    return true;
+  });
+  ipcMain.handle('plugin-market:open-repo', (_e, url) => {
+    pluginMarket.openPluginRepo(url);
+    return true;
+  });
+  // v1.1.1：提示词库单独升级 —— 更新窗口查询 / 立即更新
+  ipcMain.handle('prompts:query', async () => {
+    return await promptsUpdater.queryInfo();
+  });
+  ipcMain.handle('prompts:update', async () => {
+    return await promptsUpdater.forceUpdate();
   });
 }
 

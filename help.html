@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DSH-Desktop 帮助文档</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background: #f9f9f9;
+        }
+        h1 {
+            font-size: 2.5em;
+            color: #2c3e50;
+            margin-bottom: 30px;
+            text-align: center;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 15px;
+        }
+        h2 {
+            font-size: 1.8em;
+            color: #34495e;
+            margin: 40px 0 20px 0;
+            padding-left: 15px;
+            border-left: 4px solid #3498db;
+        }
+        p {
+            font-size: 1.1em;
+            margin-bottom: 20px;
+            text-align: justify;
+        }
+        .section {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        .highlight {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            border-left: 4px solid #ffc107;
+        }
+        .download-link {
+            display: inline-block;
+            background: #3498db;
+            color: white;
+            padding: 12px 25px;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            margin: 10px 5px;
+            transition: background 0.3s;
+        }
+        .download-link:hover {
+            background: #2980b9;
+        }
+        .download-link.baidu {
+            background: #e74c3c;
+        }
+        .download-link.baidu:hover {
+            background: #c0392b;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 50px;
+            padding-top: 30px;
+            border-top: 2px solid #eee;
+            color: #7f8c8d;
+        }
+        .emoji {
+            font-size: 1.2em;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎉 DSH-Desktop 帮助文档</h1>
+    
+    <div class="section">
+        <h2><span class="emoji">📋</span> 一、项目介绍</h2>
+        <p>DSH-Desktop 是 DeepSeek Harness 的桌面客户端，为用户提供便捷的 AI 交互体验。</p>
+        <p><strong>核心特点：</strong></p>
+        <ul style="margin-left: 20px; margin-bottom: 20px;">
+            <li>🚀 <strong>一键安装</strong> - 无需复杂配置，下载即用</li>
+            <li>🔄 <strong>自动更新</strong> - 支持远程下发更新，保持最新版本</li>
+            <li>💡 <strong>内置提示词库</strong> - 提供丰富的提示词模板，提升使用效率</li>
+            <li>🎨 <strong>桌面宠物</strong> - 可爱的桌面伴侣，支持互动</li>
+            <li>🔧 <strong>插件市场</strong> - 连接官方社区，扩展功能</li>
+        </ul>
+        <p>DSH-Desktop 基于 Electron 构建，支持 Windows 系统，为您提供稳定、高效的 AI 交互环境。</p>
+    </div>
+    
+    <div class="section">
+        <h2><span class="emoji">⚠️</span> 二、下载更新失败？请关闭科学上网</h2>
+        <p>DSH-Desktop 的下载和更新服务依赖 GitHub CDN。如果您在使用过程中遇到下载失败或更新卡顿的问题，可能是因为您的网络环境受到了代理工具（科学上网）的影响。</p>
+        
+        <div class="highlight">
+            <p><strong>解决方案：</strong></p>
+            <p>1. 请暂时关闭您的代理软件（如 Clash、V2Ray、Shadowsocks 等）</p>
+            <p>2. 关闭 VPN 连接</p>
+            <p>3. 重新尝试下载或更新</p>
+        </div>
+        
+        <p>关闭代理后，DSH-Desktop 可以直接连接到 GitHub 服务器，获得更快的下载速度和更稳定的连接。</p>
+    </div>
+    
+    <div class="section">
+        <h2><span class="emoji">💾</span> 三、百度网盘下载链接</h2>
+        <p>如果您无法访问 GitHub，或者下载速度较慢，可以使用百度网盘作为备用下载渠道：</p>
+        
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="https://pan.baidu.com/s/1Y9CSRXKZ48cQYNi60ozBmA?pwd=8yh8" class="download-link baidu" target="_blank">
+                📥 百度网盘下载
+            </a>
+        </div>
+        
+        <p><strong>提取码：</strong> <code>8yh8</code></p>
+        
+        <div class="highlight">
+            <p><strong>百度网盘使用说明：</strong></p>
+            <p>1. 点击上方链接，打开百度网盘页面</p>
+            <p>2. 输入提取码：<code>dsh2024</code></p>
+            <p>3. 下载安装包到本地</p>
+            <p>4. 双击运行安装程序</p>
+        </div>
+        
+        <p>百度网盘下载链接会定期更新，请确保下载的是最新版本。</p>
+    </div>
+    
+    <div class="footer">
+        <p>📧 如有问题，请通过以下方式联系我们：</p>
+        <p>QQ 群：<strong>916607090</strong></p>
+        <p>GitHub：<a href="https://github.com/XWJ-z/dsh-Desktop" target="_blank">https://github.com/XWJ-z/dsh-Desktop</a></p>
+        <p style="margin-top: 20px; font-size: 0.9em;">
+            © 2024 DSH-Desktop. All rights reserved.
+        </p>
+    </div>
+</body>
+</html>

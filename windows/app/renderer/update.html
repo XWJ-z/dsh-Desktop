@@ -93,6 +93,21 @@
     <div class="status" id="shell-status"></div>
   </div>
 
+  <!-- v1.1.1：提示词库卡片（单独远程升级，push 即下发，无需更新壳） -->
+  <div class="card">
+    <div class="card-title">提示词库</div>
+    <div class="row"><span class="label">当前版本</span><span class="value" id="prompts-current">-</span></div>
+    <div class="row">
+      <span class="label">最新版本</span><span class="value" id="prompts-latest">-</span>
+      <span class="badge unknown" id="prompts-badge">未知</span>
+    </div>
+    <div class="row"><span class="label">更新日期</span><span class="value" id="prompts-updated">-</span></div>
+    <div class="btn-row">
+      <button class="btn" id="prompts-update" style="display:none">立即更新</button>
+    </div>
+    <div class="status" id="prompts-status"></div>
+  </div>
+
   <script src="update.js"></script>
 </body>
 </html>

@@ -18,7 +18,20 @@
  *     壳代码不受 DSH 版本影响。
  */
 
-const { app, BrowserWindow, clipboard, dialog, Menu, nativeTheme, screen, shell, ipcMain, Tray, globalShortcut } = require('electron');
+const {
+  app,
+  BrowserWindow,
+  clipboard,
+  dialog,
+  Menu,
+  nativeTheme,
+  screen,
+  shell,
+  ipcMain,
+  Tray,
+  globalShortcut,
+  net: electronNet, // v1.1.1：Electron net（Chromium 网络栈 + 系统 CA）；与 node:net 区分
+} = require('electron');
 const { spawn, execFileSync } = require('node:child_process');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
@@ -38,14 +51,17 @@ const { createServerLifecycle } = require('./modules/serverLifecycle');
 const { createUpdater } = require('./modules/updater');
 const { createPet } = require('./modules/pet');
 const { createPromptInject } = require('./modules/prompt-inject'); // v0.9：提示词注入公共模块
-const { createWorkspaceLocator } = require('./modules/workspace');  // v0.9（T1）：工作区定位
-const { createDragDrop } = require('./modules/drag-drop');          // v0.9（T3）：拖拽监听注入
-const { createDropFiles } = require('./modules/drop-files');        // v0.9（T4/T5）：拖文件处理
+const { createWorkspaceLocator } = require('./modules/workspace'); // v0.9（T1）：工作区定位
+const { createDragDrop } = require('./modules/drag-drop'); // v0.9（T3）：拖拽监听注入
+const { createDropFiles } = require('./modules/drop-files'); // v0.9（T4/T5）：拖文件处理
 const { createCustomPrompts } = require('./modules/custom-prompts'); // v0.9.5（T2）：自定义提示词
-const { createGlobalMemory } = require('./modules/global-memory');   // v0.9.12：全局记忆（宠物菜单）
-const { createRoleSelector } = require('./modules/role-selector');   // v0.9.13：新对话选择角色
-const { createRolePicker } = require('./modules/role-picker');       // v1.0.3（老大反馈 3）：角色选择竖排窗口
-const { createNoticeModule } = require('./modules/notice');          // v0.9.5（T3）：公告条/公告源
+const { createGlobalMemory } = require('./modules/global-memory'); // v0.9.12：全局记忆（宠物菜单）
+const { createRoleSelector } = require('./modules/role-selector'); // v0.9.13：新对话选择角色
+const { createRolePicker } = require('./modules/role-picker'); // v1.0.3（老大反馈 3）：角色选择竖排窗口
+const { createNoticeModule } = require('./modules/notice'); // v0.9.5（T3）：公告条/公告源
+const { createHelpDoc } = require('./modules/help-doc'); // v1.1.1：帮助文档远程下发
+const { createPromptsUpdater } = require('./modules/prompts-updater'); // v1.1.1：提示词库远程更新
+const { createPluginMarket } = require('./modules/plugin-market'); // v1.1.1：插件市场
 const { createMenu } = require('./modules/menu');
 const { registerIpc } = require('./modules/ipc');
 const { createSecurityModule } = require('./modules/security'); // v0.8.30 R1
@@ -57,48 +73,61 @@ const { createMiscWindowsModule } = require('./modules/windows/misc-windows');
 const APP_NAME = 'DSH-Desktop';
 const DEFAULT_HOST = '127.0.0.1';
 const DEFAULT_PORT = 3080;
-const PORT_PROBE_RANGE = 50;          // 端口被占用时最多顺延多少个
+const PORT_PROBE_RANGE = 50; // 端口被占用时最多顺延多少个
 const SERVER_READY_TIMEOUT_MS = 240_000; // 等待 dsh web 就绪的上限（含首次下载）
-const CHILD_GRACE_MS = 5_000;         // 关闭子进程的宽限期
-const NPM_INSTALL_TIMEOUT_MS = 600_000;  // 下载/安装 DSH 运行时的上限（10 分钟）
+const CHILD_GRACE_MS = 5_000; // 关闭子进程的宽限期
+const NPM_INSTALL_TIMEOUT_MS = 600_000; // 下载/安装 DSH 运行时的上限（10 分钟）
 
 // 未捕获异常/拒绝：记录后继续（避免窗口服务抖动导致整体退出）；
 // ENOENT 等致命错误（P2-8）额外弹窗提示，避免静默不稳定态
 process.on('uncaughtException', (err) => {
-  try { appendLog('error', `未捕获异常：${err && err.stack ? err.stack : String(err)}`); } catch { /* ignore */ }
+  try {
+    appendLog('error', `未捕获异常：${err && err.stack ? err.stack : String(err)}`);
+  } catch {
+    /* ignore */
+  }
   const code = err && err.code;
   if (code === 'ENOENT' || code === 'EACCES' || code === 'EPERM') {
     try {
-      dialog.showErrorBox(APP_NAME,
-        `发生系统级错误（${code}）：${err && err.message ? err.message : String(err)}\n\n请检查文件/网络权限后重试。`);
-    } catch { /* ignore */ }
+      dialog.showErrorBox(
+        APP_NAME,
+        `发生系统级错误（${code}）：${err && err.message ? err.message : String(err)}\n\n请检查文件/网络权限后重试。`,
+      );
+    } catch {
+      /* ignore */
+    }
   }
 });
 process.on('unhandledRejection', (reason) => {
-  try { appendLog('error', `未处理的 Promise 拒绝：${String(reason)}`); } catch { /* ignore */ }
+  try {
+    appendLog('error', `未处理的 Promise 拒绝：${String(reason)}`);
+  } catch {
+    /* ignore */
+  }
 });
 
 // ---------------------------------------------------------------------------
 // 运行时状态
 // ---------------------------------------------------------------------------
-let mainWindow = null;          // 主窗口（GUI）
-let loadingWindow = null;       // 启动加载窗口
-let updateWin = null;           // 更新窗口（v0.5.3 现代化）
-let contactWin = null;          // 联系我们窗口（v0.5.3 现代化）
-let aboutWin = null;            // 关于窗口（v0.5.3 现代化）
-let changelogWin = null;        // 更新日志窗口（v0.8.1 T3）
-let promptLibWin = null;        // 提示词库窗口（v0.8.3 T4）
-let noticeWin = null;          // 公告窗口（v0.8.11 T0.6）
-let globalMemoryWin = null;    // 全局记忆窗口（v0.9.12）
-let serverChild = null;         // dsh web 服务子进程
+let mainWindow = null; // 主窗口（GUI）
+let loadingWindow = null; // 启动加载窗口
+let updateWin = null; // 更新窗口（v0.5.3 现代化）
+let contactWin = null; // 联系我们窗口（v0.5.3 现代化）
+let aboutWin = null; // 关于窗口（v0.5.3 现代化）
+let changelogWin = null; // 更新日志窗口（v0.8.1 T3）
+let promptLibWin = null; // 提示词库窗口（v0.8.3 T4）
+let noticeWin = null; // 公告窗口（v0.8.11 T0.6）
+let globalMemoryWin = null; // 全局记忆窗口（v0.9.12）
+let pluginMarketWin = null; // 插件市场窗口（v1.1.1）
+let serverChild = null; // dsh web 服务子进程
 let resolvedPort = DEFAULT_PORT;
 let quitting = false;
-let dshHasUpdate = false;       // 启动后静默检查发现 DSH 新版（菜单提示后缀）
-let shellHasUpdate = false;     // 启动后静默检查发现壳（DSH-Desktop）新版（菜单提示后缀）
+let dshHasUpdate = false; // 启动后静默检查发现 DSH 新版（菜单提示后缀）
+let shellHasUpdate = false; // 启动后静默检查发现壳（DSH-Desktop）新版（菜单提示后缀）
 // v0.6.0（T-025）：系统托盘（v0.8.1 T5：tray 状态收敛到 modules/tray.js，见 trayApi）
-let isQuitting = false;         // 真正退出标志（区分"关窗隐藏"与"退出"）
+let isQuitting = false; // 真正退出标志（区分"关窗隐藏"与"退出"）
 let serverStopRequested = false; // v0.7.10：主动停止 DSH 服务（恢复数据前释放占用），
-                                  // 避免触发「服务意外退出」误报弹窗
+// 避免触发「服务意外退出」误报弹窗
 
 // 登记所有由本进程派生的子进程（npm install + dsh 服务），退出时统一清理，
 // 避免 Windows 下残留 node/npm 进程（审查 M1）。
@@ -114,19 +143,30 @@ function killTrackedChildren() {
   for (const child of trackedChildren) {
     try {
       if (child.exitCode === null && child.signalCode === null) child.kill('SIGTERM');
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 }
 
 /** 静默删除文件/目录（忽略一切错误） */
-function rmQuiet(p) { try { fs.rmSync(p, { force: true }); } catch { /* ignore */ } }
+function rmQuiet(p) {
+  try {
+    fs.rmSync(p, { force: true });
+  } catch {
+    /* ignore */
+  }
+}
 
 // ---------------------------------------------------------------------------
 // 模块组装（v0.8.12 优化方案）：日志 / Node 解析 / 端口 / DSH 运行时
 // 依赖注入模式与既有 modules/（settings/tray/hotkey/backup/diagnostics）一致
 // ---------------------------------------------------------------------------
 const loggerApi = createLogger({
-  app, fs, os, path,
+  app,
+  fs,
+  os,
+  path,
   getLoadingWindow: () => loadingWindow, // 仅启动加载窗口广播日志/阶段/进度
 });
 const { localTimestamp, localDate, logPath, appendLog, pushStage, pushProgress, dirSizeMBAsync } = loggerApi; // v1.0.2：dirSizeMBAsync 异步统计（启动下载不卡 UI）
@@ -139,9 +179,18 @@ const portApi = createPortManager({ net, http, defaultHost: DEFAULT_HOST, portPr
 const { pickPort, waitForServer, parsePortArg } = portApi;
 
 const runtimeApi = createDshRuntime({
-  app, fs, path, os, spawn,
-  appendLog, pushStage, pushProgress, dirSizeMBAsync, logPath, // v1.0.2：异步统计（缓存隔离+不卡 UI）
-  resolveRunner, trackChild,
+  app,
+  fs,
+  path,
+  os,
+  spawn,
+  appendLog,
+  pushStage,
+  pushProgress,
+  dirSizeMBAsync,
+  logPath, // v1.0.2：异步统计（缓存隔离+不卡 UI）
+  resolveRunner,
+  trackChild,
   npmInstallTimeoutMs: NPM_INSTALL_TIMEOUT_MS,
   // P1-2（外审 zx(9)）：晚绑定 updaterApi —— ensureDshRuntime 在启动时调用，
   // 彼时 updaterApi 已组装（L390），避免模块组装循环依赖
@@ -157,19 +206,35 @@ const { readShellConfig, installedDshVersion, ensureDshRuntime, updateDshVersion
 // DSH 服务子进程（v0.8.12：逻辑已移入 modules/serverLifecycle.js）
 // ---------------------------------------------------------------------------
 const serverApi = createServerLifecycle({
-  app, dialog, spawn, appName: APP_NAME,
-  appendLog, logPath,
-  ensureDshRuntime, resolveRunner, readShellConfig, installedDshVersion,
-  trackChild, killTrackedChildren, trackedChildren,
+  app,
+  dialog,
+  spawn,
+  appName: APP_NAME,
+  appendLog,
+  logPath,
+  ensureDshRuntime,
+  resolveRunner,
+  readShellConfig,
+  installedDshVersion,
+  trackChild,
+  killTrackedChildren,
+  trackedChildren,
   waitForServer,
-  defaultHost: DEFAULT_HOST, childGraceMs: CHILD_GRACE_MS,
+  defaultHost: DEFAULT_HOST,
+  childGraceMs: CHILD_GRACE_MS,
   serverReadyTimeoutMs: SERVER_READY_TIMEOUT_MS,
   getQuitting: () => quitting,
-  setQuitting: (v) => { quitting = v; },
+  setQuitting: (v) => {
+    quitting = v;
+  },
   getServerChild: () => serverChild,
-  setServerChild: (v) => { serverChild = v; },
+  setServerChild: (v) => {
+    serverChild = v;
+  },
   getServerStopRequested: () => serverStopRequested,
-  setServerStopRequested: (v) => { serverStopRequested = v; },
+  setServerStopRequested: (v) => {
+    serverStopRequested = v;
+  },
   getMainWindow: () => mainWindow,
   getWebUrl: webUrl,
   getResolvedPort: () => resolvedPort,
@@ -191,8 +256,12 @@ function webUrl() {
 // 壳外观设置同步跟随（双向同步）。
 // ---------------------------------------------------------------------------
 function applyAppearance(mode) {
-  const m = (mode === 'light' || mode === 'dark') ? mode : 'system';
-  try { nativeTheme.themeSource = m; } catch { /* ignore */ }
+  const m = mode === 'light' || mode === 'dark' ? mode : 'system';
+  try {
+    nativeTheme.themeSource = m;
+  } catch {
+    /* ignore */
+  }
   appendLog('info', `外观已应用：${m}`);
   // v0.8.21：不再自动同步 DSH（避免每次启动打开 DSH 设置面板）；
   // DSH 同步只在用户主动选择外观时由 openAppearanceDialog 显式调用。
@@ -200,29 +269,34 @@ function applyAppearance(mode) {
 
 /** 设置菜单「外观…」：弹窗选择浅色/深色/跟随系统 */
 function openAppearanceDialog() {
-  const current = (settings.appearance === 'light' || settings.appearance === 'dark') ? settings.appearance : 'system';
+  const current = settings.appearance === 'light' || settings.appearance === 'dark' ? settings.appearance : 'system';
   const options = ['light', 'dark', 'system'];
   const defIdx = options.indexOf(current) >= 0 ? options.indexOf(current) : 2;
   const owner = mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined;
-  dialog.showMessageBox(owner, {
-    type: 'question',
-    title: APP_NAME,
-    message: '选择外观',
-    detail: '浅色 / 深色 / 跟随系统（DSH 界面将自动同步）',
-    buttons: ['浅色', '深色', '跟随系统'],
-    defaultId: defIdx,
-    cancelId: defIdx,
-    noLink: true,
-  }).then(({ response }) => {
-    if (response < 0 || response > 2) return;
-    const mode = options[response];
-    settings.appearance = mode;
-    saveSettingsRef();
-    applyAppearance(mode);
-    // v0.8.21：用户主动选择时才同步 DSH 面板（打开面板 → 点击主题按钮）
-    syncDshAppearance(mode);
-    refreshMenusRef();
-  }).catch(() => { /* ignore */ });
+  dialog
+    .showMessageBox(owner, {
+      type: 'question',
+      title: APP_NAME,
+      message: '选择外观',
+      detail: '浅色 / 深色 / 跟随系统（DSH 界面将自动同步）',
+      buttons: ['浅色', '深色', '跟随系统'],
+      defaultId: defIdx,
+      cancelId: defIdx,
+      noLink: true,
+    })
+    .then(({ response }) => {
+      if (response < 0 || response > 2) return;
+      const mode = options[response];
+      settings.appearance = mode;
+      saveSettingsRef();
+      applyAppearance(mode);
+      // v0.8.21：用户主动选择时才同步 DSH 面板（打开面板 → 点击主题按钮）
+      syncDshAppearance(mode);
+      refreshMenusRef();
+    })
+    .catch(() => {
+      /* ignore */
+    });
 }
 
 /**
@@ -239,7 +313,9 @@ function syncDshAppearance(mode) {
   const mw = mainWindow;
   if (!mw || mw.isDestroyed()) return;
   const label = mode === 'light' ? '浅色' : mode === 'dark' ? '深色' : '跟随系统';
-  mw.webContents.executeJavaScript(`
+  mw.webContents
+    .executeJavaScript(
+      `
     (() => {
       const wasOpen = !!document.querySelector('[class*="themeCube"]');
       // 面板未打开才点「设置」按钮（已打开则复用，避免 toggle 误关）
@@ -250,8 +326,13 @@ function syncDshAppearance(mode) {
       }
       return wasOpen;
     })()
-  `).then((wasOpen) => new Promise((r) => setTimeout(() => r(wasOpen), 400))).then((wasOpen) => {
-    mw.webContents.executeJavaScript(`
+  `,
+    )
+    .then((wasOpen) => new Promise((r) => setTimeout(() => r(wasOpen), 400)))
+    .then((wasOpen) => {
+      mw.webContents
+        .executeJavaScript(
+          `
       (() => {
         const btn = Array.from(document.querySelectorAll('button'))
           .find((b) => (b.textContent || '').trim() === ${JSON.stringify(label)});
@@ -259,15 +340,19 @@ function syncDshAppearance(mode) {
         btn.click();
         return { ok: true, label: ${JSON.stringify(label)} };
       })()
-    `).then((r) => {
-      // v0.8.21 + v0.8.24：面板原本关闭 → 同步完成后关闭（不残留）。
-      // 探测实证（CDP v0.8.24）：DSH 设置面板**不是**「设置」按钮 toggle ——
-      // 再点「设置」不会关闭（v0.8.21 的关闭逻辑其实从未生效）；真实关闭方式是
-      // ESC 或点击面板外空白区域。这里先查面板是否仍打开（themeCube 还在），
-      // 仍开着 → 点面板外左上角空白处关闭（与 ESC 等效，实测 themeCube→0）。
-      if (r && r.ok && !wasOpen) {
-        setTimeout(() => {
-          mw.webContents.executeJavaScript(`
+    `,
+        )
+        .then((r) => {
+          // v0.8.21 + v0.8.24：面板原本关闭 → 同步完成后关闭（不残留）。
+          // 探测实证（CDP v0.8.24）：DSH 设置面板**不是**「设置」按钮 toggle ——
+          // 再点「设置」不会关闭（v0.8.21 的关闭逻辑其实从未生效）；真实关闭方式是
+          // ESC 或点击面板外空白区域。这里先查面板是否仍打开（themeCube 还在），
+          // 仍开着 → 点面板外左上角空白处关闭（与 ESC 等效，实测 themeCube→0）。
+          if (r && r.ok && !wasOpen) {
+            setTimeout(() => {
+              mw.webContents
+                .executeJavaScript(
+                  `
             (() => {
               const stillOpen = !!document.querySelector('[class*="themeCube"]');
               if (!stillOpen) return { closed: true, reason: 'already-auto-closed' };
@@ -279,11 +364,21 @@ function syncDshAppearance(mode) {
               }
               return { closed: !document.querySelector('[class*="themeCube"]'), clicked: !!el };
             })()
-          `).catch(() => { /* ignore */ });
-        }, 300);
-      }
-    }).catch(() => { /* ignore */ });
-  }).catch(() => { /* ignore */ });
+          `,
+                )
+                .catch(() => {
+                  /* ignore */
+                });
+            }, 300);
+          }
+        })
+        .catch(() => {
+          /* ignore */
+        });
+    })
+    .catch(() => {
+      /* ignore */
+    });
 }
 
 // v0.8.21（老大反馈）：DSH 设置面板改外观 → 壳外观反向同步。
@@ -301,7 +396,9 @@ function startDshThemeWatch() {
     const mw = mainWindow;
     // P2-1：仅窗口可见时轮询（隐藏/最小化/销毁 → 空转跳过，不打扰且省资源）
     if (!mw || mw.isDestroyed() || !mw.isVisible() || mw.isMinimized()) return; // v0.9.16（zx(9) 复核 P2-1）：最小化时 isVisible 仍为 true，需同时跳过
-    mw.webContents.executeJavaScript(`
+    mw.webContents
+      .executeJavaScript(
+        `
       (() => {
         const sel = Array.from(document.querySelectorAll('button'))
           .find((b) => /themeCube/.test(b.className || '') && /_selected/.test(b.className || ''));
@@ -312,22 +409,30 @@ function startDshThemeWatch() {
         if (t === '跟随系统') return 'system';
         return null;
       })()
-    `).then((mode) => {
-      if (!mode) return;
-      const cur = (settings.appearance === 'light' || settings.appearance === 'dark') ? settings.appearance : 'system';
-      if (mode === cur) return;
-      appendLog('info', `检测到 DSH 面板外观变更：${mode}（原 ${cur}），同步壳外观`);
-      settings.appearance = mode;
-      saveSettingsRef();
-      applyAppearance(mode); // applyAppearance 不触发 DSH 同步，无循环
-      refreshMenusRef();
-    }).catch(() => { /* ignore */ });
+    `,
+      )
+      .then((mode) => {
+        if (!mode) return;
+        const cur = settings.appearance === 'light' || settings.appearance === 'dark' ? settings.appearance : 'system';
+        if (mode === cur) return;
+        appendLog('info', `检测到 DSH 面板外观变更：${mode}（原 ${cur}），同步壳外观`);
+        settings.appearance = mode;
+        saveSettingsRef();
+        applyAppearance(mode); // applyAppearance 不触发 DSH 同步，无循环
+        refreshMenusRef();
+      })
+      .catch(() => {
+        /* ignore */
+      });
   }, 400);
 }
 
 // ---------------------------------------------------------------------------
 const petApi = createPet({
-  app, fs, path, appendLog,
+  app,
+  fs,
+  path,
+  appendLog,
   getSettings: () => settings,
   saveSettings: () => settingsApi.saveSettings(),
   getMainWindow: () => mainWindow,
@@ -342,7 +447,8 @@ const { injectPet, resetWebOpenBtnLayout, petBubble } = petApi;
 // 提示词注入链路（v0.8.6 两段式：聚焦 + insertText），提示词库与拖文件共用。
 // settingsApi 在下方才组装 —— 全部经 getter 晚绑定，运行时取值无时序问题。
 const promptInject = createPromptInject({
-  dialog, appName: APP_NAME,
+  dialog,
+  appName: APP_NAME,
   getSettings: () => settings,
   saveSettings: () => settingsApi.saveSettings(),
   refreshMenus: () => refreshMenusRef(),
@@ -359,7 +465,9 @@ const { injectDropHandler } = dragDropApi;
 
 // 拖文件处理（复制进工作区 + 注入提示词 + 气泡反馈）
 const dropFilesApi = createDropFiles({
-  fs, path, appendLog,
+  fs,
+  path,
+  appendLog,
   getWorkspacePath,
   promptInject,
   petBubble,
@@ -377,12 +485,14 @@ const globalMemoryApi = createGlobalMemory({ app, fs, os, path, appendLog });
 // v0.9.15（老大指令）：新建对话不再弹窗提示角色 —— 角色切换改为双击 DSH 输入框随时重选
 // v1.0.3（老大反馈 3）：选择弹窗从原生横排按钮改为竖排列表窗口（rolePickerApi 晚绑定组装）
 const roleSelectorApi = createRoleSelector({
-  dialog, appName: APP_NAME, appendLog,
+  dialog,
+  appName: APP_NAME,
+  appendLog,
   getMainWindow: () => mainWindow,
   getRoles: () => {
     const d = globalMemoryApi.data();
     const sec = d && d.sections && d.sections.find((s) => s.kind === 'roles');
-    return sec ? (sec.fields || []) : [];
+    return sec ? sec.fields || [] : [];
   },
   roleFilePath: (name) => globalMemoryApi.roleFile(name),
   injectText: (win, text, opts) => promptInject.injectTextIntoInput(win, text, opts),
@@ -417,17 +527,55 @@ const SHELL_UPDATE_URLS = [
 // v0.8.11（T0.6）：远程公告 —— v0.9.5（T3）起公告唯一源 = notice.json，
 // 独立公告模块（三源并发 + 本地缓存），不再依赖 version.json notices。
 const updaterApi = createUpdater({
-  app, shell, https, crypto, fs, path, rmQuiet,
+  app,
+  shell,
+  https,
+  crypto,
+  fs,
+  path,
+  rmQuiet,
   appendLog,
-  readShellConfig, installedDshVersion, updateDshVersion,
+  readShellConfig,
+  installedDshVersion,
+  updateDshVersion,
   getMainWindow: () => mainWindow,
   shellUpdateUrls: SHELL_UPDATE_URLS,
 });
-const { fetchLatestDshVersion, compareSemver, effectiveLatest, queryUpdateInfo, upgradeDshVersion, downloadShellUpdate, fetchLatestShellVersion, fetchJson } = updaterApi;
+const {
+  fetchLatestDshVersion,
+  compareSemver,
+  effectiveLatest,
+  queryUpdateInfo,
+  upgradeDshVersion,
+  downloadShellUpdate,
+  fetchLatestShellVersion,
+  fetchJson,
+} = updaterApi;
 
 // v0.9.5（T3）：公告模块 —— notice.json 三源并发 + userData 缓存；菜单栏公告条 + 公告窗口
 const noticeApi = createNoticeModule({ app, fs, path, appendLog, fetchJson });
 noticeApi.loadCache(); // 启动即载入缓存（buildMenu 用缓存 marquee，拉取失败不闪没）
+
+// v1.1.1：帮助文档远程下发 —— 三源并发拉取 help.html，失败时本地兜底
+const { isAllowedExternalUrl } = require('./modules/external-links');
+const helpDocApi = createHelpDoc({ shell, app, path, fs, net: electronNet, appendLog, isAllowedExternalUrl });
+
+// v1.1.1：提示词库远程更新 —— 三源并发拉取 prompts.json，缓存优先级：缓存 > 包内置
+const promptsUpdaterApi = createPromptsUpdater({ app, fs, path, appendLog, fetchJson });
+promptsUpdaterApi.loadCache(); // 启动即载入缓存
+
+// v1.1.1：插件市场 —— 连接官方 awesome-dsh-plugin 社区
+const pluginMarketApi = createPluginMarket({
+  app,
+  fs,
+  path,
+  shell,
+  clipboard,
+  net: electronNet, // Electron net（Chromium 网络栈/系统 CA，拉取 README/中文描述）
+  appendLog,
+  isAllowedExternalUrl,
+});
+pluginMarketApi.loadCache(); // 启动即载入缓存
 
 // ---------------------------------------------------------------------------
 // 窗口模块组装（v0.8.12：逻辑已移入 modules/windows/）
@@ -438,60 +586,127 @@ const securityModule = createSecurityModule({ app, path });
 const { secureWebPreferences } = securityModule;
 
 const miscWindowsModule = createMiscWindowsModule({
-  BrowserWindow, app, dialog, path, nativeTheme, // v0.9.9：窗口背景跟随外观
-  appendLog, appName: APP_NAME,
+  BrowserWindow,
+  app,
+  dialog,
+  path,
+  nativeTheme, // v0.9.9：窗口背景跟随外观
+  appendLog,
+  appName: APP_NAME,
   getSettings: () => settings,
   setCloseChoice: (action, remember) => settingsApi.setCloseChoice(action, remember),
   getMainWindow: () => mainWindow,
   getIsQuitting: () => isQuitting,
-  setQuitting: (v) => { isQuitting = v; },
-  getChangelogWin: () => changelogWin, setChangelogWin: (v) => { changelogWin = v; },
-  getNoticeWin: () => noticeWin, setNoticeWin: (v) => { noticeWin = v; },
-  getPromptLibWin: () => promptLibWin, setPromptLibWin: (v) => { promptLibWin = v; },
-  getGlobalMemoryWin: () => globalMemoryWin, setGlobalMemoryWin: (v) => { globalMemoryWin = v; }, // v0.9.12
+  setQuitting: (v) => {
+    isQuitting = v;
+  },
+  getChangelogWin: () => changelogWin,
+  setChangelogWin: (v) => {
+    changelogWin = v;
+  },
+  getNoticeWin: () => noticeWin,
+  setNoticeWin: (v) => {
+    noticeWin = v;
+  },
+  getPromptLibWin: () => promptLibWin,
+  setPromptLibWin: (v) => {
+    promptLibWin = v;
+  },
+  getGlobalMemoryWin: () => globalMemoryWin,
+  setGlobalMemoryWin: (v) => {
+    globalMemoryWin = v;
+  }, // v0.9.12
+  getPluginMarketWin: () => pluginMarketWin,
+  setPluginMarketWin: (v) => {
+    pluginMarketWin = v;
+  }, // v1.1.1
   secureWebPreferences,
 });
-const { openChangelogWindow, openNoticeWindow, hasNewNotices, openPromptLibWindow, openGlobalMemoryWindow, openCloseChoiceWindow, openBackupProgress, updateBackupProgress, closeBackupProgress } = miscWindowsModule;
+const {
+  openChangelogWindow,
+  openNoticeWindow,
+  hasNewNotices,
+  openPromptLibWindow,
+  openGlobalMemoryWindow,
+  openPluginMarketWindow, // v1.1.1：插件市场窗口
+  openCloseChoiceWindow,
+  openBackupProgress,
+  updateBackupProgress,
+  closeBackupProgress,
+} = miscWindowsModule;
 
 // v1.0.3（老大反馈 3）：角色选择竖排窗口 —— 依赖 secureWebPreferences（组装于其后）
 const rolePickerApi = createRolePicker({
-  BrowserWindow, app, path, nativeTheme, ipcMain,
+  BrowserWindow,
+  app,
+  path,
+  nativeTheme,
+  ipcMain,
   secureWebPreferences,
 });
 
 const mainWindowModule = createMainWindowModule({
-  BrowserWindow, app, dialog, shell, screen, path, nativeTheme, // v0.9.9：窗口背景跟随外观
-  appendLog, logPath, appName: APP_NAME,
+  BrowserWindow,
+  app,
+  dialog,
+  shell,
+  screen,
+  path,
+  nativeTheme, // v0.9.9：窗口背景跟随外观
+  appendLog,
+  logPath,
+  appName: APP_NAME,
   getSettings: () => settings,
   saveSettings: () => settingsApi.saveSettings(),
-  injectPet, openCloseChoiceWindow,
+  injectPet,
+  openCloseChoiceWindow,
   injectDropHandler, // v0.9（T3）：拖拽监听注入
   getWebUrl: webUrl,
   getIsQuitting: () => isQuitting,
-  setQuitting: (v) => { isQuitting = v; },
+  setQuitting: (v) => {
+    isQuitting = v;
+  },
   getMainWindow: () => mainWindow,
-  setMainWindow: (v) => { mainWindow = v; },
+  setMainWindow: (v) => {
+    mainWindow = v;
+  },
 });
 const { attachWebDiagnostics, createMainWindow } = mainWindowModule;
 
 const dialogWindowsModule = createDialogWindowsModule({
-  BrowserWindow, app, path, nativeTheme, // v0.9.9：窗口背景跟随外观
+  BrowserWindow,
+  app,
+  path,
+  nativeTheme, // v0.9.9：窗口背景跟随外观
   getMainWindow: () => mainWindow,
-  getUpdateWin: () => updateWin, setUpdateWin: (v) => { updateWin = v; },
-  getContactWin: () => contactWin, setContactWin: (v) => { contactWin = v; },
-  getAboutWin: () => aboutWin, setAboutWin: (v) => { aboutWin = v; },
+  getUpdateWin: () => updateWin,
+  setUpdateWin: (v) => {
+    updateWin = v;
+  },
+  getContactWin: () => contactWin,
+  setContactWin: (v) => {
+    contactWin = v;
+  },
+  getAboutWin: () => aboutWin,
+  setAboutWin: (v) => {
+    aboutWin = v;
+  },
   secureWebPreferences,
 });
 const { openUpdateWindow, openContactWindow, openAboutWindow } = dialogWindowsModule;
 
 const loadingWindowModule = createLoadingWindowModule({
-  BrowserWindow, app, path, nativeTheme, // v0.9.9：窗口背景跟随外观 appName: APP_NAME,
+  BrowserWindow,
+  app,
+  path,
+  nativeTheme, // v0.9.9：窗口背景跟随外观 appName: APP_NAME,
   getResolvedPort: () => resolvedPort,
   getLoadingWindow: () => loadingWindow,
-  setLoadingWindow: (v) => { loadingWindow = v; },
+  setLoadingWindow: (v) => {
+    loadingWindow = v;
+  },
 });
 const { createLoadingWindow } = loadingWindowModule;
-
 
 // 诊断 / 数据备份 / 数据恢复（v0.7.0 起；v0.7.10 拆为独立模块，29 改进意见 1）
 // 设置 / 托盘 / 快捷键（v0.8.1 T5 延续拆分，29 意见 3.2-1）
@@ -505,43 +720,66 @@ const { createHotkey } = require('./modules/hotkey');
 
 const generateDiagnostics = createDiagnostics({
   appName: APP_NAME,
-  app, dialog, clipboard, shell, fs, os, path,
-  appendLog, localTimestamp,
-  readShellConfig, installedDshVersion, resolveRunner,
+  app,
+  dialog,
+  clipboard,
+  shell,
+  fs,
+  os,
+  path,
+  appendLog,
+  localTimestamp,
+  readShellConfig,
+  installedDshVersion,
+  resolveRunner,
   getResolvedPort: () => resolvedPort,
   getCurrentStage, // v0.8.12：logger 模块
   getLogPath: logPath,
-  getLogLines,     // v0.8.12：logger 模块
+  getLogLines, // v0.8.12：logger 模块
   getOwnerWindow: () => (mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined),
 });
 
 // v0.8.1（T5）：设置模块 —— settings 对象本体仍在本文件（大量代码直接读 settings.xxx），
 // 本模块经 getSettings/setSettings 读写，函数实现全部收敛到 modules/settings.js
 const settingsApi = createSettings({
-  app, fs, path,
+  app,
+  fs,
+  path,
   appendLog,
   getSettings: () => settings,
-  setSettings: (s) => { settings = s; },
+  setSettings: (s) => {
+    settings = s;
+  },
   refreshMenus: () => refreshMenusRef(), // v0.8.12：menuApi 晚绑定（避免循环依赖）
 });
 
 // v0.8.1（T5）：托盘模块 —— tray / trayExitConfirmed 状态收敛到模块内部
 const trayApi = createTrayModule({
-  app, dialog, Menu, Tray, fs, path,
-  appendLog, APP_NAME,
+  app,
+  dialog,
+  Menu,
+  Tray,
+  fs,
+  path,
+  appendLog,
+  APP_NAME,
   getSettings: () => settings,
   setAutostart: settingsApi.setAutostart,
   showMainWindow,
   openUpdateWindow,
-  readShellConfig, installedDshVersion,
+  readShellConfig,
+  installedDshVersion,
   getMainWindow: () => mainWindow,
   getIsQuitting: () => isQuitting,
-  setIsQuitting: (v) => { isQuitting = v; },
+  setIsQuitting: (v) => {
+    isQuitting = v;
+  },
 });
 
 // v0.8.1（T4/T5）：全局快捷键模块
 const hotkeyApi = createHotkey({
-  globalShortcut, Menu,
+  globalShortcut,
+  Menu,
   appendLog,
   getSettings: () => settings,
   saveSettings: settingsApi.saveSettings,
@@ -552,16 +790,30 @@ const hotkeyApi = createHotkey({
 
 const { backupUserData, restoreUserData } = createBackup({
   appName: APP_NAME,
-  app, dialog, shell, fs, os, path, tar,
-  appendLog, localTimestamp, localDate,
-  readShellConfig, installedDshVersion, settingsFile: settingsApi.settingsFile,
+  app,
+  dialog,
+  shell,
+  fs,
+  os,
+  path,
+  tar,
+  appendLog,
+  localTimestamp,
+  localDate,
+  readShellConfig,
+  installedDshVersion,
+  settingsFile: settingsApi.settingsFile,
   getOwnerWindow: () => (mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined),
   isServerRunning: () => !!(serverChild && serverChild.exitCode === null),
   // v0.7.10（老大反馈）：恢复数据前可只停 DSH 服务（不退出应用），而非要求整体退出
   stopServerOnly,
   // v0.7.10（老大反馈）：备份进度条 —— 进度窗口 + 主窗口任务栏进度
-  openBackupProgress, updateBackupProgress, closeBackupProgress,
-  setQuitting: () => { isQuitting = true; },
+  openBackupProgress,
+  updateBackupProgress,
+  closeBackupProgress,
+  setQuitting: () => {
+    isQuitting = true;
+  },
 });
 
 // ---------------------------------------------------------------------------
@@ -578,18 +830,18 @@ let settings = {
   minimizeToTray: true,
   closeChoice: null,
   rememberCloseChoice: false,
-  closeAsk: false,            // v1.0.3：关闭时总是询问（勾选后每次关闭弹窗；默认不询问=直接托盘）
-  checkUpdateOnStart: true,   // v0.6.5（T-030）：启动时检查更新并弹窗询问（默认开启）
-  winBounds: null,            // T5（v0.6.6）：主窗口位置/大小 {x,y,width,height}
-  winMaximized: false,        // T5：最大化状态
-  webOpenBtnPos: null,        // v0.7.6（T-037）：网页打开按钮拖拽位置（退出保存，重启恢复；null=默认顶部居中）
-  hotkey: 'Ctrl+Alt+D',       // v0.8.1（T4）：全局快捷键（呼出/隐藏主窗口；null = 禁用）
-  promptInjectChoice: null,   // v0.8.7（P0-3）：提示词注入已有内容时的记住选择：'overwrite' | 'append' | null（null = 每次询问）
-  readNotices: [],            // v0.8.11（T0.6）：已读公告 id 数组（有新公告时帮助菜单标「（新）」）
-  petHidden: false,           // v0.8.11（T5）：桌面宠物隐藏（设置菜单开关 / 右键隐藏）
-  petInjectCount: 0,          // v0.8.11（T4）：当天提示词注入次数（连续使用彩蛋）
-  petInjectCountDate: '',     // v0.8.11（T4）：注入次数统计日期（localDate，跨天清零）
-  appearance: 'system',       // v0.8.18：外观 'system' | 'light' | 'dark'（nativeTheme.themeSource）
+  closeAsk: false, // v1.0.3：关闭时总是询问（勾选后每次关闭弹窗；默认不询问=直接托盘）
+  checkUpdateOnStart: true, // v0.6.5（T-030）：启动时检查更新并弹窗询问（默认开启）
+  winBounds: null, // T5（v0.6.6）：主窗口位置/大小 {x,y,width,height}
+  winMaximized: false, // T5：最大化状态
+  webOpenBtnPos: null, // v0.7.6（T-037）：网页打开按钮拖拽位置（退出保存，重启恢复；null=默认顶部居中）
+  hotkey: 'Ctrl+Alt+D', // v0.8.1（T4）：全局快捷键（呼出/隐藏主窗口；null = 禁用）
+  promptInjectChoice: null, // v0.8.7（P0-3）：提示词注入已有内容时的记住选择：'overwrite' | 'append' | null（null = 每次询问）
+  readNotices: [], // v0.8.11（T0.6）：已读公告 id 数组（有新公告时帮助菜单标「（新）」）
+  petHidden: false, // v0.8.11（T5）：桌面宠物隐藏（设置菜单开关 / 右键隐藏）
+  petInjectCount: 0, // v0.8.11（T4）：当天提示词注入次数（连续使用彩蛋）
+  petInjectCountDate: '', // v0.8.11（T4）：注入次数统计日期（localDate，跨天清零）
+  appearance: 'system', // v0.8.18：外观 'system' | 'light' | 'dark'（nativeTheme.themeSource）
 };
 
 // v0.8.1（T5）：settingsFile/loadSettings/saveSettings/setAutostart/setMinimizeToTray/
@@ -600,7 +852,10 @@ let settings = {
 let refreshMenusRef = () => {};
 let saveSettingsRef = () => {}; // v0.8.18：外观弹窗晚绑定（settingsApi 组装在后）
 const menuApi = createMenu({
-  Menu, shell, app, path,
+  Menu,
+  shell,
+  app,
+  path,
   logPath,
   getSettings: () => settings,
   setAutostart: settingsApi.setAutostart,
@@ -610,8 +865,13 @@ const menuApi = createMenu({
   clearCloseChoice: settingsApi.clearCloseChoice,
   saveSettings: settingsApi.saveSettings,
   setHotkey: hotkeyApi.setHotkey,
-  backupUserData, restoreUserData,
-  openUpdateWindow, openNoticeWindow, openChangelogWindow, openContactWindow, openAboutWindow,
+  backupUserData,
+  restoreUserData,
+  openUpdateWindow,
+  openNoticeWindow,
+  openChangelogWindow,
+  openContactWindow,
+  openAboutWindow,
   generateDiagnostics,
   // v0.8.16：injectPet 传参移除（设置菜单「显示桌面宠物」已删，见 menu.js）
   resetWebOpenBtnLayout,
@@ -625,6 +885,7 @@ const menuApi = createMenu({
   isTrayCreated: () => trayApi.isTrayCreated(),
   updateTrayMenu: () => trayApi.updateTrayMenu(),
   openAppearanceDialog, // v0.8.18：设置菜单「外观…」
+  openHelpDoc: () => helpDocApi.openHelpDoc(), // v1.1.1：帮助文档远程下发
 });
 refreshMenusRef = menuApi.refreshMenus;
 saveSettingsRef = settingsApi.saveSettings;
@@ -632,7 +893,6 @@ saveSettingsRef = settingsApi.saveSettings;
 // buildMenu()，缺解构会抛 ReferenceError: buildMenu is not defined → 进程活着但
 // 无窗口、无托盘（老大全新系统实测；0.8.12 覆盖安装"双击无反应"同因）。
 const { buildMenu } = menuApi;
-
 
 // v0.8.1（T5）：createTray/updateTrayMenu 已移至 modules/tray.js（trayApi）
 // 系统托盘（v0.6.0 T-025）：关闭窗口 ≠ 退出，托盘常驻；仅托盘「退出」真正退出
@@ -645,8 +905,13 @@ function waitForServerReady(timeoutMs) {
   return new Promise((resolve, reject) => {
     const t0 = Date.now();
     const timer = setInterval(() => {
-      if (getCurrentStage() === 'ready') { clearInterval(timer); resolve(); }
-      else if (Date.now() - t0 > timeoutMs) { clearInterval(timer); reject(new Error('timeout')); }
+      if (getCurrentStage() === 'ready') {
+        clearInterval(timer);
+        resolve();
+      } else if (Date.now() - t0 > timeoutMs) {
+        clearInterval(timer);
+        reject(new Error('timeout'));
+      }
     }, 500);
   });
 }
@@ -662,9 +927,11 @@ function showMainWindow() {
   } else if (serverChild) {
     // 服务还在启动：等待就绪（最多 10s）再建窗口，避免加载失败/白屏
     appendLog('info', 'DSH 服务未就绪，等待就绪后打开主窗口…');
-    waitForServerReady(10000).then(() => {
-      if (!mainWindow || mainWindow.isDestroyed()) createMainWindow();
-    }).catch(() => appendLog('warn', '等待 DSH 服务就绪超时，请稍后从托盘重试'));
+    waitForServerReady(10000)
+      .then(() => {
+        if (!mainWindow || mainWindow.isDestroyed()) createMainWindow();
+      })
+      .catch(() => appendLog('warn', '等待 DSH 服务就绪超时，请稍后从托盘重试'));
   } else {
     appendLog('warn', '主窗口恢复请求被忽略：DSH 服务未启动');
   }
@@ -676,7 +943,6 @@ function showMainWindow() {
 // ---------------------------------------------------------------------------
 // 菜单（v0.8.12：逻辑已移入 modules/menu.js）
 
-
 /**
  * 启动时检查更新（v0.6.5 T-030）：并发检查 DSH + 壳。
  *  - 有新版 → 置标志 + 日志 + 重建菜单（「检查更新（有新版本）」提示）
@@ -686,13 +952,15 @@ function showMainWindow() {
 async function checkUpdatesOnStart() {
   const cfg = readShellConfig();
   // v0.9.5（T3）：公告拉取与版本检查并行；拉取成功 → 刷新菜单（公告条 + 「公告（新）」标记）
-  noticeApi.fetchLatest().then((notice) => {
-    if (notice) refreshMenusRef();
-  }).catch(() => { /* ignore */ });
-  const [dshLatest, shellInfo] = await Promise.all([
-    fetchLatestDshVersion(),
-    fetchLatestShellVersion(),
-  ]);
+  noticeApi
+    .fetchLatest()
+    .then((notice) => {
+      if (notice) refreshMenusRef();
+    })
+    .catch(() => {
+      /* ignore */
+    });
+  const [dshLatest, shellInfo] = await Promise.all([fetchLatestDshVersion(), fetchLatestShellVersion()]);
 
   // DSH 侧：保持静默提示（升级入口在更新窗口，一键升级改 config 重启）
   if (dshLatest) {
@@ -713,9 +981,12 @@ async function checkUpdatesOnStart() {
   // v0.7.10（29 建议 A）：minVersion 门槛 —— 当前版本低于服务端声明的最低支持版本时，
   // 无视「启动时检查更新」开关强制提示升级（重大漏洞下线旧版场景，配合 force 使用）。
   // 仅当壳本身有新版本时才有意义（minVersion 由新 version.json 下发，若已是最新则无需处理）。
-  if (shellInfo && shellInfo.minVersion &&
-      compareSemver(app.getVersion(), shellInfo.version) < 0 &&
-      compareSemver(app.getVersion(), shellInfo.minVersion) < 0) {
+  if (
+    shellInfo &&
+    shellInfo.minVersion &&
+    compareSemver(app.getVersion(), shellInfo.version) < 0 &&
+    compareSemver(app.getVersion(), shellInfo.minVersion) < 0
+  ) {
     appendLog('warn', `当前版本 v${app.getVersion()} 低于最低支持版本 v${shellInfo.minVersion}，强制提示更新`);
     promptShellUpdate(shellInfo);
   }
@@ -733,9 +1004,12 @@ let noticeRefreshTimer = null;
 function startNoticeAutoRefresh() {
   if (noticeRefreshTimer) return;
   noticeRefreshTimer = setInterval(() => {
-    noticeApi.fetchLatest()
+    noticeApi
+      .fetchLatest()
       .then(() => refreshMenusRef())
-      .catch(() => { /* 拉取失败：沿用缓存，静默 */ });
+      .catch(() => {
+        /* 拉取失败：沿用缓存，静默 */
+      });
   }, NOTICE_REFRESH_MS);
   appendLog('info', `公告自动刷新已启动（每 ${NOTICE_REFRESH_MS / 60000} 分钟）`);
 }
@@ -743,54 +1017,66 @@ function startNoticeAutoRefresh() {
 /** 壳更新弹窗询问：立即更新（下载+校验+打开安装包）或稍后 */
 function promptShellUpdate(info) {
   const owner = mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined;
-  dialog.showMessageBox(owner, {
-    type: 'info',
-    title: APP_NAME,
-    message: `发现新版本 v${info.version}（当前 v${app.getVersion()}）`,
-    detail: '是否立即下载更新？下载完成后自动打开安装包。',
-    buttons: ['立即更新', '稍后'],
-    defaultId: 0,
-    cancelId: 1,
-    noLink: true,
-  }).then(({ response }) => {
-    if (response !== 0) return;
-    appendLog('info', '用户确认更新，开始下载…');
-    downloadShellUpdate(mainWindow, (percent) => {
-      if (updateWin && !updateWin.isDestroyed()) {
-        updateWin.webContents.send('update:progress', { percent });
-      }
-    }).then((r) => {
-      if (r && !r.ok) {
-        appendLog('error', `自动更新失败：${r.reason}${r.message ? ' ' + r.message : ''}`);
-        let reasonText = {
-          'fetch-failed': '无法连接更新源，请检查网络',
-          'no-update': '当前已是最新版本',
-          'download-failed': '所有下载源均失败，请稍后重试',
-          'hash-mismatch': '下载的安装包校验不通过（已删除），请重新下载',
-        }[r.reason] || '未知错误';
-        // v0.6.7（T-031）：写入被拒（EPERM/EACCES）时给出可操作提示
-        if (r.reason === 'download-failed' && r.message) {
-          if (/EPERM|EACCES/.test(r.message)) {
-            reasonText = '安装包写入被拒绝（可能被其他程序或安全软件占用/拦截）。请关闭可能占用文件的程序后重试，或到 GitHub Releases 手动下载安装包。';
-          } else {
-            reasonText += `（${r.message}）`;
-          }
+  dialog
+    .showMessageBox(owner, {
+      type: 'info',
+      title: APP_NAME,
+      message: `发现新版本 v${info.version}（当前 v${app.getVersion()}）`,
+      detail: '是否立即下载更新？下载完成后自动打开安装包。',
+      buttons: ['立即更新', '稍后'],
+      defaultId: 0,
+      cancelId: 1,
+      noLink: true,
+    })
+    .then(({ response }) => {
+      if (response !== 0) return;
+      appendLog('info', '用户确认更新，开始下载…');
+      downloadShellUpdate(mainWindow, (percent) => {
+        if (updateWin && !updateWin.isDestroyed()) {
+          updateWin.webContents.send('update:progress', { percent });
         }
-        dialog.showMessageBox(mainWindow, {
-          type: 'error',
-          title: APP_NAME,
-          message: '更新下载失败',
-          detail: reasonText,
-          buttons: ['打开更新窗口', '关闭'],
-          defaultId: 0,
-          cancelId: 1,
-          noLink: true,
-        }).then(({ response: resp }) => {
-          if (resp === 0) openUpdateWindow();
-        }).catch(() => { /* ignore */ });
-      }
+      }).then((r) => {
+        if (r && !r.ok) {
+          appendLog('error', `自动更新失败：${r.reason}${r.message ? ' ' + r.message : ''}`);
+          let reasonText =
+            {
+              'fetch-failed': '无法连接更新源，请检查网络',
+              'no-update': '当前已是最新版本',
+              'download-failed': '所有下载源均失败，请稍后重试',
+              'hash-mismatch': '下载的安装包校验不通过（已删除），请重新下载',
+            }[r.reason] || '未知错误';
+          // v0.6.7（T-031）：写入被拒（EPERM/EACCES）时给出可操作提示
+          if (r.reason === 'download-failed' && r.message) {
+            if (/EPERM|EACCES/.test(r.message)) {
+              reasonText =
+                '安装包写入被拒绝（可能被其他程序或安全软件占用/拦截）。请关闭可能占用文件的程序后重试，或到 GitHub Releases 手动下载安装包。';
+            } else {
+              reasonText += `（${r.message}）`;
+            }
+          }
+          dialog
+            .showMessageBox(mainWindow, {
+              type: 'error',
+              title: APP_NAME,
+              message: '更新下载失败',
+              detail: reasonText,
+              buttons: ['打开更新窗口', '关闭'],
+              defaultId: 0,
+              cancelId: 1,
+              noLink: true,
+            })
+            .then(({ response: resp }) => {
+              if (resp === 0) openUpdateWindow();
+            })
+            .catch(() => {
+              /* ignore */
+            });
+        }
+      });
+    })
+    .catch(() => {
+      /* ignore */
     });
-  }).catch(() => { /* ignore */ });
 }
 
 // ---------------------------------------------------------------------------
@@ -806,7 +1092,9 @@ if (!gotLock) {
   app.on('second-instance', () => {
     // P2-5 + v0.8.8（T4）：优先聚焦顶层 modal 窗口；无 modal 时走 showMainWindow()
     // 修复：主窗口隐藏（托盘）时双击快捷方式/图标，必须真正恢复显示（show+restore+focus），不能只 focus
-    const modal = [updateWin, contactWin, aboutWin, changelogWin, promptLibWin, noticeWin].find((w) => w && !w.isDestroyed());
+    const modal = [updateWin, contactWin, aboutWin, changelogWin, promptLibWin, noticeWin].find(
+      (w) => w && !w.isDestroyed(),
+    );
     if (modal) {
       if (modal.isMinimized()) modal.restore();
       modal.focus();
@@ -818,7 +1106,11 @@ if (!gotLock) {
   app.whenReady().then(async () => {
     // v0.6.1（T-027）：加载设置；开机自启以注册表实际状态为准（用户可能在系统设置里改过）
     settingsApi.loadSettings();
-    try { settings.autostart = app.getLoginItemSettings().openAtLogin; } catch { /* ignore */ }
+    try {
+      settings.autostart = app.getLoginItemSettings().openAtLogin;
+    } catch {
+      /* ignore */
+    }
     settingsApi.saveSettings();
 
     // v0.8.18：应用外观（nativeTheme.themeSource：'system' | 'light' | 'dark'）
@@ -831,26 +1123,48 @@ if (!gotLock) {
     hotkeyApi.registerHotkey(settings.hotkey);
     // v0.8.12（优化方案）：全部 IPC handler 集中注册到 modules/ipc.js
     registerIpc({
-      ipcMain, app, clipboard, shell, dialog, path, fs,
-      appendLog, localDate, appName: APP_NAME,
-      readShellConfig, installedDshVersion,
-      fetchLatestDshVersion, fetchLatestShellVersion, compareSemver, effectiveLatest,
-      queryUpdateInfo, upgradeDshVersion, downloadShellUpdate,
+      ipcMain,
+      app,
+      clipboard,
+      shell,
+      dialog,
+      path,
+      fs,
+      appendLog,
+      localDate,
+      appName: APP_NAME,
+      readShellConfig,
+      installedDshVersion,
+      fetchLatestDshVersion,
+      fetchLatestShellVersion,
+      compareSemver,
+      effectiveLatest,
+      queryUpdateInfo,
+      upgradeDshVersion,
+      downloadShellUpdate,
       getMainWindow: () => mainWindow,
       getUpdateWin: () => updateWin,
       getAboutWin: () => aboutWin,
       getSettings: () => settings,
       saveSettings: () => settingsApi.saveSettings(),
       refreshMenus: () => refreshMenusRef(),
-      openPromptLibWindow, openUpdateWindow,
+      openPromptLibWindow,
+      openPluginMarketWindow, // v1.1.1：插件市场窗口（直接引用，供 IPC handler 调用）
+      openUpdateWindow,
       getWebUrl: webUrl,
       getResolvedPort: () => resolvedPort,
       getCurrentStage,
       // v0.9：提示词注入公共链路 + 拖文件处理 + 工作区定位
-      promptInject, handleDropFiles, getWorkspacePath,
+      promptInject,
+      handleDropFiles,
+      getWorkspacePath,
       // v0.9.5：自定义提示词（T2）+ 公告模块（T3，notice:data 唯一源）
       customPrompts: customPromptsApi,
       noticeApi,
+      // v1.1.1：提示词库远程更新
+      promptsUpdater: promptsUpdaterApi,
+      // v1.1.1：插件市场
+      pluginMarket: pluginMarketApi,
       // v0.9.12：全局记忆（读写 AGENTS.md + 打开编辑窗口 + 覆盖确认宿主窗口）
       globalMemory: globalMemoryApi,
       openGlobalMemoryWindow,
@@ -859,7 +1173,7 @@ if (!gotLock) {
       pickAndInjectRole: () => roleSelectorApi.pickAndInject(),
     });
 
-    resolvedPort = parsePortArg() ?? await pickPort(DEFAULT_PORT);
+    resolvedPort = parsePortArg() ?? (await pickPort(DEFAULT_PORT));
     appendLog('info', `${APP_NAME} v${app.getVersion()} 启动，目标端口 ${resolvedPort}`);
     appendLog('info', `用户数据目录：${app.getPath('userData')}`);
     appendLog('info', `DSH 运行器策略：${resolveRunner().label}`);
@@ -868,10 +1182,17 @@ if (!gotLock) {
     // v0.8.1（T1 修复）：用系统级 API 判断「本次启动确实由系统登录自启触发」，
     // 而非「用户是否勾选过自启」的持久化配置（双击快捷方式/更新后重启会误判为静默）
     const openedAtLogin = (() => {
-      try { return app.getLoginItemSettings().wasOpenedAtLogin; } catch { return false; }
+      try {
+        return app.getLoginItemSettings().wasOpenedAtLogin;
+      } catch {
+        return false;
+      }
     })();
     const silentStart = openedAtLogin && settings.minimizeToTray;
-    appendLog('info', `启动模式：${silentStart ? '静默（系统自启触发，托盘常驻）' : '正常（显示窗口）'}（wasOpenedAtLogin=${openedAtLogin}）`);
+    appendLog(
+      'info',
+      `启动模式：${silentStart ? '静默（系统自启触发，托盘常驻）' : '正常（显示窗口）'}（wasOpenedAtLogin=${openedAtLogin}）`,
+    );
 
     if (!silentStart) {
       createLoadingWindow();
@@ -907,11 +1228,18 @@ if (!gotLock) {
           setTimeout(() => {
             const mw = mainWindow;
             if (mw && !mw.isDestroyed()) {
-              promptInject.injectTextIntoInput(mw, globalMemoryApi.FORMAT_TIDY_PROMPT, { celebrate: false })
+              promptInject
+                .injectTextIntoInput(mw, globalMemoryApi.FORMAT_TIDY_PROMPT, { celebrate: false })
                 .then(() => {
-                  try { fs.writeFileSync(tidyMarker, '1', 'utf8'); } catch { /* ignore */ }
+                  try {
+                    fs.writeFileSync(tidyMarker, '1', 'utf8');
+                  } catch {
+                    /* ignore */
+                  }
                 })
-                .catch(() => { /* ignore */ });
+                .catch(() => {
+                  /* ignore */
+                });
             }
           }, 3500);
         }
@@ -930,6 +1258,8 @@ if (!gotLock) {
       checkUpdatesOnStart();
       // v0.9.7：公告定时自动刷新（运行中改公告不须重启）
       startNoticeAutoRefresh();
+      // v1.1.1：提示词库启动时静默检查更新
+      promptsUpdaterApi.checkUpdatesOnStart();
     } catch (err) {
       appendLog('error', `启动失败：${err.message}`);
       if (loadingWindow && !loadingWindow.isDestroyed()) {
@@ -939,10 +1269,14 @@ if (!gotLock) {
           .replace(/"/g, '&quot;')
           .replace(/</g, '&lt;')
           .replace(/>/g, '&gt;');
-        loadingWindow.webContents.executeJavaScript(
-          `document.body.insertAdjacentHTML('beforeend',
+        loadingWindow.webContents
+          .executeJavaScript(
+            `document.body.insertAdjacentHTML('beforeend',
             '<div style="position:fixed;inset:auto 0 0 0;padding:14px 20px;background:#3a1414;color:#ffb4b4;font-size:13px;text-align:center;">启动失败：${esc}</div>')`,
-        ).catch(() => { /* ignore */ });
+          )
+          .catch(() => {
+            /* ignore */
+          });
       }
       dialog.showErrorBox(APP_NAME, `无法启动 DSH 服务：\n${err.message}\n\n详细日志：${logPath()}`);
       stopServer(); // 清理可能残留的子进程（审查 M1）
@@ -951,11 +1285,17 @@ if (!gotLock) {
   });
 
   // v0.6.0（T-025）：before-quit 统一标记"真正退出"（托盘退出/菜单退出/系统关机均走这里）
-  app.on('before-quit', () => { isQuitting = true; stopServer(); });
+  app.on('before-quit', () => {
+    isQuitting = true;
+    stopServer();
+  });
   app.on('will-quit', () => {
     appendLog('info', '应用退出中…');
     // v0.9.7：退出清理公告自动刷新定时器
-    if (noticeRefreshTimer) { clearInterval(noticeRefreshTimer); noticeRefreshTimer = null; }
+    if (noticeRefreshTimer) {
+      clearInterval(noticeRefreshTimer);
+      noticeRefreshTimer = null;
+    }
     // v0.8.1（T4）：退出释放全局快捷键（防残留占用）
     hotkeyApi.unregisterAll();
     // 审查 v12 P1-2：SIGTERM 宽限期定时器可能随主进程退出被终止，导致残留子进程
@@ -963,14 +1303,21 @@ if (!gotLock) {
     for (const child of trackedChildren) {
       try {
         if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
   });
-  app.on('quit', (_event, exitCode) => { appendLog('info', `应用已退出，code=${exitCode}`); });
+  app.on('quit', (_event, exitCode) => {
+    appendLog('info', `应用已退出，code=${exitCode}`);
+  });
   // v0.6.0（T-025）/ v0.6.1（T-027）：关闭窗口 ≠ 退出 —— 启用托盘常驻时所有窗口关闭后
   // 托盘驻留、DSH 服务继续运行；未启用托盘常驻或"真正退出"（isQuitting）时随关窗退出。
   app.on('window-all-closed', () => {
-    if (isQuitting || !settings.minimizeToTray) { app.quit(); return; }
+    if (isQuitting || !settings.minimizeToTray) {
+      app.quit();
+      return;
+    }
     appendLog('info', '主窗口已关闭（最小化到托盘），DSH 服务继续运行，可从托盘恢复');
   });
   app.on('activate', () => {

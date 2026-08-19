@@ -26,21 +26,39 @@
 
 function createMenu(deps) {
   const {
-    Menu, shell, app, path,
+    Menu,
+    shell,
+    app,
+    path,
     logPath,
     getSettings,
-    setAutostart, setMinimizeToTray, setCloseAsk, setCheckUpdateOnStart, clearCloseChoice, saveSettings,
+    setAutostart,
+    setMinimizeToTray,
+    setCloseAsk,
+    setCheckUpdateOnStart,
+    clearCloseChoice,
+    saveSettings,
     setHotkey,
-    backupUserData, restoreUserData,
-    openUpdateWindow, openNoticeWindow, openChangelogWindow, openContactWindow, openAboutWindow,
+    backupUserData,
+    restoreUserData,
+    openUpdateWindow,
+    openNoticeWindow,
+    openChangelogWindow,
+    openContactWindow,
+    openAboutWindow,
     generateDiagnostics,
     // v0.8.16：injectPet 已移除（设置菜单「显示桌面宠物」删除，形态切换走宠物/工具箱菜单）
     resetWebOpenBtnLayout,
     openAppearanceDialog, // v0.8.18：设置菜单「外观…」（浅色/深色/跟随系统）
     hasNewNotices,
-    getMainWindow, getShellHasUpdate, getDshHasUpdate, getShellNotices,
+    getMainWindow,
+    getShellHasUpdate,
+    getDshHasUpdate,
+    getShellNotices,
     getMarquee, // v0.9.5（T3）：公告条文案
-    isTrayCreated, updateTrayMenu,
+    isTrayCreated,
+    updateTrayMenu,
+    openHelpDoc, // v1.1.1：帮助文档远程下发
   } = deps;
 
   /**
@@ -62,16 +80,22 @@ function createMenu(deps) {
           // v0.8.17（老大指令）：「重新加载界面」移入视图菜单（视图类操作归视图）
           {
             label: '打开日志目录',
-            click: () => { shell.openPath(path.dirname(logPath())); },
+            click: () => {
+              shell.openPath(path.dirname(logPath()));
+            },
           },
           {
             label: '打开数据目录',
-            click: () => { shell.openPath(app.getPath('userData')); },
+            click: () => {
+              shell.openPath(app.getPath('userData'));
+            },
           },
           // v1.0.1（老大指令）：打开记忆目录 —— ~/.dsh（全局记忆 AGENTS.md 与角色文件所在目录）
           {
             label: '打开记忆目录',
-            click: () => { shell.openPath(path.join(app.getPath('home'), '.dsh')); },
+            click: () => {
+              shell.openPath(path.join(app.getPath('home'), '.dsh'));
+            },
           },
           { type: 'separator' },
           // v0.7.0（T2/T3）：数据备份 / 恢复（打包 ~/.dsh + 设置；恢复校验 manifest 后固定路径还原）
@@ -87,7 +111,14 @@ function createMenu(deps) {
         label: '视图',
         submenu: [
           // v0.8.17（老大指令）：重新加载界面从文件菜单移入（视图类操作）
-          { label: '重新加载界面', accelerator: 'CmdOrCtrl+R', click: () => { const mw = getMainWindow(); if (mw) mw.reload(); } },
+          {
+            label: '重新加载界面',
+            accelerator: 'CmdOrCtrl+R',
+            click: () => {
+              const mw = getMainWindow();
+              if (mw) mw.reload();
+            },
+          },
           { role: 'resetZoom', label: '实际大小' },
           { role: 'zoomIn', label: '放大' },
           { role: 'zoomOut', label: '缩小' },
@@ -99,9 +130,18 @@ function createMenu(deps) {
           { type: 'separator' },
           // v0.9.11（外审 zx(9) P3-4）：生产构建（app.isPackaged）隐藏开发者工具 ——
           // 打包产物无 F12；开发模式（npm start / npm run dev）保留调试入口
-          ...(!app.isPackaged ? [
-            { label: '开发者工具', accelerator: 'F12', click: () => { const mw = getMainWindow(); if (mw) mw.webContents.toggleDevTools(); } },
-          ] : []),
+          ...(!app.isPackaged
+            ? [
+                {
+                  label: '开发者工具',
+                  accelerator: 'F12',
+                  click: () => {
+                    const mw = getMainWindow();
+                    if (mw) mw.webContents.toggleDevTools();
+                  },
+                },
+              ]
+            : []),
         ],
       },
       // v0.6.1（T-027）：设置菜单
@@ -145,8 +185,13 @@ function createMenu(deps) {
           // v0.8.18（老大指令）：外观 —— 弹窗选浅色/深色/跟随系统（nativeTheme.themeSource，
           // DSH 页面经 prefers-color-scheme 自动同步）；v0.8.21：仅用户主动选择时同步 DSH
           {
-            label: '外观…' + (settings.appearance === 'light' ? '（浅色）'
-              : settings.appearance === 'dark' ? '（深色）' : '（跟随系统）'),
+            label:
+              '外观…' +
+              (settings.appearance === 'light'
+                ? '（浅色）'
+                : settings.appearance === 'dark'
+                  ? '（深色）'
+                  : '（跟随系统）'),
             click: () => openAppearanceDialog(),
           },
           // v0.8.1（T4）：快捷键子菜单 —— 呼出/隐藏主窗口（全局生效，默认 Ctrl+Alt+D）
@@ -155,14 +200,25 @@ function createMenu(deps) {
           {
             label: '快捷键（呼出/隐藏主窗口）',
             submenu: [
-              { label: 'Ctrl+Alt+D', type: 'radio', checked: settings.hotkey === 'Ctrl+Alt+D',
-                click: () => setHotkey('Ctrl+Alt+D') },
-              { label: 'Ctrl+Shift+D', type: 'radio', checked: settings.hotkey === 'Ctrl+Shift+D',
-                click: () => setHotkey('Ctrl+Shift+D') },
-              { label: 'Alt+Space', type: 'radio', checked: settings.hotkey === 'Alt+Space',
-                click: () => setHotkey('Alt+Space') },
-              { label: '禁用快捷键', type: 'radio', checked: !settings.hotkey,
-                click: () => setHotkey(null) },
+              {
+                label: 'Ctrl+Alt+D',
+                type: 'radio',
+                checked: settings.hotkey === 'Ctrl+Alt+D',
+                click: () => setHotkey('Ctrl+Alt+D'),
+              },
+              {
+                label: 'Ctrl+Shift+D',
+                type: 'radio',
+                checked: settings.hotkey === 'Ctrl+Shift+D',
+                click: () => setHotkey('Ctrl+Shift+D'),
+              },
+              {
+                label: 'Alt+Space',
+                type: 'radio',
+                checked: settings.hotkey === 'Alt+Space',
+                click: () => setHotkey('Alt+Space'),
+              },
+              { label: '禁用快捷键', type: 'radio', checked: !settings.hotkey, click: () => setHotkey(null) },
             ],
           },
           { type: 'separator' },
@@ -195,7 +251,9 @@ function createMenu(deps) {
         submenu: [
           {
             label: `检查更新${getShellHasUpdate() || getDshHasUpdate() ? '（有新版本）' : ''}`,
-            click: () => { openUpdateWindow(); },
+            click: () => {
+              openUpdateWindow();
+            },
           },
           { type: 'separator' },
           // v0.8.1（T3）：内置更新日志 —— 帮助菜单查看各版本更新内容（离线可用）
@@ -211,20 +269,33 @@ function createMenu(deps) {
           { type: 'separator' },
           {
             label: '联系我们',
-            click: () => { openContactWindow(); },
+            click: () => {
+              openContactWindow();
+            },
           },
           {
             label: '关于 DSH-Desktop',
-            click: () => { openAboutWindow(); },
+            click: () => {
+              openAboutWindow();
+            },
           },
           { type: 'separator' },
+          // v1.1.1：帮助文档远程下发（修改仓库 help.html push 即生效，无需发版）
+          {
+            label: '帮助文档…',
+            click: () => openHelpDoc(),
+          },
           {
             label: 'DeepSeek 官网',
-            click: () => { shell.openExternal('https://www.deepseek.com'); },
+            click: () => {
+              shell.openExternal('https://www.deepseek.com');
+            },
           },
           {
             label: 'DSH-Desktop 项目主页',
-            click: () => { shell.openExternal('https://github.com/XWJ-z/dsh-Desktop'); },
+            click: () => {
+              shell.openExternal('https://github.com/XWJ-z/dsh-Desktop');
+            },
           },
         ],
       },

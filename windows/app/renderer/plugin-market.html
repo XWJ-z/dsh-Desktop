@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>💎 插件市场</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        background: #f5f5f5;
+        color: #333;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      .header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+        text-align: center;
+      }
+      .header h1 {
+        font-size: 24px;
+        margin-bottom: 10px;
+      }
+      .search-box {
+        display: flex;
+        max-width: 500px;
+        margin: 0 auto;
+      }
+      .search-box input {
+        flex: 1;
+        padding: 10px 15px;
+        border: none;
+        border-radius: 5px 0 0 5px;
+        font-size: 14px;
+      }
+      .search-box button {
+        padding: 10px 20px;
+        background: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 0 5px 5px 0;
+        cursor: pointer;
+      }
+      .main-container {
+        display: flex;
+        flex: 1;
+        overflow: hidden;
+      }
+      .sidebar {
+        width: 200px;
+        background: white;
+        border-right: 1px solid #ddd;
+        overflow-y: auto;
+      }
+      .sidebar h3 {
+        padding: 15px;
+        background: #f0f0f0;
+        border-bottom: 1px solid #ddd;
+      }
+      .category-list {
+        list-style: none;
+      }
+      .category-item {
+        padding: 12px 15px;
+        cursor: pointer;
+        border-bottom: 1px solid #eee;
+        display: flex;
+        align-items: center;
+      }
+      .category-item:hover {
+        background: #f0f0f0;
+      }
+      .category-item.active {
+        background: #e3f2fd;
+        border-left: 3px solid #2196f3;
+      }
+      .category-icon {
+        margin-right: 10px;
+        font-size: 16px;
+      }
+      .content {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+      }
+      .plugin-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 20px;
+      }
+      .plugin-card {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        transition: transform 0.2s;
+      }
+      .plugin-card:hover {
+        transform: translateY(-2px);
+      }
+      .plugin-name {
+        font-size: 18px;
+        font-weight: bold;
+        margin-bottom: 10px;
+        color: #333;
+      }
+      .plugin-description {
+        color: #666;
+        margin-bottom: 15px;
+        line-height: 1.5;
+      }
+      .plugin-category {
+        display: inline-block;
+        background: #e3f2fd;
+        color: #1976d2;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        margin-bottom: 10px;
+      }
+      .plugin-actions {
+        display: flex;
+        gap: 10px;
+      }
+      .btn {
+        padding: 8px 15px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 13px;
+        transition: background 0.2s;
+      }
+      .btn-primary {
+        background: #2196f3;
+        color: white;
+      }
+      .btn-primary:hover {
+        background: #1976d2;
+      }
+      .btn-secondary {
+        background: #f0f0f0;
+        color: #333;
+      }
+      .btn-secondary:hover {
+        background: #e0e0e0;
+      }
+      .security-warning {
+        /* v1.1.1：红色醒目 + 置顶 + 单行（老大指令） */
+        background: #fdecea;
+        border: 2px solid #e53935;
+        border-radius: 8px;
+        padding: 10px 16px;
+        margin: 10px 20px 0;
+        text-align: center;
+        color: #d32f2f;
+        font-size: 13.5px;
+        font-weight: 600;
+      }
+      .empty-state {
+        text-align: center;
+        padding: 50px;
+        color: #999;
+      }
+      .loading {
+        text-align: center;
+        padding: 50px;
+        color: #666;
+      }
+      .banner {
+        display: none;
+        padding: 8px 16px;
+        background: #4caf50;
+        color: white;
+        text-align: center;
+        font-size: 13px;
+      }
+      /* v1.1.1：免责声明确认模态框 */
+      .modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.45);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+      }
+      .modal-box {
+        background: white;
+        border-radius: 10px;
+        padding: 24px 28px;
+        max-width: 420px;
+        width: 90%;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        text-align: center;
+      }
+      .modal-box h3 {
+        color: #c62828;
+        font-size: 17px;
+        margin-bottom: 12px;
+      }
+      .modal-box p {
+        color: #444;
+        font-size: 13.5px;
+        line-height: 1.7;
+        margin-bottom: 12px;
+      }
+      .modal-box .modal-cmd {
+        background: #f5f5f5;
+        border-radius: 6px;
+        padding: 8px 10px;
+        font-size: 12.5px;
+        word-break: break-all;
+      }
+      .modal-box .modal-cmd code {
+        color: #1565c0;
+        font-weight: 600;
+      }
+      .modal-btns {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        margin-top: 16px;
+      }
+      .modal-btns .btn {
+        min-width: 110px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>插件市场</h1>
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="搜索插件..." />
+        <button id="searchBtn">搜索</button>
+      </div>
+    </div>
+
+    <div id="banner" class="banner"></div>
+
+    <!-- v1.1.1（老大指令）：安全提示置顶 + 红色醒目 + 单行 + 保留 ⚠️ -->
+    <div class="security-warning" id="securityWarning">⚠️ 安全提示：插件来自第三方社区，安装前请查看源码，了解其功能和权限</div>
+
+    <div class="main-container">
+      <div class="sidebar">
+        <h3>分类</h3>
+        <ul class="category-list" id="categoryList">
+          <li class="category-item active" data-category="all">
+            全部
+          </li>
+        </ul>
+      </div>
+
+      <div class="content">
+        <div id="pluginContainer">
+          <div class="loading">加载中...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- v1.1.1：免责声明确认模态框（复制安装命令前必须确认） -->
+    <div class="modal-overlay" id="confirm-modal">
+      <div class="modal-box">
+        <h3>安装确认</h3>
+        <p>请确认插件安全，如造成任何安全问题，<strong>后果自负</strong>。<br />建议先查看插件源码再决定是否安装。</p>
+        <div class="modal-cmd">命令：<code id="confirm-cmd"></code></div>
+        <div class="modal-btns">
+          <button class="btn btn-primary" id="confirm-ok">我已确认，复制</button>
+          <button class="btn btn-secondary" id="confirm-cancel">取消</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="plugin-market.js"></script>
+  </body>
+</html>
