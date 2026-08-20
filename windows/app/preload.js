@@ -119,10 +119,14 @@ contextBridge.exposeInMainWorld('dshDesktop', {
   // ── v1.1.1：插件市场 ──
   /** 打开插件市场窗口 */
   openPluginMarket: () => ipcRenderer.invoke('toolbox:open-plugin-market'),
+  /** v1.1.1 三轮：打开帮助文档窗口（应用内本地 + 后台静默同步远程） */
+  openHelpDoc: () => ipcRenderer.invoke('app:open-help-doc'),
   /** 获取插件市场分类列表（含「全部」以外的 14 分类） */
   getPluginCategories: () => ipcRenderer.invoke('plugin-market:categories'),
   /** 获取全部插件（缓存优先，过期自动刷新） */
   getPlugins: () => ipcRenderer.invoke('plugin-market:get-plugins'),
+  /** v1.1.1 二轮（老大确认）：立即刷新插件列表（绕过 7 天缓存，三源实时拉取） */
+  refreshPlugins: () => ipcRenderer.invoke('plugin-market:refresh'),
   /** 搜索插件（按名称/描述模糊匹配） */
   searchPlugins: (query) => ipcRenderer.invoke('plugin-market:search', query),
   /** 按分类筛选插件（'all' = 全部） */

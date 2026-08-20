@@ -1,19 +1,19 @@
 'use strict';
 
 /**
- * DSH-Desktop — 帮助文档模块（v1.1.1）
+ * DSH-Desktop — 帮助文档模块（v1.1.1 → v1.1.1 二轮改造，老大反馈）
  *
- * 职责：帮助文档远程下发 + 本地兜底：
- *  - 三源并发拉取 help.html（jsDelivr / api.github.com / raw.githubusercontent）
- *  - 取可达源打开系统浏览器
- *  - 拉取失败 → 打开本地内置 help.html 兜底
- *  - 本地内置 help.html 随包分发（renderer/help.html）
+ * 职责：帮助文档 = 应用内窗口 + 本地优先 + 后台静默远程同步：
+ *  - 打开：加载本地帮助文档（用户数据缓存 > 包内置 renderer/help.html）—— 离线可用
+ *  - 后台：三源并发拉取远程 help.html（jsDelivr / api.github.com / raw.githubusercontent），
+ *    内容与当前本地版本不同 → 写入用户数据缓存，下次打开即最新（改仓库 push 即生效）
+ *  - 远程全部失败 → 保持本地版本（缓存或包内置），不打断用户
  *
  * 依赖注入（deps）：
- *  - shell / app / path / fs
- *  - net            Electron net 模块（Chromium 网络栈/系统 CA，探测可达性）
+ *  - app / path / fs
+ *  - net            Electron net 模块（Chromium 网络栈/系统 CA，拉取远程）
  *  - appendLog
- *  - isAllowedExternalUrl   external-links 模块（URL 白名单校验）
+ *  - openHelpDocWindow   打开帮助文档窗口回调（misc-windows 模块，晚绑定注入）
  */
 
 const HELP_DOC_URLS = [
@@ -33,114 +33,155 @@ const HELP_DOC_URLS = [
 ];
 
 function createHelpDoc(deps) {
-  const { shell, app, path, fs, net, appendLog, isAllowedExternalUrl } = deps;
+  const { app, path, fs, net, appendLog, openHelpDocWindow } = deps;
 
-  /**
-   * 尝试从 URL 列表中找到可达的 URL
-   * @param {Array<{name: string, url: string, headers?: object}>} urls
-   * @returns {Promise<string|null>} 可达的 URL 或 null
-   */
-  async function pickReachable(urls) {
-    const TIMEOUT_MS = 8000;
+  function cacheDir() {
+    return path.join(app.getPath('userData'), 'help-doc');
+  }
+  function cacheHtmlPath() {
+    return path.join(cacheDir(), 'help.html');
+  }
+  function cacheMetaPath() {
+    return path.join(cacheDir(), 'version.json');
+  }
+  function bundledHtmlPath() {
+    return path.join(app.getAppPath(), 'renderer', 'help.html');
+  }
 
-    // 三源并发（Electron net 探测，Chromium 网络栈 + 系统 CA + 自动跟随重定向 ——
-    // Node https 在此环境 TLS 失败且 jsDelivr @main 会 301）
-    // 取第一个「可达且白名单允许」的（api.github.com 返回 JSON 且不在 openExternal
-    // 白名单 —— 仅作探测，不作为浏览器打开目标）
-    const results = await Promise.allSettled(
-      urls.map(async (source) => {
-        try {
-          const reachable = await new Promise((resolve) => {
-            let req;
-            const timer = setTimeout(() => {
-              try {
-                req.abort();
-              } catch {
-                /* ignore */
-              }
-              resolve(false);
-            }, TIMEOUT_MS);
-            try {
-              req = net.request({ url: source.url, method: 'HEAD' });
-              Object.keys(source.headers || {}).forEach((k) => req.setHeader(k, source.headers[k]));
-              req.on('response', (res) => {
-                clearTimeout(timer);
-                resolve(res.statusCode >= 200 && res.statusCode < 400);
-              });
-              req.on('error', () => {
-                clearTimeout(timer);
-                resolve(false);
-              });
-              req.end();
-            } catch {
-              clearTimeout(timer);
-              resolve(false);
-            }
-          });
-          if (reachable && isAllowedExternalUrl(source.url)) {
-            return { name: source.name, url: source.url };
-          }
-          return null;
-        } catch {
-          return null;
-        }
-      }),
-    );
-
-    // 返回第一个成功的
-    for (const result of results) {
-      if (result.status === 'fulfilled' && result.value) {
-        return result.value.url;
-      }
+  /** 读取缓存元信息（{ updated }），缺失/损坏返回 null */
+  function readCacheMeta() {
+    try {
+      return JSON.parse(fs.readFileSync(cacheMetaPath(), 'utf8'));
+    } catch {
+      return null;
     }
-    return null;
   }
 
   /**
-   * 打开帮助文档
-   * 1. 尝试系统浏览器打开远程 help.html
-   * 2. 打不开 → 打开本地内置副本兜底
-   * 3. 提示用户检查网络
+   * GET 并返回响应文本（Electron net.request —— Chromium 网络栈 + 系统 CA +
+   * 自动跟随重定向；Node https 在此环境 TLS 验证失败且 jsDelivr @main 会 301）
+   * @param {string} url
+   * @param {number} timeoutMs
+   * @param {object} headers
+   * @returns {Promise<string|null>}
+   */
+  function fetchText(url, timeoutMs = 8000, headers = {}) {
+    return new Promise((resolve) => {
+      let req;
+      try {
+        req = net.request(url);
+        Object.keys(headers || {}).forEach((k) => req.setHeader(k, headers[k]));
+        if (!headers || !headers['User-Agent']) req.setHeader('User-Agent', 'DSH-Desktop');
+        const timer = setTimeout(() => {
+          try {
+            req.abort();
+          } catch {
+            /* ignore */
+          }
+          resolve(null);
+        }, timeoutMs);
+        req.on('response', (res) => {
+          const code = res.statusCode;
+          if (code < 200 || code >= 300) {
+            clearTimeout(timer);
+            resolve(null);
+            return;
+          }
+          let body = '';
+          let done = false;
+          const finish = (v) => {
+            if (done) return;
+            done = true;
+            clearTimeout(timer);
+            resolve(v);
+          };
+          res.on('data', (c) => {
+            if (!done) body += c;
+          });
+          res.on('end', () => finish(body));
+          res.on('error', () => finish(null));
+        });
+        req.on('error', () => {
+          clearTimeout(timer);
+          resolve(null);
+        });
+        req.end();
+      } catch {
+        resolve(null);
+      }
+    });
+  }
+
+  /** 三源并发取最快成功（Promise.any，不等慢源）；全部失败返回 null */
+  async function fetchRemoteHelp() {
+    try {
+      return await Promise.any(
+        HELP_DOC_URLS.map(async (source) => {
+          const t = await fetchText(source.url, 8000, source.headers || {});
+          if (!t) throw new Error('fetch fail');
+          return t;
+        }),
+      );
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * 打开帮助文档：应用内窗口加载本地版本（缓存 > 包内置），
+   * 后台静默同步远程（不阻塞窗口，失败静默下次再试）。
    */
   async function openHelpDoc() {
     try {
-      appendLog('info', '尝试打开帮助文档...');
-
-      // ① 尝试系统浏览器打开远程
-      const url = await pickReachable(HELP_DOC_URLS);
-
-      if (url) {
-        // URL 白名单校验（仅放行 help.html 路径）
-        if (isAllowedExternalUrl(url)) {
-          shell.openExternal(url);
-          appendLog('info', `帮助文档已打开：${url}`);
-          return;
-        } else {
-          appendLog('warn', `URL 不在白名单内：${url}`);
-        }
-      }
-
-      // ② 兜底：打开本地内置 help.html
-      const localPath = path.join(app.getAppPath(), 'renderer', 'help.html');
-      if (fs.existsSync(localPath)) {
-        shell.openPath(localPath);
-        appendLog('info', '帮助文档已打开（本地兜底版本）');
-      } else {
-        // 如果本地也没有，尝试主目录下的 help.html
-        const rootPath = path.join(app.getAppPath(), 'help.html');
-        if (fs.existsSync(rootPath)) {
-          shell.openPath(rootPath);
-          appendLog('info', '帮助文档已打开（根目录版本）');
-        } else {
-          appendLog('error', '本地帮助文档文件不存在');
-        }
-      }
+      appendLog('info', '打开帮助文档窗口…');
+      const htmlPath = fs.existsSync(cacheHtmlPath()) ? cacheHtmlPath() : bundledHtmlPath();
+      appendLog('info', `帮助文档本地版本：${fs.existsSync(cacheHtmlPath()) ? '用户缓存' : '包内置'}`);
+      openHelpDocWindow(htmlPath);
+      // 后台静默同步远程（失败不影响本次打开）
+      syncRemoteHelpDoc().catch(() => {
+        /* ignore */
+      });
     } catch (err) {
       appendLog('error', `打开帮助文档失败：${err.message}`);
     }
   }
 
-  return { openHelpDoc };
+  /**
+   * 静默同步远程 help.html：内容与当前本地版本（缓存 > 包内置）不同
+   * → 写入用户数据缓存（下次打开即最新，push 即生效）
+   * @returns {Promise<{updated: boolean, reason?: string}>}
+   */
+  async function syncRemoteHelpDoc() {
+    appendLog('info', '检查帮助文档远程更新…');
+    const remote = await fetchRemoteHelp();
+    if (!remote) {
+      appendLog('info', '帮助文档远程检查跳过（网络不可达），保持本地版本');
+      return { updated: false, reason: 'network' };
+    }
+    try {
+      const bundled = fs.existsSync(bundledHtmlPath()) ? fs.readFileSync(bundledHtmlPath(), 'utf8') : '';
+      const cached = fs.existsSync(cacheHtmlPath()) ? fs.readFileSync(cacheHtmlPath(), 'utf8') : null;
+      const current = cached !== null ? cached : bundled;
+      if (current === remote) {
+        appendLog('info', '帮助文档已是最新（与远程一致）');
+        return { updated: false };
+      }
+      fs.mkdirSync(cacheDir(), { recursive: true });
+      fs.writeFileSync(cacheHtmlPath(), remote, 'utf8');
+      fs.writeFileSync(
+        cacheMetaPath(),
+        JSON.stringify({ updated: new Date().toISOString() }, null, 2),
+        'utf8',
+      );
+      appendLog('info', '帮助文档远程更新已同步（下次打开生效）');
+      return { updated: true };
+    } catch (err) {
+      appendLog('warn', `帮助文档同步写缓存失败：${err.message}`);
+      return { updated: false, reason: 'write-fail' };
+    }
+  }
+
+  return { openHelpDoc, syncRemoteHelpDoc, bundledHtmlPath, cacheHtmlPath, cacheMetaPath };
 }
 
 module.exports = { createHelpDoc };

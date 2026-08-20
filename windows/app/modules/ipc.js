@@ -47,6 +47,8 @@ function registerIpc(deps) {
     promptsUpdater,
     // v1.1.1：插件市场
     pluginMarket,
+    // v1.1.1 三轮：帮助文档窗口（应用内打开本地 + 后台静默同步）
+    helpDocApi,
     // v0.9.12（老大指令）：全局记忆（读写 ~/.dsh/AGENTS.md + 打开编辑窗口）
     globalMemory,
     openGlobalMemoryWindow,
@@ -179,6 +181,11 @@ function registerIpc(deps) {
     openPluginMarketWindow();
     return true;
   });
+  // v1.1.1 三轮：帮助文档窗口（应用内打开本地 help.html + 后台静默同步远程）
+  ipcMain.handle('app:open-help-doc', async () => {
+    await helpDocApi.openHelpDoc();
+    return true;
+  });
   ipcMain.handle('update:dsh-upgrade', () => upgradeDshVersion());
   ipcMain.handle('update:shell-download', () => {
     return downloadShellUpdate(getUpdateWin() || getMainWindow(), (percent) => {
@@ -288,6 +295,10 @@ function registerIpc(deps) {
   });
   ipcMain.handle('plugin-market:get-plugins', async () => {
     return await pluginMarket.getPlugins();
+  });
+  // v1.1.1 二轮（老大确认）：手动刷新 —— 绕过 7 天缓存，三源实时拉取并落盘
+  ipcMain.handle('plugin-market:refresh', async () => {
+    return await pluginMarket.refreshPlugins();
   });
   ipcMain.handle('plugin-market:search', async (_e, query) => {
     return await pluginMarket.searchPlugins(query);

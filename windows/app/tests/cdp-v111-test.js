@@ -353,22 +353,26 @@ async function main() {
     const api = await cdp.send('Runtime.evaluate', {
       expression: `(() => ({
         openPluginMarket: typeof window.dshDesktop.openPluginMarket === 'function',
+        openHelpDoc: typeof window.dshDesktop.openHelpDoc === 'function',
         getPlugins: typeof window.dshDesktop.getPlugins === 'function',
         searchPlugins: typeof window.dshDesktop.searchPlugins === 'function',
         getPluginsByCategory: typeof window.dshDesktop.getPluginsByCategory === 'function',
         copyPluginCommand: typeof window.dshDesktop.copyPluginCommand === 'function',
         openPluginRepo: typeof window.dshDesktop.openPluginRepo === 'function',
         getPluginCategories: typeof window.dshDesktop.getPluginCategories === 'function',
+        refreshPlugins: typeof window.dshDesktop.refreshPlugins === 'function',
       }))()`,
       returnByValue: true,
     });
     const av = api.result && api.result.value;
     ok(!!av && av.openPluginMarket, 'preload 暴露 openPluginMarket');
+    ok(!!av && av.openHelpDoc, 'preload 暴露 openHelpDoc（帮助文档窗口）');
     ok(
       !!av && av.getPlugins && av.searchPlugins && av.getPluginsByCategory,
       'preload 暴露插件列表/搜索/分类筛选 API',
     );
     ok(!!av && av.copyPluginCommand && av.openPluginRepo && av.getPluginCategories, 'preload 暴露复制/打开/分类 API');
+    ok(!!av && av.refreshPlugins, 'preload 暴露 refreshPlugins（手动刷新）');
 
     // ④ 打开插件市场窗口
     await cdp.send('Runtime.evaluate', {
@@ -572,11 +576,14 @@ async function main() {
           const r = await mktCdp.send('Runtime.evaluate', {
             expression: `(() => {
               const m = document.getElementById('confirm-modal');
+              const dis = document.querySelector('.modal-disclaimer');
               return {
                 shown: !!m && m.style.display === 'flex',
                 text: (m && m.textContent) || '',
                 cmd: (document.getElementById('confirm-cmd') || {}).textContent || '',
                 notices: document.querySelectorAll('.modal-notices li').length,
+                disWeight: dis ? getComputedStyle(dis).fontWeight : '',
+                disColor: dis ? getComputedStyle(dis).color : '',
               };
             })()`,
             returnByValue: true,
@@ -602,6 +609,19 @@ async function main() {
         ok(
           !!modalV && modalV.text.includes('916607090') && modalV.text.includes('安装前须知'),
           `模态含 QQ 群兜底（916607090）与「安装前须知」标题`,
+        );
+        // v1.1.1 三轮（老大反馈）：免责声明红色加粗；去掉「像装手机App一样想清楚」
+        ok(
+          !!modalV && (modalV.disWeight === '700' || modalV.disWeight === 'bold'),
+          `免责声明加粗（font-weight=${modalV && modalV.disWeight}）`,
+        );
+        ok(
+          !!modalV && (modalV.disColor === 'rgb(198, 40, 40)' || modalV.disColor === 'rgb(255, 138, 128)'),
+          `免责声明红色（实际 ${modalV && modalV.disColor}，深色 #ff8a80 / 浅色 #c62828）`,
+        );
+        ok(
+          !!modalV && !modalV.text.includes('像装手机 App'),
+          '安装须知已去掉「像装手机 App 一样想清楚」',
         );
         // ⑦.2 点「我已确认，复制」→ 模态关闭 + IPC 复制返回 true
         await mktCdp.send('Runtime.evaluate', {
@@ -652,6 +672,42 @@ async function main() {
         ok(
           !!dmv && dmv.cardBg === dmv.expectedSurface && dmv.sidebarBg === dmv.expectedSurface,
           `插件卡片/侧边栏背景随主题（实际 卡片=${dmv && dmv.cardBg} 侧边栏=${dmv && dmv.sidebarBg}，预期 ${dmv && dmv.expectedSurface}）`,
+        );
+
+        // ⑦.4 v1.1.1 三轮（老大确认）：手动「刷新」按钮 —— 绕过 7 天缓存实时拉取
+        const hasRefresh = await mktCdp.send('Runtime.evaluate', {
+          expression: `!!document.getElementById('refreshBtn')`,
+          returnByValue: true,
+        });
+        ok(hasRefresh.result && hasRefresh.result.value === true, '插件市场窗口含「刷新」按钮');
+        await mktCdp.send('Runtime.evaluate', {
+          expression: `(() => { const b = document.getElementById('refreshBtn'); if (b) b.click(); return true; })()`,
+          returnByValue: true,
+        });
+        // 等待刷新完成：按钮恢复可用且列表重载（网络可用 → 实时全部插件；失败 → 缓存列表）
+        let refreshDone = false;
+        let refreshCards = 0;
+        const tR = Date.now();
+        while (Date.now() - tR < 30_000) {
+          const r = await mktCdp.send('Runtime.evaluate', {
+            expression: `(() => ({
+              disabled: document.getElementById('refreshBtn').disabled,
+              loading: !!document.querySelector('.loading'),
+              cards: document.querySelectorAll('.plugin-card').length,
+            }))()`,
+            returnByValue: true,
+          });
+          const rv = r.result && r.result.value;
+          if (rv && !rv.disabled && !rv.loading) {
+            refreshDone = true;
+            refreshCards = rv.cards;
+            break;
+          }
+          await sleep(500);
+        }
+        ok(
+          refreshDone && refreshCards >= 2,
+          `点「刷新」→ 列表重载完成（卡片 ${refreshCards} 个：实时拉取成功=全部插件，失败=缓存兜底）`,
         );
 
         // ⑧ 打开插件 GitHub（白名单外链，主进程执行；返回 true）
@@ -749,6 +805,40 @@ async function main() {
       }
     }
 
+    // ⑩.6 v1.1.1 三轮（老大反馈）：帮助文档 = 应用内窗口（本地优先 + 后台静默同步）
+    await cdp.send('Runtime.evaluate', {
+      expression: 'window.dshDesktop.openHelpDoc()',
+      returnByValue: true,
+      awaitPromise: true,
+    });
+    const helpWin = await waitTarget(SIM_DEBUG_PORT, (t) => /help\.html$/.test(t.url), 15_000);
+    ok(!!helpWin, '帮助文档窗口已打开（应用内 help.html，非外部浏览器）');
+    if (helpWin && helpWin.webSocketDebuggerUrl) {
+      const helpCdp = cdpConnect(helpWin.webSocketDebuggerUrl);
+      try {
+        let hv = null;
+        const tH = Date.now();
+        while (Date.now() - tH < 10_000) {
+          const r = await helpCdp.send('Runtime.evaluate', {
+            expression: `(() => ({
+              title: document.title || '',
+              hasContent: (document.body && document.body.textContent || '').length > 100,
+            }))()`,
+            returnByValue: true,
+          });
+          hv = r.result && r.result.value;
+          if (hv && hv.title.includes('帮助文档')) break;
+          await sleep(400);
+        }
+        ok(!!hv && hv.title.includes('帮助文档'), `帮助文档窗口标题正确（实际「${hv && hv.title}」）`);
+        ok(!!hv && hv.hasContent, '帮助文档内容已渲染（本地 html 正常加载）');
+      } catch (err) {
+        ok(false, '帮助文档窗口断言异常：' + err.message);
+      } finally {
+        helpCdp.close();
+      }
+    }
+
     // ⑪ 日志：提示词库缓存加载 + 启动阶段
     await sleep(1000);
     const logDir = path.join(userData, 'logs');
@@ -759,6 +849,8 @@ async function main() {
     }
     ok(logText.includes('提示词库缓存已加载') || logText.includes('加载提示词库缓存失败'), '日志：提示词库缓存加载已执行');
     ok(logText.includes('检查提示词库更新'), '日志：提示词库更新检查已启动（静默）');
+    ok(logText.includes('检查帮助文档远程更新'), '日志：帮助文档后台静默同步已执行');
+    ok(logText.includes('开始刷新插件市场'), '日志：插件市场手动刷新已执行');
     ok(logText.includes(`v1.1.1 启动`), `日志：v1.1.1 启动（实际含「${logText.match(/v[\d.]+ 启动/)}」）`);
   } catch (err) {
     console.error('  ✗ 异常：' + err.message);

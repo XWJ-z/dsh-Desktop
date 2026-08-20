@@ -8,6 +8,8 @@
  *  - openNoticeWindow / hasNewNotices：公告窗口 + 未读判断（T0.6）
  *  - openPromptLibWindow：提示词库面板（modal:false，可连续注入）
  *  - openGlobalMemoryWindow：全局记忆面板（v0.9.12：基础设定图形化编辑，非裸文件）
+ *  - openPluginMarketWindow：插件市场（v1.1.1）
+ *  - openHelpDocWindow：帮助文档窗口（v1.1.1 二轮：本地优先 + 后台静默远程同步）
  *  - openCloseChoiceWindow：关闭行为询问（Windows 原生对话框）
  *  - openBackupProgress / updateBackupProgress / closeBackupProgress：备份进度
  *  （secureWebPreferences 已抽到 modules/security.js，v0.8.30 R1）
@@ -46,6 +48,8 @@ function createMiscWindowsModule(deps) {
     setGlobalMemoryWin, // v0.9.12
     getPluginMarketWin,
     setPluginMarketWin, // v1.1.1：插件市场窗口
+    getHelpDocWin,
+    setHelpDocWin, // v1.1.1 二轮：帮助文档窗口
     secureWebPreferences,
   } = deps;
 
@@ -187,10 +191,37 @@ function createMiscWindowsModule(deps) {
     setPluginMarketWin(win);
   }
 
+  /** v1.1.1 二轮（老大反馈）：帮助文档窗口 —— 应用内打开本地 help.html
+   *  （本地优先 + 后台静默远程同步，见 help-doc.js）；与提示词库同款弹窗外观 */
+  function openHelpDocWindow(htmlPath) {
+    if (getHelpDocWin() && !getHelpDocWin().isDestroyed()) {
+      getHelpDocWin().focus();
+      return;
+    }
+    const win = new BrowserWindow({
+      width: 860,
+      height: 640,
+      resizable: true,
+      minimizable: false,
+      minWidth: 640,
+      minHeight: 480,
+      parent: getMainWindow(),
+      modal: false,
+      title: '帮助文档',
+      autoHideMenuBar: true, // v0.9.12（老大反馈）：弹窗不显示菜单栏
+      backgroundColor: nativeTheme.shouldUseDarkColors ? '#0f1115' : '#eef0f4', // v0.9.9：跟随外观
+      webPreferences: secureWebPreferences(),
+    });
+    win.loadFile(htmlPath || path.join(app.getAppPath(), 'renderer', 'help.html'));
+    win.on('closed', () => {
+      setHelpDocWin(null);
+    });
+    setHelpDocWin(win);
+  }
+
   /** 关闭行为询问弹窗（v0.6.1 T-027 → v0.7.10 改原生）：退出 / 关闭到托盘 + 记住我的选择。
    *  老大要求：和恢复数据弹窗一样用 Windows 原生对话框，不做深色美化。 */
-  function openCloseChoiceWindow(parentWin) {
-    dialog
+  function openCloseChoiceWindow(parentWin) {    dialog
       .showMessageBox(parentWin, {
         type: 'question',
         title: appName,
@@ -305,6 +336,7 @@ function createMiscWindowsModule(deps) {
     openPromptLibWindow,
     openGlobalMemoryWindow, // v0.9.12
     openPluginMarketWindow, // v1.1.1：插件市场窗口
+    openHelpDocWindow, // v1.1.1 二轮：帮助文档窗口（本地优先 + 后台静默同步）
     openCloseChoiceWindow,
     openBackupProgress,
     updateBackupProgress,

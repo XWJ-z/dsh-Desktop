@@ -20,6 +20,23 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   el('searchBtn').addEventListener('click', () => searchPlugins());
 
+  // v1.1.1 二轮（老大确认）：手动刷新 —— 绕过 7 天缓存，三源实时拉取并重载列表
+  el('refreshBtn').addEventListener('click', async () => {
+    const btn = el('refreshBtn');
+    btn.disabled = true;
+    showBanner('正在刷新插件列表…');
+    try {
+      const ok = await dsh.refreshPlugins();
+      await loadPlugins(); // 刷新后重载（getPlugins 返回新缓存）
+      showBanner(ok ? '已刷新，显示最新插件列表' : '刷新失败（网络不可用），显示缓存列表');
+    } catch {
+      await loadPlugins();
+      showBanner('刷新失败，请检查网络后重试');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
   // v1.1.1：静态「全部」分类项绑定点击（HTML 预置项，loadCategories 只绑定动态项）
   const allCat = document.querySelector('.category-item[data-category="all"]');
   if (allCat) allCat.addEventListener('click', () => filterByCategory('all'));

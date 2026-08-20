@@ -2,9 +2,9 @@
   "version": "1.1.1",
   "minVersion": "0.7.4",
   "author": "zx(xwj)",
-  "release_notes": "🎉 v1.1.1 —— 帮助文档远程下发 + 提示词库独立升级 + 插件市场\n1. 新增（帮助文档）：帮助菜单新增「帮助文档…」入口，远程下发 HTML 文档（修改仓库 help.html push 即生效，无需发版），支持断网时本地兜底\n2. 新增（提示词库）：提示词库支持独立远程更新（仓库更新 prompts.json + prompts.version.json，按日期命名版本，用户打开提示词库自动拉取最新，无需更新壳）\n3. 新增（插件市场）：宠物/工具箱菜单新增「插件市场」入口，连接官方 awesome-dsh-plugin 社区（18 分类 + 全部插件中文描述 + 搜索 + 安装引导），安全提示置顶红色醒目，复制安装命令前弹出免责声明确认\n4. 优化（安全）：外部链接白名单扩展（raw.githubusercontent.com / cdn.jsdelivr.net），仅限 help.html 路径\n5. 优化（插件市场）：适配深色模式（跟随外观设置）；复制安装命令前的确认弹窗新增 4 条安装须知（手机 App 类比）与 QQ 群兜底\n6. 修复（源码运行）：旧版系统 Node（<20.17）下报 crypto.randomUUID is not a function —— 自动回落 Electron 内置 Node，不再报错（安装包用户不受影响）\n7. 新增（加群引导）：首次启动欢迎弹窗一键加群；公告条点击直达「联系我们」；宠物气泡偶尔带群号 —— 有问题随时进群\n❤️ 喜欢 DSH-Desktop？加入 QQ 群 916607090——你的反馈决定下一个功能！",
+  "release_notes": "🎉 v1.1.1 —— 帮助文档远程下发 + 提示词库独立升级 + 插件市场\n1. 新增（帮助文档）：帮助菜单新增「帮助文档…」入口，远程下发 HTML 文档（修改仓库 help.html push 即生效，无需发版），支持断网时本地兜底\n2. 新增（提示词库）：提示词库支持独立远程更新（仓库更新 prompts.json + prompts.version.json，按日期命名版本，用户打开提示词库自动拉取最新，无需更新壳）\n3. 新增（插件市场）：宠物/工具箱菜单新增「插件市场」入口，连接官方 awesome-dsh-plugin 社区（18 分类 + 全部插件中文描述 + 搜索 + 安装引导），安全提示置顶红色醒目，复制安装命令前弹出免责声明确认\n4. 优化（安全）：外部链接白名单扩展（raw.githubusercontent.com / cdn.jsdelivr.net），仅限 help.html 路径\n5. 优化（插件市场）：适配深色模式（跟随外观设置）；复制安装命令前的确认弹窗新增 4 条安装须知（免责声明红色加粗）与 QQ 群兜底；新增「刷新」按钮，想立刻看最新插件列表点一下即可\n6. 修复（源码运行）：旧版系统 Node（<20.17）下报 crypto.randomUUID is not a function —— 自动回落 Electron 内置 Node，不再报错（安装包用户不受影响）\n7. 新增（加群引导）：首次启动欢迎弹窗一键加群；公告条点击直达「联系我们」；宠物气泡偶尔带群号 —— 有问题随时进群\n8. 优化（帮助文档）：改为应用内窗口打开（本地优先、离线可用），后台静默同步远程新版（push 即生效）\n❤️ 喜欢 DSH-Desktop？加入 QQ 群 916607090——你的反馈决定下一个功能！",
   "force": false,
-  "hash": "43EB30E1CEFC5066B73843BF4864FD42758797146E72F280B93871232444184F",
+  "hash": "A3156AE09935EE50176C0BDF7701D2B89FD470D40AD460C30E706277E1F8C68E",
   "download_urls": [
     "https://ghfast.top/https://github.com/XWJ-z/dsh-Desktop/releases/download/v1.1.1/DSH-Desktop-Setup-1.1.1.exe",
     "https://gh-proxy.com/https://github.com/XWJ-z/dsh-Desktop/releases/download/v1.1.1/DSH-Desktop-Setup-1.1.1.exe"

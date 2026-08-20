@@ -13,6 +13,8 @@ const preload = read('preload.js');
 const extLinks = read('modules/external-links.js');
 const miscWin = read('modules/windows/misc-windows.js');
 const marketHtml = read('renderer/plugin-market.html');
+const marketJs = read('renderer/plugin-market.js');
+const helpDoc = read('modules/help-doc.js');
 const nodeResolver = read('modules/node-resolver.js');
 const dshRuntime = read('modules/dsh-runtime.js');
 const serverLifecycle = read('modules/serverLifecycle.js');
@@ -57,6 +59,19 @@ const out = {
   'plugin-market.html dark media query': marketHtml.includes('prefers-color-scheme: dark'),
   'plugin-market.html CSP': marketHtml.includes('Content-Security-Policy'),
   'plugin-market.html 安装须知 4 条+群号': marketHtml.includes('插件是别人写的程序') && marketHtml.includes('916607090') && marketHtml.includes('后果自负'),
+  // v1.1.1 三轮（老大反馈）：确认弹窗免责声明红色加粗 + 去掉手机App类比 + 刷新按钮
+  'plugin-market.html 免责声明红色加粗': marketHtml.includes('.modal-box .modal-disclaimer') && marketHtml.includes('color: #c62828') && marketHtml.includes('font-weight: 700'),
+  'plugin-market.html 安装前须知(无类比)': marketHtml.includes('安装前须知：') && !marketHtml.includes('像装手机 App 一样想清楚'),
+  'plugin-market.html 刷新按钮': marketHtml.includes('id="refreshBtn"'),
+  'plugin-market.js 刷新逻辑': marketJs.includes('refreshPlugins') && marketJs.includes('正在刷新插件列表'),
+  'preload refreshPlugins': preload.includes('refreshPlugins: () => ipcRenderer.invoke(\'plugin-market:refresh\')'),
+  'ipc plugin-market:refresh': ipc.includes("'plugin-market:refresh'") && ipc.includes('pluginMarket.refreshPlugins()'),
+  // 帮助文档：应用内窗口 + 本地优先 + 后台静默远程同步（v1.1.1 三轮，老大反馈）
+  'help-doc 应用内窗口': helpDoc.includes('openHelpDocWindow') && helpDoc.includes('syncRemoteHelpDoc') && helpDoc.includes('cacheHtmlPath'),
+  'help-doc 本地优先(缓存>包内置)': helpDoc.includes("fs.existsSync(cacheHtmlPath()) ? cacheHtmlPath() : bundledHtmlPath()"),
+  'misc-windows openHelpDocWindow': miscWin.includes('function openHelpDocWindow(') && miscWin.includes("title: '帮助文档'"),
+  'main 晚绑定 openHelpDocWindowRef': main.includes('openHelpDocWindowRef') && main.includes('openHelpDocWindowRef = openHelpDocWindow;'),
+  'main helpDocWin 状态': main.includes('let helpDocWin = null;'),
   // Issue#1 randomUUID 修复（26 方案 A）
   'node-resolver minMajor 校验': nodeResolver.includes('resolveRunner(minMajor)') && nodeResolver.includes('major < minMajor') && nodeResolver.includes('过旧，兜底'),
   'dsh-runtime resolveRunner(20)': dshRuntime.includes('resolveRunner(20)'),
@@ -82,6 +97,8 @@ const out = {
   'extLinks dev==packaged': extLinks === fs.readFileSync('modules/external-links.js', 'utf8'),
   'miscWin dev==packaged': miscWin === fs.readFileSync(path.join('modules', 'windows', 'misc-windows.js'), 'utf8'),
   'marketHtml dev==packaged': marketHtml === fs.readFileSync('renderer/plugin-market.html', 'utf8'),
+  'marketJs dev==packaged': marketJs === fs.readFileSync('renderer/plugin-market.js', 'utf8'),
+  'helpDoc dev==packaged': helpDoc === fs.readFileSync('modules/help-doc.js', 'utf8'),
   'nodeResolver dev==packaged': nodeResolver === fs.readFileSync('modules/node-resolver.js', 'utf8'),
   'dshRuntime dev==packaged': dshRuntime === fs.readFileSync('modules/dsh-runtime.js', 'utf8'),
   'serverLifecycle dev==packaged': serverLifecycle === fs.readFileSync('modules/serverLifecycle.js', 'utf8'),

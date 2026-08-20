@@ -56,6 +56,19 @@
       .search-box button:hover {
         filter: brightness(1.08);
       }
+      /* v1.1.1 二轮（老大确认）：手动刷新按钮 —— 半透明白，与绿色搜索区分 */
+      .search-box button#refreshBtn {
+        background: rgba(255, 255, 255, 0.22);
+        margin-left: 6px;
+        border-radius: 5px;
+      }
+      .search-box button#refreshBtn:hover {
+        background: rgba(255, 255, 255, 0.34);
+      }
+      .search-box button#refreshBtn:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+      }
       .main-container {
         display: flex;
         flex: 1;
@@ -241,7 +254,7 @@
           color: #ff8a80;
         }
       }
-      /* v1.1.1（26 方案八）：安装须知（人话版，手机 App 类比）+ 群号兜底 */
+      /* v1.1.1（26 方案八）：安装须知（人话版）+ 群号兜底 */
       .modal-notices {
         text-align: left;
         background: var(--bg-input, #f5f5f5);
@@ -270,11 +283,18 @@
         content: '▸ ';
         color: var(--accent);
       }
+      /* v1.1.1 二轮（老大反馈）：免责声明红色加粗 */
       .modal-box .modal-disclaimer {
-        color: var(--text-tertiary);
-        font-size: 13px;
+        color: #c62828;
+        font-size: 13.5px;
+        font-weight: 700;
         line-height: 1.7;
         margin-bottom: 12px;
+      }
+      @media (prefers-color-scheme: dark) {
+        .modal-box .modal-disclaimer {
+          color: #ff8a80;
+        }
       }
       .modal-box .modal-cmd {
         background: var(--bg-input, #f5f5f5);
@@ -305,6 +325,8 @@
       <div class="search-box">
         <input type="text" id="searchInput" placeholder="搜索插件..." />
         <button id="searchBtn">搜索</button>
+        <!-- v1.1.1 二轮（老大确认）：手动刷新 —— 列表 7 天缓存自动刷新，想立刻看最新点一下 -->
+        <button id="refreshBtn" title="立即刷新插件列表（绕过 7 天缓存）">刷新</button>
       </div>
     </div>
 
@@ -336,7 +358,7 @@
       <div class="modal-box">
         <h3>安装确认</h3>
         <div class="modal-notices">
-          <p>🔧 安装前须知（像装手机 App 一样想清楚）：</p>
+          <p>安装前须知：</p>
           <ul>
             <li>插件是别人写的程序，会在你电脑上运行</li>
             <li>它可能读取你的文件、使用你的账号、联网</li>
