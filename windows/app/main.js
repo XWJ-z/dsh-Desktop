@@ -842,6 +842,7 @@ let settings = {
   petInjectCount: 0, // v0.8.11（T4）：当天提示词注入次数（连续使用彩蛋）
   petInjectCountDate: '', // v0.8.11（T4）：注入次数统计日期（localDate，跨天清零）
   appearance: 'system', // v0.8.18：外观 'system' | 'light' | 'dark'（nativeTheme.themeSource）
+  guideShown: false, // v1.1.1（26 方案七 ②）：首次启动引导弹窗已展示（只弹一次）
 };
 
 // v0.8.1（T5）：settingsFile/loadSettings/saveSettings/setAutostart/setMinimizeToTray/
@@ -1251,6 +1252,36 @@ if (!gotLock) {
         startDshThemeWatch();
       } else {
         appendLog('info', '静默启动：主窗口不创建（托盘常驻），可从托盘打开主界面');
+      }
+
+      // v1.1.1（26 方案七 ②）：首次启动引导弹窗 —— 服务就绪、主窗口出现后
+      // 弹一次（settings.guideShown 记录，只弹一次，不烦人）；「加入群聊」直达
+      // 联系我们二维码窗口（扫码进群，一步可达）
+      if (!settings.guideShown) {
+        settings.guideShown = true;
+        settingsApi.saveSettings();
+        setTimeout(() => {
+          const mw = mainWindow;
+          if (mw && !mw.isDestroyed()) {
+            dialog
+              .showMessageBox(mw, {
+                type: 'info',
+                title: APP_NAME,
+                message: '欢迎使用 DSH-Desktop！',
+                detail: '遇到问题？加入 QQ 群 916607090，有答疑和福利。\n你的反馈决定下一个功能～',
+                buttons: ['加入群聊', '知道了'],
+                defaultId: 0,
+                cancelId: 1,
+                noLink: true,
+              })
+              .then(({ response }) => {
+                if (response === 0) openContactWindow();
+              })
+              .catch(() => {
+                /* ignore */
+              });
+          }
+        }, 3000); // 主窗口稳定后
       }
 
       // 任务B-B4 / G1 / v0.6.5（T-030）：启动时检查更新（DSH + 壳）——

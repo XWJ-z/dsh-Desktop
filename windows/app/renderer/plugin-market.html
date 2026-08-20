@@ -3,26 +3,26 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>💎 插件市场</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' file: data:; style-src 'self' file: 'unsafe-inline'; script-src 'self' file:; img-src 'self' file: data:" />
+    <title>插件市场</title>
+    <!-- v1.1.1（老大反馈：插件市场没适配深色模式）：接入 shared.css ——
+         主题 token（深色默认 + prefers-color-scheme: light 浅色），
+         与提示词库/公告等弹窗一致跟随外观设置（nativeTheme → media query） -->
+    <link rel="stylesheet" href="shared.css" />
     <style>
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
+      /* shared.css 已提供 body 基础（flex 列 + 主题背景）；此处覆盖为全屏布局 */
       body {
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-        background: #f5f5f5;
-        color: #333;
+        align-items: stretch;
+        padding: 0;
         height: 100vh;
-        display: flex;
-        flex-direction: column;
+        overflow: hidden;
       }
       .header {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
         padding: 20px;
         text-align: center;
+        flex-shrink: 0;
       }
       .header h1 {
         font-size: 24px;
@@ -39,30 +39,42 @@
         border: none;
         border-radius: 5px 0 0 5px;
         font-size: 14px;
+        background: var(--bg-input, #fff);
+        color: var(--text-primary);
+      }
+      .search-box input::placeholder {
+        color: var(--text-quaternary);
       }
       .search-box button {
         padding: 10px 20px;
-        background: #4caf50;
+        background: var(--success);
         color: white;
         border: none;
         border-radius: 0 5px 5px 0;
         cursor: pointer;
       }
+      .search-box button:hover {
+        filter: brightness(1.08);
+      }
       .main-container {
         display: flex;
         flex: 1;
+        min-height: 0;
         overflow: hidden;
       }
       .sidebar {
         width: 200px;
-        background: white;
-        border-right: 1px solid #ddd;
+        background: var(--bg-surface);
+        border-right: 1px solid var(--border-standard);
         overflow-y: auto;
+        flex-shrink: 0;
       }
       .sidebar h3 {
         padding: 15px;
-        background: #f0f0f0;
-        border-bottom: 1px solid #ddd;
+        background: var(--bg-hover);
+        border-bottom: 1px solid var(--border-standard);
+        color: var(--text-primary);
+        font-size: 14px;
       }
       .category-list {
         list-style: none;
@@ -70,25 +82,27 @@
       .category-item {
         padding: 12px 15px;
         cursor: pointer;
-        border-bottom: 1px solid #eee;
+        border-bottom: 1px solid var(--border-subtle);
         display: flex;
         align-items: center;
+        color: var(--text-secondary);
+        font-size: 13px;
       }
       .category-item:hover {
-        background: #f0f0f0;
+        background: var(--bg-hover);
+        color: var(--text-primary);
       }
       .category-item.active {
-        background: #e3f2fd;
+        background: rgba(33, 150, 243, 0.15);
         border-left: 3px solid #2196f3;
-      }
-      .category-icon {
-        margin-right: 10px;
-        font-size: 16px;
+        color: var(--text-primary);
+        font-weight: 600;
       }
       .content {
         flex: 1;
         padding: 20px;
         overflow-y: auto;
+        min-width: 0;
       }
       .plugin-grid {
         display: grid;
@@ -96,30 +110,32 @@
         gap: 20px;
       }
       .plugin-card {
-        background: white;
-        border-radius: 8px;
+        background: var(--bg-surface);
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-card);
         padding: 20px;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
         transition: transform 0.2s;
       }
       .plugin-card:hover {
         transform: translateY(-2px);
+        border-color: rgba(94, 106, 210, 0.45);
       }
       .plugin-name {
         font-size: 18px;
         font-weight: bold;
         margin-bottom: 10px;
-        color: #333;
+        color: var(--text-primary);
       }
       .plugin-description {
-        color: #666;
+        color: var(--text-tertiary);
         margin-bottom: 15px;
         line-height: 1.5;
       }
       .plugin-category {
         display: inline-block;
-        background: #e3f2fd;
-        color: #1976d2;
+        background: rgba(33, 150, 243, 0.12);
+        color: var(--accent);
         padding: 4px 8px;
         border-radius: 4px;
         font-size: 12px;
@@ -145,14 +161,16 @@
         background: #1976d2;
       }
       .btn-secondary {
-        background: #f0f0f0;
-        color: #333;
+        background: var(--bg-hover);
+        color: var(--text-secondary);
+        border: 1px solid var(--border-standard);
       }
       .btn-secondary:hover {
-        background: #e0e0e0;
+        color: var(--text-primary);
+        border-color: rgba(94, 106, 210, 0.45);
       }
       .security-warning {
-        /* v1.1.1：红色醒目 + 置顶 + 单行（老大指令） */
+        /* v1.1.1：红色醒目 + 置顶 + 单行（老大指令，⚠️ 保留） */
         background: #fdecea;
         border: 2px solid #e53935;
         border-radius: 8px;
@@ -162,26 +180,36 @@
         color: #d32f2f;
         font-size: 13.5px;
         font-weight: 600;
+        flex-shrink: 0;
+      }
+      @media (prefers-color-scheme: dark) {
+        /* v1.1.1：深色模式下红色警示改为暗红底 + 亮红字（保持醒目不刺眼） */
+        .security-warning {
+          background: rgba(229, 57, 53, 0.16);
+          border-color: #e53935;
+          color: #ff8a80;
+        }
       }
       .empty-state {
         text-align: center;
         padding: 50px;
-        color: #999;
+        color: var(--text-quaternary);
       }
       .loading {
         text-align: center;
         padding: 50px;
-        color: #666;
+        color: var(--text-tertiary);
       }
       .banner {
         display: none;
         padding: 8px 16px;
-        background: #4caf50;
+        background: var(--success);
         color: white;
         text-align: center;
         font-size: 13px;
+        flex-shrink: 0;
       }
-      /* v1.1.1：免责声明确认模态框 */
+      /* v1.1.1：免责声明确认模态框（复制安装命令前必须确认） */
       .modal-overlay {
         display: none;
         position: fixed;
@@ -192,34 +220,72 @@
         justify-content: center;
       }
       .modal-box {
-        background: white;
+        background: var(--bg-surface);
+        border: 1px solid var(--border-standard);
         border-radius: 10px;
         padding: 24px 28px;
-        max-width: 420px;
+        max-width: 440px;
         width: 90%;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
         text-align: center;
+        max-height: 88vh;
+        overflow-y: auto;
       }
       .modal-box h3 {
         color: #c62828;
         font-size: 17px;
         margin-bottom: 12px;
       }
-      .modal-box p {
-        color: #444;
-        font-size: 13.5px;
+      @media (prefers-color-scheme: dark) {
+        .modal-box h3 {
+          color: #ff8a80;
+        }
+      }
+      /* v1.1.1（26 方案八）：安装须知（人话版，手机 App 类比）+ 群号兜底 */
+      .modal-notices {
+        text-align: left;
+        background: var(--bg-input, #f5f5f5);
+        border: 1px solid var(--border-subtle);
+        border-radius: 8px;
+        padding: 12px 14px;
+        margin-bottom: 12px;
+      }
+      .modal-notices p {
+        color: var(--text-secondary);
+        font-size: 13px;
+        font-weight: 600;
+        margin-bottom: 8px;
+      }
+      .modal-notices ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      .modal-notices li {
+        color: var(--text-secondary);
+        font-size: 13px;
+        line-height: 1.8;
+      }
+      .modal-notices li::before {
+        content: '▸ ';
+        color: var(--accent);
+      }
+      .modal-box .modal-disclaimer {
+        color: var(--text-tertiary);
+        font-size: 13px;
         line-height: 1.7;
         margin-bottom: 12px;
       }
       .modal-box .modal-cmd {
-        background: #f5f5f5;
+        background: var(--bg-input, #f5f5f5);
         border-radius: 6px;
         padding: 8px 10px;
         font-size: 12.5px;
         word-break: break-all;
+        color: var(--text-secondary);
       }
       .modal-box .modal-cmd code {
-        color: #1565c0;
+        color: var(--accent);
         font-weight: 600;
       }
       .modal-btns {
@@ -264,11 +330,21 @@
       </div>
     </div>
 
-    <!-- v1.1.1：免责声明确认模态框（复制安装命令前必须确认） -->
+    <!-- v1.1.1：免责声明确认模态框（复制安装命令前必须确认）
+         v1.1.1（26 方案八）：内嵌 4 条安装须知（人话版）+ QQ 群兜底 -->
     <div class="modal-overlay" id="confirm-modal">
       <div class="modal-box">
         <h3>安装确认</h3>
-        <p>请确认插件安全，如造成任何安全问题，<strong>后果自负</strong>。<br />建议先查看插件源码再决定是否安装。</p>
+        <div class="modal-notices">
+          <p>🔧 安装前须知（像装手机 App 一样想清楚）：</p>
+          <ul>
+            <li>插件是别人写的程序，会在你电脑上运行</li>
+            <li>它可能读取你的文件、使用你的账号、联网</li>
+            <li>只装你信任的、看过源码的插件</li>
+            <li>不放心 → Q 群 916607090 问一句再装</li>
+          </ul>
+        </div>
+        <p class="modal-disclaimer">请确认插件安全，如造成任何安全问题，<strong>后果自负</strong>。</p>
         <div class="modal-cmd">命令：<code id="confirm-cmd"></code></div>
         <div class="modal-btns">
           <button class="btn btn-primary" id="confirm-ok">我已确认，复制</button>

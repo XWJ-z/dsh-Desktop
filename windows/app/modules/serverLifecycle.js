@@ -79,7 +79,9 @@ function createServerLifecycle(deps) {
     return new Promise((resolve, reject) => {
       ensureDshRuntime()
         .then((dshBin) => {
-          const runner = resolveRunner();
+          // v1.1.1（Issue #1 修复，26 方案 A）：DSH 运行时同样建议新 Node
+          // （npm 12 需 ≥20），系统 Node 过旧时回落 Electron 内置 Node
+          const runner = resolveRunner(20);
           // 仅 Electron-as-Node 兜底时需要 --expose-internals（DSH HMR 需要 Node
           // 内部模块 loader）；真实 Node（内置/系统）下经 node-addon-require-builtin
           // 原生插件获取，无需该参数。

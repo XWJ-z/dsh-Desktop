@@ -302,9 +302,11 @@ function createMenu(deps) {
       // v0.9.5（T3.3，老大确认：公告条最右端，公告菜单之后）：
       // 菜单栏常驻公告条，数据源 notice.json（独立下发，改内容不须发版）
       // v0.9.7（老大反馈：内容没显示全）：改可点击 —— 点击打开公告窗口查看完整公告
+      // v1.1.1（26 方案七 ①）：公告条点击直达「联系我们」二维码窗口 ——
+      // 少两步（原：菜单→联系我们→弹窗→扫码），一点即扫，进群转化更高
       {
         label: '📢 ' + truncateMarquee(getMarquee()),
-        click: () => openNoticeWindow(),
+        click: () => openContactWindow(),
       },
     ];
     return Menu.buildFromTemplate(template);

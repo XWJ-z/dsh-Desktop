@@ -24,7 +24,14 @@
 - ⬆️ 双侧检查更新（DSH + 壳）：三源并发 + 多镜像下载 + SHA256 校验 + 断点续传
 - 💾 数据备份/恢复、一键诊断报告、系统托盘、开机自启、全局快捷键
 
+> 👨‍💻 **开发者注意**：直接下载安装包即可（自带运行环境）。如需从源码运行，
+> 需 Node.js ≥ 20.17（`node -v` 确认），否则可能报 `crypto.randomUUID is not a function`
+> （v1.1.1 起检测到旧版系统 Node 会自动回落 Electron 内置 Node，不再报错）。
+
 > 📌 **声明**：DSH-Desktop 壳由 **zx 个人团队**开发维护，如使用遇到任何问题，欢迎加入 QQ 群 **916607090** 联系反馈；壳内嵌的 DSH（DeepSeek Harness Web GUI）**完全为 DeepSeek 官方发布**，可通过「检查更新」**单独更新**，并支持自由**配置插件**。
+
+> 💡 **普通用户请直接下载安装包**（下方按钮），无需安装 Node.js。
+> 源码仅供开发者研究/二开使用。
 
 <a href="https://github.com/XWJ-z/dsh-Desktop/releases/download/v1.1.1/DSH-Desktop-Setup-1.1.1.exe">
 <img src="https://img.shields.io/badge/下载安装包-DSH--Desktop--Setup--1.1.1.exe%20%E7%BA%A6114MB-2ea44f?style=for-the-badge&logo=windows&logoColor=white" alt="下载 DSH-Desktop 安装包"/>

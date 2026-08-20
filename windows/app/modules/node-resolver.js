@@ -43,11 +43,18 @@ function createNodeResolver(deps) {
    *
    * 优先级（审查 H3：原生模块按 Node ABI 编译，须用真实 Node 运行）：
    *  1. 打包模式：内置 Node（resources/node/node.exe）——真实 Node，ABI 完全匹配；
-   *  2. 开发模式：系统 Node；
+   *  2. 开发模式：系统 Node（可带最低主版本约束，见 minMajor）；
    *  3. 兜底：Electron-as-Node（ELECTRON_RUN_AS_NODE），此时 DSH 原生模块可能
    *     ABI 不兼容（目录选择器/图片处理等受限），仅作最后手段。
+   *
+   * v1.1.1（Issue #1 修复，26 方案 A）：
+   *  - @param {number} [minMajor] 最低主版本号（如 20 = 内置 npm 12 需 Node ≥20，
+   *    否则其内部 crypto.randomUUID() 不存在报错）
+   *  - 系统 Node 低于 minMajor → 跳过，回落 Electron-as-Node（Electron 43 内置
+   *    Node 恒新，randomUUID 必有）
+   *  - 打包模式不受影响：内置 Node 24 恒满足（minMajor 仅对开发模式生效）
    */
-  function resolveRunner() {
+  function resolveRunner(minMajor) {
     if (app.isPackaged) {
       const bundled = bundledNode();
       if (bundled) {
@@ -57,6 +64,23 @@ function createNodeResolver(deps) {
     }
     const sysNode = findSystemNode();
     if (sysNode) {
+      if (minMajor) {
+        try {
+          const ver = execFileSync(sysNode, ['--version'], { encoding: 'utf8' }).trim(); // v16.20.0
+          const major = parseInt(ver.replace(/^v/, ''), 10);
+          if (major < minMajor) {
+            // Issue #1 修复：系统 Node 过旧（npm 12 需 ≥20.17，否则 randomUUID 报错）
+            // → 回落 Electron-as-Node（内置 Node 版本随 Electron 走，恒新）
+            return {
+              execPath: process.execPath,
+              env: { ELECTRON_RUN_AS_NODE: '1' },
+              label: `Electron 自带 Node（系统 Node ${ver} 过旧，兜底）`,
+            };
+          }
+        } catch {
+          /* 版本读取失败按可用处理 */
+        }
+      }
       return { execPath: sysNode, env: {}, label: `系统 Node (${sysNode})` };
     }
     return { execPath: process.execPath, env: { ELECTRON_RUN_AS_NODE: '1' }, label: 'Electron 自带 Node（开发降级）' };

@@ -209,7 +209,9 @@ function createDshRuntime(deps) {
       appendLog('info', `DSH 配置为 latest，已解析为精确版本 ${info.version} 安装（P1-2 固定版本）`);
     }
     return new Promise((resolve, reject) => {
-      const runner = resolveRunner();
+      // v1.1.1（Issue #1 修复，26 方案 A）：npm 12 需 Node ≥20（randomUUID），
+      // 系统 Node 过旧时自动回落 Electron 内置 Node，不再报 crypto.randomUUID
+      const runner = resolveRunner(20);
       const cli = npmCliJs();
       appendLog('info', `DSH 运行时未满足要求（配置 ${spec}，实际 ${installedDshVersion() ?? '未安装'}）`);
       appendLog('info', '首次运行需要联网下载 DSH 运行时，请稍候…');

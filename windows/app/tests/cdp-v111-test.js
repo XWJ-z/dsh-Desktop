@@ -12,7 +12,10 @@
  *  5. 插件市场窗口：搜索框 / 分类列表（全部 + 官方 18 分类 + 其他 = 20 项）/ 插件卡片（预置缓存 2 个）/
  *     安全提示置顶红色常驻 / 中文描述优先 / 免责声明确认模态
  *  6. 分类筛选（点「模型」→ 只剩 model 类）与搜索过滤（关键词）
- *  7. 复制安装命令 → 免责声明确认模态 → 确认后复制
+ *  7. 复制安装命令 → 免责声明确认模态 → 确认后复制（v1.1.1 二轮：模态含 4 条
+ *     安装须知 + QQ 群兜底）
+ *  8. 插件市场深色模式：shared.css 主题 token 生效（body/卡片/侧边栏随主题，
+ *     非硬编码浅色）
  *  8. 提示词库回归：promptlib:data 返回 201 条内置库（缓存不存在 → 回退包内置）
  *  9. 更新窗口：新增「提示词库」卡片（prompts:query IPC 通路 + 卡片渲染）
  * 10. 日志：提示词库缓存已加载（promptsUpdaterApi.loadCache）
@@ -187,6 +190,14 @@ async function main() {
       null,
       2,
     ),
+    'utf8',
+  );
+
+  // 预置外观：深色 —— 插件市场深色模式断言覆盖「深色 token」分支
+  // （浅色分支由系统默认主题覆盖；两分支均为 shared.css token，非硬编码浅色）
+  fs.writeFileSync(
+    path.join(userData, 'settings.json'),
+    JSON.stringify({ appearance: 'dark' }, null, 2),
     'utf8',
   );
 
@@ -565,6 +576,7 @@ async function main() {
                 shown: !!m && m.style.display === 'flex',
                 text: (m && m.textContent) || '',
                 cmd: (document.getElementById('confirm-cmd') || {}).textContent || '',
+                notices: document.querySelectorAll('.modal-notices li').length,
               };
             })()`,
             returnByValue: true,
@@ -581,6 +593,15 @@ async function main() {
         ok(
           !!modalV && modalV.cmd.includes('dsh plugin'),
           `模态显示完整安装命令（实际「${modalV && modalV.cmd}」）`,
+        );
+        // v1.1.1（26 方案八）：安装须知 4 条（人话版）+ QQ 群兜底
+        ok(
+          !!modalV && modalV.notices >= 4,
+          `模态含安装须知 4 条（手机 App 类比，实际 ${modalV && modalV.notices} 条）`,
+        );
+        ok(
+          !!modalV && modalV.text.includes('916607090') && modalV.text.includes('安装前须知'),
+          `模态含 QQ 群兜底（916607090）与「安装前须知」标题`,
         );
         // ⑦.2 点「我已确认，复制」→ 模态关闭 + IPC 复制返回 true
         await mktCdp.send('Runtime.evaluate', {
@@ -602,6 +623,36 @@ async function main() {
           await sleep(300);
         }
         ok(modalClosed, '确认后模态关闭（复制已执行）');
+
+        // ⑦.3 v1.1.1（老大反馈）：插件市场适配深色模式 —— shared.css 主题 token
+        // 生效：body 背景 = 主题 token（深色 #08090a / 浅色 #eef0f4），卡片/侧边栏
+        // 随主题（深色 #191a1b / 浅色 #fff），不再是硬编码 #f5f5f5 浅色
+        const dm = await mktCdp.send('Runtime.evaluate', {
+          expression: `(() => {
+            const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+            const bodyBg = getComputedStyle(document.body).backgroundColor;
+            const sidebar = document.querySelector('.sidebar');
+            const card = document.querySelector('.plugin-card');
+            return {
+              dark,
+              bodyBg,
+              sidebarBg: sidebar ? getComputedStyle(sidebar).backgroundColor : '',
+              cardBg: card ? getComputedStyle(card).backgroundColor : '',
+              expectedBody: dark ? 'rgb(8, 9, 10)' : 'rgb(238, 240, 244)',
+              expectedSurface: dark ? 'rgb(25, 26, 27)' : 'rgb(255, 255, 255)',
+            };
+          })()`,
+          returnByValue: true,
+        });
+        const dmv = dm.result && dm.result.value;
+        ok(
+          !!dmv && dmv.bodyBg === dmv.expectedBody,
+          `插件市场 body 使用主题 token（${dmv && dmv.dark ? '深色' : '浅色'}：实际 ${dmv && dmv.bodyBg}，预期 ${dmv && dmv.expectedBody}，非硬编码 #f5f5f5）`,
+        );
+        ok(
+          !!dmv && dmv.cardBg === dmv.expectedSurface && dmv.sidebarBg === dmv.expectedSurface,
+          `插件卡片/侧边栏背景随主题（实际 卡片=${dmv && dmv.cardBg} 侧边栏=${dmv && dmv.sidebarBg}，预期 ${dmv && dmv.expectedSurface}）`,
+        );
 
         // ⑧ 打开插件 GitHub（白名单外链，主进程执行；返回 true）
         const repoR = await mktCdp.send('Runtime.evaluate', {
