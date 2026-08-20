@@ -305,13 +305,13 @@ async function main() {
     ok(dshReady, 'preload dshDesktop 已注入');
     if (!dshReady) throw new Error('dshDesktop 注入超时');
 
-    // ① 版本 1.1.1
+    // ① 版本 1.1.2（v1.1.2：从 1.1.1 迭代，启动行为/公告条/启动界面帮助按钮）
     const ver = await cdp.send('Runtime.evaluate', {
       expression: 'window.dshDesktop.getVersion()',
       returnByValue: true,
       awaitPromise: true,
     });
-    ok(ver.result && ver.result.value === '1.1.1', `壳版本 = 1.1.1（实际 ${ver.result && ver.result.value}）`);
+    ok(ver.result && ver.result.value === '1.1.2', `壳版本 = 1.1.2（实际 ${ver.result && ver.result.value}）`);
 
     // ② 宠物注入 + 菜单含「💎 插件市场」（老大指令保留 💎；顺序：记忆 < 提示词库 < 插件市场 < 网页打开）
     let pv = null;
@@ -851,7 +851,7 @@ async function main() {
     ok(logText.includes('检查提示词库更新'), '日志：提示词库更新检查已启动（静默）');
     ok(logText.includes('检查帮助文档远程更新'), '日志：帮助文档后台静默同步已执行');
     ok(logText.includes('开始刷新插件市场'), '日志：插件市场手动刷新已执行');
-    ok(logText.includes(`v1.1.1 启动`), `日志：v1.1.1 启动（实际含「${logText.match(/v[\d.]+ 启动/)}」）`);
+    ok(logText.includes(`v1.1.2 启动`), `日志：v1.1.2 启动（实际含「${logText.match(/v[\d.]+ 启动/)}」）`);
   } catch (err) {
     console.error('  ✗ 异常：' + err.message);
     failed++;

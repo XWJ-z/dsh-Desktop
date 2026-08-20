@@ -11,9 +11,12 @@ const pet = read('modules/pet.js');
 const ipc = read('modules/ipc.js');
 const preload = read('preload.js');
 const extLinks = read('modules/external-links.js');
+const mainWin = read('modules/windows/main-window.js'); // v1.1.2：setWindowOpenHandler 禁本地回环
 const miscWin = read('modules/windows/misc-windows.js');
 const marketHtml = read('renderer/plugin-market.html');
 const marketJs = read('renderer/plugin-market.js');
+const loadingHtml = read('renderer/loading.html');
+const loadingJs = read('renderer/loading.js');
 const helpDoc = read('modules/help-doc.js');
 const nodeResolver = read('modules/node-resolver.js');
 const dshRuntime = read('modules/dsh-runtime.js');
@@ -23,7 +26,7 @@ const changelog = JSON.parse(read('CHANGELOG.json'));
 const rootVersionJson = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', '..', 'version.json'), 'utf8'));
 
 const out = {
-  'version 1.1.1': pkg.version === '1.1.1',
+  'version 1.1.2': pkg.version === '1.1.2',
   // 新模块进包
   'help-doc.js in pkg': fs.existsSync(app + 'modules/help-doc.js'),
   'prompts-updater.js in pkg': fs.existsSync(app + 'modules/prompts-updater.js'),
@@ -75,19 +78,37 @@ const out = {
   // Issue#1 randomUUID 修复（26 方案 A）
   'node-resolver minMajor 校验': nodeResolver.includes('resolveRunner(minMajor)') && nodeResolver.includes('major < minMajor') && nodeResolver.includes('过旧，兜底'),
   'dsh-runtime resolveRunner(20)': dshRuntime.includes('resolveRunner(20)'),
+  'dsh-runtime npm 堆上限 4GB': dshRuntime.includes("NODE_OPTIONS: '--max-old-space-size=4096'"),
+  'dsh-runtime OOM 准确提示': dshRuntime.includes('内存不足（npm 内存溢出）'),
+  'dsh-runtime 多源切换 npmjs': dshRuntime.includes('REGISTRY_FALLBACKS') && dshRuntime.includes('https://registry.npmjs.org'),
+  'dsh-runtime 自动重试': dshRuntime.includes('自动重试：切换源') && dshRuntime.includes('尝试 ${attempt + 1}/${registries.length}'),
+  'dsh-runtime 重试失败提示': dshRuntime.includes('自动重试后仍失败'),
+  'dsh-runtime 下载并发 32': dshRuntime.includes('--maxsockets=32'),
+  // 首次安装体验（老大反馈）：启动页 30~40 分钟提示 + 等待计时
+  'loading.html 30~40 分钟提示': loadingHtml.includes('30~40 分钟') && loadingHtml.includes('请耐心等待'),
+  'loading.js 等待计时': loadingJs.includes('fmtWait') && loadingJs.includes('已等待') && loadingJs.includes('MB 数暂时不动属正常'),
+  'main npm 安装超时 40 分钟': main.includes('NPM_INSTALL_TIMEOUT_MS = 2_400_000'),
   'serverLifecycle resolveRunner(20)': serverLifecycle.includes('resolveRunner(20)'),
   // 加群引导（26 方案七）
   'main guideShown 默认值': main.includes('guideShown: false,'),
   'main 首启引导弹窗': main.includes('欢迎使用 DSH-Desktop！') && main.includes('加入群聊') && main.includes('916607090'),
-  'menu 公告条点击直达联系我们': menu.includes('click: () => openContactWindow(),'),
+  // v1.1.2（老大反馈）：公告条点击跳转公告窗口（不再直达二维码）
+  'menu 公告条点击跳转公告': menu.includes('click: () => openNoticeWindow(),') && !menu.includes('click: () => openContactWindow(),'),
   'pet 加群气泡词库': pet.includes("group: ['有问题？Q 群 916607090 找我呀～'"),
   'pet 低频混入(5%)': pet.includes('Math.random() < 0.05'),
+  // v1.1.2（老大反馈）：启动界面（loading）显示「打开帮助文档」按钮
+  'loading.html 帮助文档按钮': loadingHtml.includes('id="help-btn"') && loadingHtml.includes('打开帮助文档'),
+  'loading.js 帮助按钮绑定': loadingJs.includes("getElementById('help-btn')") && loadingJs.includes('openHelpDoc'),
+  // v1.1.2（老大反馈）：问题1 —— setWindowOpenHandler 不放行本地回环，
+  // 防止 DSH 页面内指向 127.0.0.1:<port> 的链接自动打开系统浏览器
+  'extLinks allowLoopback 参数': extLinks.includes('allowLoopback') && extLinks.includes("host === '127.0.0.1' || host === 'localhost'"),
+  'main-window setWindowOpenHandler 禁本地回环': mainWin.includes('isAllowedExternalUrl(url, false)') && mainWin.includes('allowLoopback=true') ,
   // release notes 固定钩子
   'version.json release 钩子(加群)': rootVersionJson.release_notes.includes('你的反馈决定下一个功能'),
-  'version.json version=1.1.1': rootVersionJson.version === '1.1.1',
+  'version.json version=1.1.2': rootVersionJson.version === '1.1.2',
   // 变更记录
-  'CHANGELOG 1.1.1': changelog.versions.some((x) => x.version === '1.1.1'),
-  'CHANGELOG 1.1.1 加群钩子': changelog.versions.some((x) => x.version === '1.1.1' && x.notes.some((n) => n.includes('你的反馈决定下一个功能'))),
+  'CHANGELOG 1.1.2': changelog.versions.some((x) => x.version === '1.1.2'),
+  'CHANGELOG 1.1.2 加群钩子': changelog.versions.some((x) => x.version === '1.1.2' && x.notes.some((n) => n.includes('你的反馈决定下一个功能'))),
   // 开发版 == 打包版（关键文件一致）
   'main dev==packaged': main === fs.readFileSync('main.js', 'utf8'),
   'pet dev==packaged': pet === fs.readFileSync('modules/pet.js', 'utf8'),
@@ -95,9 +116,12 @@ const out = {
   'ipc dev==packaged': ipc === fs.readFileSync('modules/ipc.js', 'utf8'),
   'preload dev==packaged': preload === fs.readFileSync('preload.js', 'utf8'),
   'extLinks dev==packaged': extLinks === fs.readFileSync('modules/external-links.js', 'utf8'),
+  'mainWin dev==packaged': mainWin === fs.readFileSync(path.join('modules', 'windows', 'main-window.js'), 'utf8'),
   'miscWin dev==packaged': miscWin === fs.readFileSync(path.join('modules', 'windows', 'misc-windows.js'), 'utf8'),
   'marketHtml dev==packaged': marketHtml === fs.readFileSync('renderer/plugin-market.html', 'utf8'),
   'marketJs dev==packaged': marketJs === fs.readFileSync('renderer/plugin-market.js', 'utf8'),
+  'loadingHtml dev==packaged': loadingHtml === fs.readFileSync('renderer/loading.html', 'utf8'),
+  'loadingJs dev==packaged': loadingJs === fs.readFileSync('renderer/loading.js', 'utf8'),
   'helpDoc dev==packaged': helpDoc === fs.readFileSync('modules/help-doc.js', 'utf8'),
   'nodeResolver dev==packaged': nodeResolver === fs.readFileSync('modules/node-resolver.js', 'utf8'),
   'dshRuntime dev==packaged': dshRuntime === fs.readFileSync('modules/dsh-runtime.js', 'utf8'),

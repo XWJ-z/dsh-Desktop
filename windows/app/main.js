@@ -76,7 +76,10 @@ const DEFAULT_PORT = 3080;
 const PORT_PROBE_RANGE = 50; // 端口被占用时最多顺延多少个
 const SERVER_READY_TIMEOUT_MS = 240_000; // 等待 dsh web 就绪的上限（含首次下载）
 const CHILD_GRACE_MS = 5_000; // 关闭子进程的宽限期
-const NPM_INSTALL_TIMEOUT_MS = 600_000; // 下载/安装 DSH 运行时的上限（10 分钟）
+const NPM_INSTALL_TIMEOUT_MS = 2_400_000; // 下载/安装 DSH 运行时的上限（v1.1.1：10→40 分钟；
+// 实测：npm 12 全量安装 @deepseek-ai/dsh（449 包）本机需 18~23 分钟、内存峰值 3.4GB，
+// 慢机器/虚拟机更久 —— 旧壳 10 分钟会被误杀（用户 jiu / 老大 VM 均复现"装不上"）；
+// 慢机器上 V8 堆还会顶爆 2GB（OOM），配合 dsh-runtime.js 的 4GB 堆上限一起解决）
 
 // 未捕获异常/拒绝：记录后继续（避免窗口服务抖动导致整体退出）；
 // ENOENT 等致命错误（P2-8）额外弹窗提示，避免静默不稳定态

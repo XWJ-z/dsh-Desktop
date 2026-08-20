@@ -180,8 +180,13 @@ function createMainWindowModule(deps) {
 
     // P2-2（外审 zx(9)）：新窗口一律 deny；外部链接仅白名单域名可打开
     // （DSH 页面 window.open / target=_blank 均经此，防注入恶意链接钓鱼）
+    // v1.1.2（老大反馈：启动后系统浏览器自动打开 127.0.0.1:3080）：
+    // 页面自动触发的链接**不**放行本地回环 —— DSH 页面内任何指向
+    // http://127.0.0.1:<port> 的链接（欢迎页/引导/公告内容）被点击或自动触发
+    // 时一律 deny，不再弹系统默认浏览器；「网页打开」等显式用户操作走
+    // app:open-external IPC（allowLoopback=true）不受影响。
     win.webContents.setWindowOpenHandler(({ url }) => {
-      if (isAllowedExternalUrl(url)) shell.openExternal(url);
+      if (isAllowedExternalUrl(url, false)) shell.openExternal(url);
       return { action: 'deny' };
     });
     win.webContents.on('will-navigate', (event, url) => {

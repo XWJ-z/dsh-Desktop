@@ -26,10 +26,17 @@ const ALLOWED_EXTERNAL_HOSTS = Object.freeze([
  * 判断 URL 是否可安全打开（https/http + 域名在白名单内）。
  * 非字符串 / 非 http(s) / 域名不在白名单 → false。
  * v1.1.1：raw.githubusercontent.com 和 cdn.jsdelivr.net 仅允许 help.html 路径。
+ * v1.1.2（老大反馈：启动后自动打开系统浏览器）：新增 allowLoopback 参数 ——
+ * 本地回环（127.0.0.1/localhost，宠物「网页打开」用）只在**显式用户操作**
+ * （app:open-external IPC）时放行；setWindowOpenHandler（页面 window.open /
+ * target=_blank 链接，可能被 DSH 页面内容自动触发）一律拒绝本地回环，
+ * 防止「DSH 页面内任何指向 http://127.0.0.1:<port> 的链接被点击/自动触发
+ * → 系统默认浏览器弹出」。
  * @param {string} url
+ * @param {boolean} allowLoopback 是否放行本地回环（默认 true）
  * @returns {boolean}
  */
-function isAllowedExternalUrl(url) {
+function isAllowedExternalUrl(url, allowLoopback = true) {
   if (typeof url !== 'string') return false;
   let parsed;
   try {
@@ -39,6 +46,11 @@ function isAllowedExternalUrl(url) {
   }
   if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false;
   const host = parsed.hostname.toLowerCase();
+
+  // v1.1.2：本地回环仅在显式用户操作时放行（setWindowOpenHandler 传 false）
+  if (host === '127.0.0.1' || host === 'localhost' || host === '[::1]') {
+    return !!allowLoopback;
+  }
 
   // 检查域名是否在白名单
   const hostAllowed = ALLOWED_EXTERNAL_HOSTS.some((allowed) => {

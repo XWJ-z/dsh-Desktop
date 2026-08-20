@@ -18,8 +18,21 @@ const logEl = document.getElementById('log');
 const dlProgressEl = document.getElementById('dl-progress');
 const subtitleEl = document.getElementById('subtitle');
 const verlineEl = document.getElementById('verline');
+const helpBtn = document.getElementById('help-btn'); // v1.1.2：启动界面打开帮助文档
 const params = new URLSearchParams(location.search);
 if (params.get('port')) portEl.textContent = params.get('port');
+
+// v1.1.2（老大反馈）：启动界面「打开帮助文档」按钮 —— 等待安装/启动时可直接查看
+// 使用说明（帮助文档窗口为应用内窗口，本地优先 + 后台静默同步远程）
+if (helpBtn) {
+  helpBtn.addEventListener('click', () => {
+    if (window.dshDesktop && window.dshDesktop.openHelpDoc) {
+      window.dshDesktop.openHelpDoc().catch(() => {
+        /* 打开失败静默（主进程已记录日志） */
+      });
+    }
+  });
+}
 
 // 日志区折叠：默认收起为一行，点击展开/收起；出错自动展开
 let logExpanded = false;
@@ -31,6 +44,27 @@ function setLogExpanded(expanded) {
 logToggle.addEventListener('click', () => setLogExpanded(!logExpanded));
 
 // 阶段指示器：点亮当前阶段，其余保持灰（L6：默认高亮①，避免监听注册前阶段已推送）
+// v1.1.1（老大反馈：首次安装 30 分钟进度像卡死）：安装阶段显示等待计时，
+// 即使 MB 数暂时不动（npm 拉元数据/建依赖树阶段不写盘）也能看出程序在正常工作
+let installWaitTimer = null;
+let installWaitStart = 0;
+function fmtWait(ms) {
+  const s = Math.floor(ms / 1000);
+  const mm = String(Math.floor(s / 60)).padStart(2, '0');
+  const ss = String(s % 60).padStart(2, '0');
+  return `${mm}:${ss}`;
+}
+function defaultSubtitle() {
+  return `正在启动 dsh web 服务（127.0.0.1:${portEl.textContent || '-'}）`;
+}
+function stopInstallWait() {
+  if (installWaitTimer) {
+    clearInterval(installWaitTimer);
+    installWaitTimer = null;
+  }
+  if (dlProgressEl) dlProgressEl.textContent = '';
+  if (subtitleEl) subtitleEl.textContent = defaultSubtitle();
+}
 function setStage(stage) {
   const order = ['check', 'install', 'start', 'ready'];
   const idx = order.indexOf(stage);
@@ -41,8 +75,22 @@ function setStage(stage) {
     el.classList.toggle('done', (idx > 0 && order.indexOf(el.dataset.stage) < idx) ||
       (stage === 'ready' && el.dataset.stage === 'ready'));
   });
-  // 安装阶段结束后清空下载进度
-  if (stage !== 'install' && dlProgressEl) dlProgressEl.textContent = '';
+  if (stage === 'install') {
+    // v1.1.1：安装阶段启动等待计时（首次最长约 30~40 分钟，耐心等待）
+    stopInstallWait();
+    installWaitStart = Date.now();
+    if (subtitleEl) {
+      subtitleEl.textContent = `正在安装 DSH 运行时，已等待 ${fmtWait(0)}（首次最长约 30~40 分钟，请耐心等待；MB 数暂时不动属正常）`;
+    }
+    installWaitTimer = setInterval(() => {
+      if (subtitleEl) {
+        subtitleEl.textContent = `正在安装 DSH 运行时，已等待 ${fmtWait(Date.now() - installWaitStart)}（首次最长约 30~40 分钟，请耐心等待；MB 数暂时不动属正常）`;
+      }
+    }, 1000);
+  } else {
+    // 安装阶段结束后清空下载进度与计时
+    stopInstallWait();
+  }
 }
 setStage('check'); // 默认处于"检查 DSH 组件"，即使阶段消息先于监听到达也能显示
 
@@ -61,7 +109,7 @@ if (window.dshDesktop) {
         if (verlineEl) verlineEl.textContent = `DSH-Desktop v${shellVer} · DSH ${dshVer ?? '未安装'}`;
         // 未安装 DSH = 首次启动：显示引导文案
         if (dshVer == null && subtitleEl) {
-          subtitleEl.textContent = '首次启动需要下载 DSH 运行时，请耐心等待';
+          subtitleEl.textContent = '首次启动需要下载 DSH 运行时，请耐心等待（最长约 30~40 分钟）';
         }
       })
       .catch(() => { /* ignore */ });

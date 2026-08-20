@@ -304,9 +304,11 @@ function createMenu(deps) {
       // v0.9.7（老大反馈：内容没显示全）：改可点击 —— 点击打开公告窗口查看完整公告
       // v1.1.1（26 方案七 ①）：公告条点击直达「联系我们」二维码窗口 ——
       // 少两步（原：菜单→联系我们→弹窗→扫码），一点即扫，进群转化更高
+      // v1.1.2（老大反馈）：改回跳转公告窗口 —— 公告条语义是"公告"，
+      // 点击应看完整公告；加群引导改由首次启动弹窗/宠物气泡承载
       {
         label: '📢 ' + truncateMarquee(getMarquee()),
-        click: () => openContactWindow(),
+        click: () => openNoticeWindow(),
       },
     ];
     return Menu.buildFromTemplate(template);

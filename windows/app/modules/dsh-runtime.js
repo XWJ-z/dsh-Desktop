@@ -32,6 +32,13 @@ function createDshRuntime(deps) {
     fetchLatestDshInfo, // P1-2：晚绑定（main.js 组装，updaterApi 就绪后可调用）
   } = deps;
 
+  // v1.1.1 三轮（老大指令）：安装失败自动重试 —— 重试尝试的超时上限（20 分钟；
+  // 失败后 npm 缓存（元数据+tarball）已命中大半，重试通常几分钟完成）
+  const NPM_RETRY_TIMEOUT_MS = 20 * 60 * 1000;
+  // v1.1.1 三轮（老大指令）：多源切换 —— 主源（config.registry，默认 npmmirror）
+  // 失败后自动切 npmjs 官方源重试
+  const REGISTRY_FALLBACKS = ['https://registry.npmjs.org'];
+
   /** 读取壳配置（app/config.json）：DSH 包名 + 版本号，用户改版本号即升级 DSH。
    *  v1.0.3（老大反馈 6）：config.json 位于**安装目录**，升级壳覆盖安装会被重置为
    *  内置版本 → 重启后按旧版本重装，表现为「更新壳后 DSH 版本回退」。
@@ -208,142 +215,198 @@ function createDshRuntime(deps) {
       targetIntegrity = info.integrity || '';
       appendLog('info', `DSH 配置为 latest，已解析为精确版本 ${info.version} 安装（P1-2 固定版本）`);
     }
-    return new Promise((resolve, reject) => {
-      // v1.1.1（Issue #1 修复，26 方案 A）：npm 12 需 Node ≥20（randomUUID），
-      // 系统 Node 过旧时自动回落 Electron 内置 Node，不再报 crypto.randomUUID
-      const runner = resolveRunner(20);
-      const cli = npmCliJs();
-      appendLog('info', `DSH 运行时未满足要求（配置 ${spec}，实际 ${installedDshVersion() ?? '未安装'}）`);
-      appendLog('info', '首次运行需要联网下载 DSH 运行时，请稍候…');
-      pushStage('install');
+    appendLog('info', `DSH 运行时未满足要求（配置 ${spec}，实际 ${installedDshVersion() ?? '未安装'}）`);
+    appendLog('info', '首次运行需要联网下载 DSH 运行时，请稍候…');
+    // v1.1.1（老大指令）：多源切换 + 失败自动重试 —— 主源（config.registry，
+    // 默认 npmmirror）失败自动切 npmjs 重试；重试吃 npm 缓存（元数据+tarball
+    // 已命中大半），通常几分钟完成（实测首装 18~23 分钟）
+    const primaryRegistry = cfg.registry || 'https://registry.npmmirror.com';
+    const registries = [...new Set([primaryRegistry, ...REGISTRY_FALLBACKS])];
+    const retryDeadline = Date.now() + npmInstallTimeoutMs + NPM_RETRY_TIMEOUT_MS; // 首试 + 重试总预算
 
-      // npm 12 默认阻止生命周期脚本。project-scoped 安装下不允许 `--allow-scripts`
-      // CLI 参数（会直接报 EALLOWSCRIPTS 退出），正确做法是在项目 .npmrc 里配置
-      // `allow-scripts`。我们在运行时目录预置 .npmrc，放行 DSH 依赖中的原生模块
-      // 脚本（均自带 N-API 预编译，放行仅为保险）。
-      // 同时写入 registry 配置：默认 npmmirror 镜像（国内可达），可被 config.json
-      // 的 registry 字段覆盖；写 .npmrc 可让 npm 每次安装都命中同一镜像。
-      // 外审 zx(9) P1-2 评估：allow-scripts 保持白名单放行（非全开）—— koffi /
-      // node-pty 等原生依赖需 install 脚本落地预编译产物，白名单 5 个包均为
-      // DSH 官方依赖链，无法整体关闭；继续白名单是「可安装」与「最小放行」的平衡。
-      const registry = cfg.registry || 'https://registry.npmmirror.com';
-      try {
-        // v0.7.3（T-034）：目录可能尚不存在（npm --prefix 安装时才创建），先建再写，
-        // 否则首次运行 .npmrc 写失败 → allow-scripts 不生效 → 原生模块脚本被 npm 12 拦截
-        fs.mkdirSync(dshRuntimeDir(), { recursive: true });
-        fs.writeFileSync(
-          path.join(dshRuntimeDir(), '.npmrc'),
-          `allow-scripts=@deepseek-ai/dsh-subprocess-local,koffi,node-pty,@google/genai,protobufjs\nregistry=${registry}\n`,
-          'utf8',
-        );
-      } catch (err) {
-        appendLog('warn', `写入 .npmrc 失败（不影响安装）：${err.message}`);
-      }
+    // npm 12 默认阻止生命周期脚本。project-scoped 安装下不允许 `--allow-scripts`
+    // CLI 参数（会直接报 EALLOWSCRIPTS 退出），正确做法是在项目 .npmrc 里配置
+    // `allow-scripts`。我们在运行时目录预置 .npmrc，放行 DSH 依赖中的原生模块
+    // 脚本（均自带 N-API 预编译，放行仅为保险）。
+    // 同时写入 registry 配置：默认 npmmirror 镜像（国内可达），可被 config.json
+    // 的 registry 字段覆盖；写 .npmrc 可让 npm 每次安装都命中同一镜像。
+    // 外审 zx(9) P1-2 评估：allow-scripts 保持白名单放行（非全开）—— koffi /
+    // node-pty 等原生依赖需 install 脚本落地预编译产物，白名单 5 个包均为
+    // DSH 官方依赖链，无法整体关闭；继续白名单是「可安装」与「最小放行」的平衡。
+    try {
+      // v0.7.3（T-034）：目录可能尚不存在（npm --prefix 安装时才创建），先建再写，
+      // 否则首次运行 .npmrc 写失败 → allow-scripts 不生效 → 原生模块脚本被 npm 12 拦截
+      fs.mkdirSync(dshRuntimeDir(), { recursive: true });
+      fs.writeFileSync(
+        path.join(dshRuntimeDir(), '.npmrc'),
+        `allow-scripts=@deepseek-ai/dsh-subprocess-local,koffi,node-pty,@google/genai,protobufjs\nregistry=${primaryRegistry}\n`,
+        'utf8',
+      );
+    } catch (err) {
+      appendLog('warn', `写入 .npmrc 失败（不影响安装）：${err.message}`);
+    }
 
-      const args = [
-        cli,
-        'install',
-        '--prefix', dshRuntimeDir(),
-        // v0.7.4（T-035）：registry 直接走 CLI 参数，不依赖 .npmrc 写入成败 ——
-        // .npmrc 写失败（如权限）时若回落官方源 registry.npmjs.org，国内网络
-        // 下载会卡死（600s 超时），CLI 参数保证始终命中配置/默认镜像
-        '--registry', registry,
-        '--no-save',
-        '--no-audit',
-        '--no-fund',
-        '--no-progress',
-        '--loglevel', 'warn',
-        spec,
-      ];
-      appendLog('info', `npm 命令：${runner.execPath} ${args.join(' ')}`);
+    /**
+     * 单次 npm install（指定源 + 超时）：成功返回 bin.js 路径，失败 reject
+     * （区分 OOM/超时/退出码，供上层重试与准确提示）。
+     */
+    async function runNpmInstall(registry, timeoutMs) {
+      return new Promise((resolve, reject) => {
+        // v1.1.1（Issue #1 修复，26 方案 A）：npm 12 需 Node ≥20（randomUUID），
+        // 系统 Node 过旧时自动回落 Electron 内置 Node，不再报 crypto.randomUUID
+        const runner = resolveRunner(20);
+        const cli = npmCliJs();
+        pushStage('install');
 
-      const env = {
-        ...process.env,
-        ...runner.env,
-        // v0.7.3（T-034）：内置 Node 目录加入 PATH —— 无系统 Node 的机器上，
-        // koffi 等依赖的 install 脚本（cmd /c node ./cnoke.cjs）才能找到 node 命令
-        PATH: `${path.dirname(runner.execPath)}${path.delimiter}${process.env.PATH || ''}`,
-        // v1.0.2（老大反馈 1）：npm 缓存隔离到 <dshenv>/npm-cache —— 原用用户级
-        // AppData/Local/npm-cache（全局共享），进度统计会把用户其他项目的历史缓存
-        // 也算进去（显示 700+MB 虚高）；隔离后进度 = 本次安装真实占用。
-        npm_config_cache: path.join(dshRuntimeDir(), 'npm-cache'),
-        npm_config_update_notifier: 'false',
-      };
+        const args = [
+          cli,
+          'install',
+          '--prefix', dshRuntimeDir(),
+          // v0.7.4（T-035）：registry 直接走 CLI 参数，不依赖 .npmrc 写入成败 ——
+          // .npmrc 写失败（如权限）时若回落官方源 registry.npmjs.org，国内网络
+          // 下载会卡死（600s 超时），CLI 参数保证始终命中配置/默认镜像；
+          // v1.1.1 重试时传入 fallback 源（CLI 优先级最高，覆盖 .npmrc）
+          '--registry', registry,
+          '--no-save',
+          '--no-audit',
+          '--no-fund',
+          '--no-progress',
+          '--loglevel', 'warn',
+          // v1.1.1（老大反馈：首次安装卡在 MB 不动）：并发下载默认 15 → 32，
+          // 加快 tarball/元数据拉取（网络带宽充足时提速明显）
+          '--maxsockets=32',
+          spec,
+        ];
+        appendLog('info', `npm 命令：${runner.execPath} ${args.join(' ')}`);
 
-      let child;
-      try {
-        child = trackChild(
-          spawn(runner.execPath, args, { env, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true }),
-          'npm-install',
-        );
-      } catch (err) {
-        reject(err);
-        return;
-      }
+        const env = {
+          ...process.env,
+          ...runner.env,
+          // v0.7.3（T-034）：内置 Node 目录加入 PATH —— 无系统 Node 的机器上，
+          // koffi 等依赖的 install 脚本（cmd /c node ./cnoke.cjs）才能找到 node 命令
+          PATH: `${path.dirname(runner.execPath)}${path.delimiter}${process.env.PATH || ''}`,
+          // v1.0.2（老大反馈 1）：npm 缓存隔离到 <dshenv>/npm-cache —— 原用用户级
+          // AppData/Local/npm-cache（全局共享），进度统计会把用户其他项目的历史缓存
+          // 也算进去（显示 700+MB 虚高）；隔离后进度 = 本次安装真实占用。
+          npm_config_cache: path.join(dshRuntimeDir(), 'npm-cache'),
+          npm_config_update_notifier: 'false',
+          // v1.1.1（用户 jiu 反馈：npm 安装 DSH 运行时 OOM，退出码 134）：
+          // npm 12 arborist 依赖树解析内存峰值可超 Node 默认 2GB 堆上限 →
+          // 提高 npm 子进程堆上限到 4GB（NODE_OPTIONS 对运行 npm-cli.js 的
+          // Node 生效，--max-old-space-size 属于允许的 NODE_OPTIONS 项）
+          NODE_OPTIONS: '--max-old-space-size=4096',
+        };
 
-      // 任务D2：安装期间每 3 秒统计"dshenv（含隔离 npm 缓存）"总量并推送到加载页。
-      // v1.0.2（老大反馈 1）：
-      //  - 缓存已隔离在 <dshenv>/npm-cache，只统计运行时目录，不再混入用户历史 npm 缓存
-      //    （旧版显示 700+MB 虚高、与"首次约 200MB"文案矛盾）；
-      //  - 目录统计改异步（dirSizeMBAsync），不再每 2 秒同步遍历几万个小文件阻塞主进程（卡顿）。
-      const pushInstallProgress = async () => {
-        const mb = await dirSizeMBAsync(dshRuntimeDir());
-        pushProgress(mb);
-      };
-      pushInstallProgress();
-      const progressTimer = setInterval(pushInstallProgress, 3000);
-
-      const onData = (label) => (chunk) => {
-        for (const line of chunk.toString().split(/\r?\n/)) {
-          if (line.trim()) appendLog(label, line.trimEnd());
-        }
-      };
-      child.stdout.on('data', onData('npm'));
-      child.stderr.on('data', onData('npm:err'));
-
-      const timer = setTimeout(() => {
-        try { child.kill('SIGTERM'); } catch { /* ignore */ }
-        reject(new Error(`DSH 运行时下载超时（${npmInstallTimeoutMs / 1000}s）。请检查网络后重试。`));
-      }, npmInstallTimeoutMs);
-
-      child.on('error', (err) => {
-        clearTimeout(timer);
-        clearInterval(progressTimer);
-        reject(err);
-      });
-      child.on('exit', (code) => {
-        clearTimeout(timer);
-        clearInterval(progressTimer);
-        if (code !== 0) {
-          reject(new Error(`DSH 运行时安装失败（npm 退出码 ${code}）。请检查网络/源后重试。日志：${logPath()}`));
-          return;
-        }
-        const bin = installedDshBin();
-        if (!fs.existsSync(bin)) {
-          reject(new Error('npm 安装成功但未找到 DSH 入口 bin.js，请检查配置的包名/版本。'));
-          return;
-        }
-        // P1-2：落盘安装记录（版本 + integrity），下次启动核对
+        let child;
         try {
-          const rec = {
-            version: installedDshVersion(),
-            integrity: targetIntegrity,
-            installedAt: new Date().toISOString(),
-          };
-          fs.writeFileSync(installRecordFile(), JSON.stringify(rec, null, 2), 'utf8');
+          child = trackChild(
+            spawn(runner.execPath, args, { env, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true }),
+            'npm-install',
+          );
         } catch (err) {
-          appendLog('warn', `写入安装记录失败（不影响运行）：${err.message}`);
+          reject(err);
+          return;
         }
-        appendLog('info', `DSH 运行时安装完成：${cfg.dshPackage}@${installedDshVersion()}`);
-        // v1.0.3（老大反馈 6）：安装的是精确版本（非 latest 语义）→ 持久化到 userData，
-        // 升级壳覆盖安装 config.json 被重置后仍按用户选择的版本（不回退）
-        if (cfg.dshVersion !== 'latest') {
-          saveUserDshVersion(installedDshVersion(), targetIntegrity);
-        }
-        pushStage('start');
-        resolve(bin);
+
+        // 任务D2：安装期间每 3 秒统计"dshenv（含隔离 npm 缓存）"总量并推送到加载页。
+        // v1.0.2（老大反馈 1）：
+        //  - 缓存已隔离在 <dshenv>/npm-cache，只统计运行时目录，不再混入用户历史 npm 缓存
+        //    （旧版显示 700+MB 虚高、与"首次约 200MB"文案矛盾）；
+        //  - 目录统计改异步（dirSizeMBAsync），不再每 2 秒同步遍历几万个小文件阻塞主进程（卡顿）。
+        const pushInstallProgress = async () => {
+          const mb = await dirSizeMBAsync(dshRuntimeDir());
+          pushProgress(mb);
+        };
+        pushInstallProgress();
+        const progressTimer = setInterval(pushInstallProgress, 3000);
+
+        let npmErrText = '';
+        const onData = (label) => (chunk) => {
+          const text = chunk.toString();
+          if (label === 'npm:err') {
+            // v1.1.1（用户 jiu 反馈）：累积 npm stderr（只留尾部 200KB）用于 OOM 识别
+            npmErrText = (npmErrText + text).slice(-200_000);
+          }
+          for (const line of text.split(/\r?\n/)) {
+            if (line.trim()) appendLog(label, line.trimEnd());
+          }
+        };
+        child.stdout.on('data', onData('npm'));
+        child.stderr.on('data', onData('npm:err'));
+
+        const timer = setTimeout(() => {
+          try { child.kill('SIGTERM'); } catch { /* ignore */ }
+          reject(new Error(`DSH 运行时下载超时（${Math.round(timeoutMs / 1000)}s）。请检查网络后重试。`));
+        }, timeoutMs);
+
+        child.on('error', (err) => {
+          clearTimeout(timer);
+          clearInterval(progressTimer);
+          reject(err);
+        });
+        child.on('exit', (code) => {
+          clearTimeout(timer);
+          clearInterval(progressTimer);
+          if (code !== 0) {
+            // v1.1.1（用户 jiu 反馈）：npm OOM（退出码 134）→ 准确提示"内存不足"，
+            // 别误导用户去查网络/源
+            const oom = /heap out of memory|Ineffective mark-compacts|FATAL ERROR/i.test(npmErrText);
+            const msg = oom
+              ? 'DSH 运行时安装失败：内存不足（npm 内存溢出）。请关闭其他占用内存的程序后重试。日志：' + logPath()
+              : `DSH 运行时安装失败（npm 退出码 ${code}）。请检查网络/源后重试。日志：${logPath()}`;
+            reject(new Error(msg));
+            return;
+          }
+          const bin = installedDshBin();
+          if (!fs.existsSync(bin)) {
+            reject(new Error('npm 安装成功但未找到 DSH 入口 bin.js，请检查配置的包名/版本。'));
+            return;
+          }
+          // P1-2：落盘安装记录（版本 + integrity），下次启动核对
+          try {
+            const rec = {
+              version: installedDshVersion(),
+              integrity: targetIntegrity,
+              installedAt: new Date().toISOString(),
+            };
+            fs.writeFileSync(installRecordFile(), JSON.stringify(rec, null, 2), 'utf8');
+          } catch (err) {
+            appendLog('warn', `写入安装记录失败（不影响运行）：${err.message}`);
+          }
+          appendLog('info', `DSH 运行时安装完成：${cfg.dshPackage}@${installedDshVersion()}`);
+          // v1.0.3（老大反馈 6）：安装的是精确版本（非 latest 语义）→ 持久化到 userData，
+          // 升级壳覆盖安装 config.json 被重置后仍按用户选择的版本（不回退）
+          if (cfg.dshVersion !== 'latest') {
+            saveUserDshVersion(installedDshVersion(), targetIntegrity);
+          }
+          pushStage('start');
+          resolve(bin);
+        });
       });
-    });
+    }
+
+    // 多源 + 自动重试循环（每次尝试一个源；全部失败 → 带重试说明的最终错误）
+    let lastError = null;
+    for (let attempt = 0; attempt < registries.length; attempt++) {
+      const registry = registries[attempt];
+      const remaining = retryDeadline - Date.now();
+      if (remaining <= 0) break;
+      const timeoutMs = attempt === 0 ? npmInstallTimeoutMs : Math.min(NPM_RETRY_TIMEOUT_MS, remaining);
+      appendLog(
+        'info',
+        `DSH 运行时安装（尝试 ${attempt + 1}/${registries.length}，源 ${registry}，超时 ${Math.round(timeoutMs / 1000)}s）`,
+      );
+      try {
+        return await runNpmInstall(registry, timeoutMs);
+      } catch (err) {
+        lastError = err;
+        appendLog('warn', `安装尝试 ${attempt + 1}/${registries.length} 失败：${err.message}`);
+        if (attempt < registries.length - 1) {
+          appendLog('info', `自动重试：切换源 ${registries[attempt + 1]}（npm 缓存已命中部分包，通常更快）`);
+        }
+      }
+    }
+    throw new Error(`自动重试后仍失败：${lastError ? lastError.message : 'DSH 运行时安装失败。'}`);
   }
 
   /** 备份并改写 config.json 的 dshVersion；成功返回 true。P1-2：一并落盘目标版本 + integrity。
