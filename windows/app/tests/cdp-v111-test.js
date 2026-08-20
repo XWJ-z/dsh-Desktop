@@ -305,7 +305,7 @@ async function main() {
     ok(dshReady, 'preload dshDesktop 已注入');
     if (!dshReady) throw new Error('dshDesktop 注入超时');
 
-    // ① 版本 1.1.2（v1.1.2：从 1.1.1 迭代，启动行为/公告条/启动界面帮助按钮）
+    // ① 版本 1.1.3（1.1.1/1.1.2 未发布，更新内容合并到 1.1.3）
     const ver = await cdp.send('Runtime.evaluate', {
       expression: 'window.dshDesktop.getVersion()',
       returnByValue: true,

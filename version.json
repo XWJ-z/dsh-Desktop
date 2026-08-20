@@ -2,9 +2,9 @@
   "version": "1.1.3",
   "minVersion": "0.7.4",
   "author": "zx(xwj)",
-  "release_notes": "🎉 v1.1.3 —— 修复自动更新失败\n1. 修复（自动更新）：真机环境 Node https 访问 api.github.com / raw.githubusercontent 证书验证失败（unable to verify the first certificate）→ 三源只剩 jsDelivr 可达 → 防投毒机制拒绝自动下载。版本检查已改用 Electron net（系统 CA），三源全通后自动更新恢复正常\n❤️ 喜欢 DSH-Desktop？加入 QQ 群 916607090——你的反馈决定下一个功能！",
+  "release_notes": "🎉 v1.1.3 —— 帮助文档远程下发 + 提示词库独立升级 + 插件市场 + 启动行为修正 + 自动更新修复\n1. 新增（帮助文档）：帮助菜单新增「帮助文档…」入口，远程下发 HTML 文档（修改仓库 help.html push 即生效，无需发版），支持断网时本地兜底\n2. 新增（提示词库）：提示词库支持独立远程更新（仓库更新 prompts.json + prompts.version.json，按日期命名版本，用户打开提示词库自动拉取最新，无需更新壳）\n3. 新增（插件市场）：宠物/工具箱菜单新增「插件市场」入口，连接官方 awesome-dsh-plugin 社区（18 分类 + 全部插件中文描述 + 搜索 + 安装引导），安全提示置顶红色醒目，复制安装命令前弹出免责声明确认\n4. 优化（安全）：外部链接白名单扩展（raw.githubusercontent.com / cdn.jsdelivr.net），仅限 help.html 路径\n5. 优化（插件市场）：适配深色模式（跟随外观设置）；确认弹窗新增 4 条安装须知（免责声明红色加粗）与 QQ 群兜底；新增「刷新」按钮，立刻看最新插件列表\n6. 修复（源码运行）：旧版系统 Node（<20.17）下报 crypto.randomUUID is not a function —— 自动回落 Electron 内置 Node\n7. 新增（加群引导）：首次启动欢迎弹窗一键加群；宠物气泡偶尔带群号 —— 有问题随时进群\n8. 优化（帮助文档）：改为应用内窗口打开（本地优先、离线可用），后台静默同步远程新版（push 即生效）\n9. 修复（首次安装）：部分电脑首次安装 DSH 运行时失败（npm 内存溢出/超时/源慢）—— 已提升 npm 安装内存上限至 4GB、安装超时延长至 40 分钟、失败自动切换 npmjs 源重试，并给出准确提示\n10. 优化（首次安装体验）：启动页明确提示首次最长约 30~40 分钟并实时显示等待计时（MB 数暂时不动属正常）；下载并发提升至 32\n11. 修复（启动后自动打开浏览器）：DSH 页面内指向 127.0.0.1:<端口> 的链接被触发时不再弹系统默认浏览器（setWindowOpenHandler 不放行本地回环）；宠物「网页打开」显式操作不受影响\n12. 修复（公告条）：点击公告条打开「公告」窗口查看完整公告（不再直达二维码）；加群引导由首次启动弹窗/宠物气泡承载\n13. 新增（启动界面）：加载页新增「打开帮助文档」按钮（本地优先，后台静默同步远程）\n14. 修复（自动更新）：真机 Node https 访问 api.github.com / raw.githubusercontent 证书验证失败 → 版本检查改用 Electron net（系统 CA），三源全通后自动更新恢复\n❤️ 喜欢 DSH-Desktop？加入 QQ 群 916607090——你的反馈决定下一个功能！",
   "force": false,
-  "hash": "aabcc2f20a2e63fa29bde044c323cba4492ff85cfdfbc830d541cae192613662",
+  "hash": "b6a2ef18b80af57ebcc7019c55f8ebfd508a443e056a736bfe0f08a348e72a5d",
   "download_urls": [
     "https://ghfast.top/https://github.com/XWJ-z/dsh-Desktop/releases/download/v1.1.3/DSH-Desktop-Setup-1.1.3.exe",
     "https://gh-proxy.com/https://github.com/XWJ-z/dsh-Desktop/releases/download/v1.1.3/DSH-Desktop-Setup-1.1.3.exe"

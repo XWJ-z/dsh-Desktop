@@ -114,6 +114,10 @@ const out = {
   // 变更记录
   'CHANGELOG 1.1.3': changelog.versions.some((x) => x.version === '1.1.3'),
   'CHANGELOG 1.1.3 加群钩子': changelog.versions.some((x) => x.version === '1.1.3' && x.notes.some((n) => n.includes('你的反馈决定下一个功能'))),
+  // v1.1.3（老大指令）：1.1.1 未发布、1.1.2 删除，更新内容全部合并到 1.1.3
+  'CHANGELOG 无 1.1.1/1.1.2 条目': !changelog.versions.some((x) => ['1.1.1', '1.1.2'].includes(x.version)),
+  'CHANGELOG 1.1.3 含合并内容': ['帮助文档远程下发', '提示词库', '插件市场', '启动后自动打开浏览器', '打开帮助文档', '自动更新'].every((k) =>
+    changelog.versions.some((x) => x.version === '1.1.3' && x.notes.some((n) => n.includes(k)))),
   // 开发版 == 打包版（关键文件一致）
   'main dev==packaged': main === fs.readFileSync('main.js', 'utf8'),
   'pet dev==packaged': pet === fs.readFileSync('modules/pet.js', 'utf8'),
