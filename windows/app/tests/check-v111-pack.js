@@ -21,12 +21,17 @@ const helpDoc = read('modules/help-doc.js');
 const nodeResolver = read('modules/node-resolver.js');
 const dshRuntime = read('modules/dsh-runtime.js');
 const serverLifecycle = read('modules/serverLifecycle.js');
+const updater = read('modules/updater.js'); // v1.1.3：版本检查改用 Electron net
 const pkg = JSON.parse(read('package.json'));
 const changelog = JSON.parse(read('CHANGELOG.json'));
 const rootVersionJson = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', '..', 'version.json'), 'utf8'));
 
 const out = {
-  'version 1.1.2': pkg.version === '1.1.2',
+  'version 1.1.3': pkg.version === '1.1.3',
+  // v1.1.3：自动更新修复 —— updater.fetchJson 改用 Electron net（真机 TLS 证书问题）
+  'updater fetchJson 用 net': updater.includes('net.request(url)') && updater.includes('req.setHeader'),
+  'updater 注入 net 依赖': updater.includes('net, // v1.1.3'),
+  'main 注入 net: electronNet': main.includes('net: electronNet, // v1.1.3'),
   // 新模块进包
   'help-doc.js in pkg': fs.existsSync(app + 'modules/help-doc.js'),
   'prompts-updater.js in pkg': fs.existsSync(app + 'modules/prompts-updater.js'),
@@ -105,10 +110,10 @@ const out = {
   'main-window setWindowOpenHandler 禁本地回环': mainWin.includes('isAllowedExternalUrl(url, false)') && mainWin.includes('allowLoopback=true') ,
   // release notes 固定钩子
   'version.json release 钩子(加群)': rootVersionJson.release_notes.includes('你的反馈决定下一个功能'),
-  'version.json version=1.1.2': rootVersionJson.version === '1.1.2',
+  'version.json version=1.1.3': rootVersionJson.version === '1.1.3',
   // 变更记录
-  'CHANGELOG 1.1.2': changelog.versions.some((x) => x.version === '1.1.2'),
-  'CHANGELOG 1.1.2 加群钩子': changelog.versions.some((x) => x.version === '1.1.2' && x.notes.some((n) => n.includes('你的反馈决定下一个功能'))),
+  'CHANGELOG 1.1.3': changelog.versions.some((x) => x.version === '1.1.3'),
+  'CHANGELOG 1.1.3 加群钩子': changelog.versions.some((x) => x.version === '1.1.3' && x.notes.some((n) => n.includes('你的反馈决定下一个功能'))),
   // 开发版 == 打包版（关键文件一致）
   'main dev==packaged': main === fs.readFileSync('main.js', 'utf8'),
   'pet dev==packaged': pet === fs.readFileSync('modules/pet.js', 'utf8'),

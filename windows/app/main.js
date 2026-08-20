@@ -534,6 +534,7 @@ const updaterApi = createUpdater({
   app,
   shell,
   https,
+  net: electronNet, // v1.1.3：版本检查改用 Electron net（Node https 真机 TLS 失败 → 三源只剩 jsDelivr → 拒绝下载）
   crypto,
   fs,
   path,

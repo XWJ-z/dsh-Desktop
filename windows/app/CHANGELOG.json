@@ -1,6 +1,16 @@
 {
   "versions": [
     {
+      "version": "1.1.3",
+      "date": "2026-08-20",
+      "notes": [
+        "🎉 v1.1.3 —— 修复自动更新失败（版本检查三源改用 Electron net）",
+        "修复（自动更新）：真机 Node https 访问 api.github.com / raw.githubusercontent TLS 证书验证失败（unable to verify the first certificate）→ 三源只剩 jsDelivr 可达 → 防投毒机制拒绝自动下载（sourcesAgree=false）。版本检查改用 Electron net（Chromium 网络栈 + 系统 CA，与帮助文档/插件市场 v1.1.1 同款修复），三源全通后自动更新恢复",
+        "❤️ 喜欢 DSH-Desktop？加入 QQ 群 916607090——你的反馈决定下一个功能！"
+      ],
+      "released": false
+    },
+    {
       "version": "1.1.2",
       "date": "2026-08-20",
       "notes": [
@@ -10,7 +20,7 @@
         "新增（启动界面）：加载页新增「打开帮助文档」按钮 —— 等待安装/启动时可直接查看使用说明（本地优先，后台静默同步远程）",
         "❤️ 喜欢 DSH-Desktop？加入 QQ 群 916607090——你的反馈决定下一个功能！"
       ],
-      "released": false
+      "released": true
     },
     {
       "version": "1.1.1",
@@ -28,7 +38,7 @@
         "优化（首次安装体验）：启动页明确提示首次最长约 30~40 分钟并实时显示等待计时（已等待 00:00…，MB 数暂时不动属正常，不再像卡死）；下载并发提升至 32（--maxsockets），网络充裕时提速明显",
         "❤️ 喜欢 DSH-Desktop？加入 QQ 群 916607090——你的反馈决定下一个功能！"
       ],
-      "released": false
+      "released": true
     },
     {
       "version": "1.0.5",

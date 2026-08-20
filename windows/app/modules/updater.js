@@ -33,39 +33,76 @@ const { verifyKnownHash } = require('./shell-hashes');
 function createUpdater(deps) {
   const {
     app, shell, https, crypto, fs, path, rmQuiet,
+    net, // v1.1.3（老大反馈：下载更新失败）：版本检查改用 Electron net
     appendLog,
     readShellConfig, installedDshVersion, updateDshVersion,
     shellUpdateUrls,
   } = deps;
 
-  /** GET 并解析 JSON；失败/超时返回 null（静默）。响应体超 maxBytes（默认 5MB）放弃。 */
+  /**
+   * GET 并解析 JSON；失败/超时返回 null（静默）。响应体超 maxBytes（默认 5MB）放弃。
+   * v1.1.3（老大反馈：下载更新失败，日志「版本检查：1/3 源可达…拒绝自动下载」）：
+   * 改用 Electron net.request（Chromium 网络栈 + 系统 CA + 自动跟随重定向）——
+   * Node https.get 在真机 TLS 验证失败（api.github.com / raw.githubusercontent
+   * "unable to verify the first certificate"），三源只有 jsDelivr 可达 →
+   * sourcesAgree=false → 防投毒拒绝自动下载；与 help-doc.js / plugin-market.js
+   * v1.1.1 同款修复（那两个模块当年已改 net 实测三源全通）。
+   */
   function fetchJson(url, timeoutMs = 8000, headers = {}, maxBytes = 5 * 1024 * 1024) {
     return new Promise((resolve) => {
       let req;
       try {
-        req = https.get(url, { timeout: timeoutMs, headers }, (res) => {
+        req = net.request(url);
+        Object.keys(headers || {}).forEach((k) => req.setHeader(k, headers[k]));
+        if (!headers || !headers['User-Agent']) req.setHeader('User-Agent', 'DSH-Desktop');
+        const timer = setTimeout(() => {
+          try {
+            req.abort();
+          } catch {
+            /* ignore */
+          }
+          resolve(null);
+        }, timeoutMs);
+        req.on('response', (res) => {
+          const code = res.statusCode;
+          if (code < 200 || code >= 300) {
+            clearTimeout(timer);
+            resolve(null);
+            return;
+          }
           let body = '';
           let aborted = false;
-          // v0.8.1（T2 修复）：声明 utf8 后 data 回调直接收 string，StringDecoder 跨 chunk
-          // 正确拼接多字节字符（此前每 chunk 单独解码，中文/emoji 跨 chunk 边界会乱码）
-          res.setEncoding('utf8');
+          const finish = (v) => {
+            if (aborted) return;
+            aborted = true;
+            clearTimeout(timer);
+            resolve(v);
+          };
           res.on('data', (c) => {
             if (aborted) return;
             body += c;
             if (body.length > maxBytes) { // P2-4：防超大响应体耗尽内存
               aborted = true;
-              req.destroy();
+              try { req.abort(); } catch { /* ignore */ }
+              clearTimeout(timer);
               resolve(null);
             }
           });
           res.on('end', () => {
-            if (!aborted) { try { resolve(JSON.parse(body)); } catch { resolve(null); } }
+            if (!aborted) {
+              aborted = true;
+              clearTimeout(timer);
+              try { resolve(JSON.parse(body)); } catch { resolve(null); }
+            }
           });
+          res.on('error', () => finish(null));
         });
-        req.on('error', () => resolve(null));
-        req.on('timeout', () => { req.destroy(); resolve(null); });
+        req.on('error', () => {
+          clearTimeout(timer);
+          resolve(null);
+        });
+        req.end();
       } catch {
-        if (req) { try { req.destroy(); } catch { /* ignore */ } }
         resolve(null);
       }
     });
