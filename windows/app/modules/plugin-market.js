@@ -160,6 +160,7 @@ function createPluginMarket(deps) {
             resolve(null);
             return;
           }
+          res.setEncoding('utf8'); // P2-1 v1.1.6：跨 chunk 不拆断 UTF-8，中文插件描述无乱码
           let body = '';
           let aborted = false;
           res.on('data', (c) => {
@@ -291,6 +292,8 @@ function createPluginMarket(deps) {
         /* keep name */
       }
       if (repoName.endsWith('.git')) repoName = repoName.slice(0, -4);
+      // O1 v1.1.6：安装命令用 repoName 拼 shell，字符白名单校验（恶意 README 项可能注入命令）
+      if (!/^[\w.-]+$/.test(repoName)) continue;
 
       plugins.push({
         name,

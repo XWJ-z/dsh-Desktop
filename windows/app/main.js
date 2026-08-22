@@ -970,7 +970,7 @@ async function checkUpdatesOnStart() {
     });
   const [dshLatest, shellInfo] = await Promise.all([fetchLatestDshVersion(), fetchLatestShellVersion()]);
 
-  // DSH 侧：v1.1.5（用户指令）—— 启动检查到 DSH 新版同样弹窗提示（对齐壳更新体验）。
+  // DSH 侧：v1.1.6（用户指令）—— 启动检查到 DSH 新版同样弹窗提示（对齐壳更新体验）。
   // 升级入口保留在更新窗口（一键升级改 config 重启）；「立即升级」走同一链路。
   if (dshLatest) {
     const dshCurrent = installedDshVersion() ?? cfg.dshVersion;
@@ -1071,13 +1071,14 @@ function promptShellUpdate(info) {
               title: APP_NAME,
               message: '更新下载失败',
               detail: reasonText,
-              buttons: ['打开更新窗口', '关闭'],
+              buttons: ['打开更新窗口', '手动下载安装包', '关闭'], // O3 v1.1.6：失败时给手动下载出路
               defaultId: 0,
-              cancelId: 1,
+              cancelId: 2,
               noLink: true,
             })
             .then(({ response: resp }) => {
               if (resp === 0) openUpdateWindow();
+              else if (resp === 1) shell.openExternal('https://github.com/XWJ-z/dsh-Desktop/releases/latest');
             })
             .catch(() => {
               /* ignore */
@@ -1091,7 +1092,7 @@ function promptShellUpdate(info) {
 }
 
 /**
- * v1.1.5（用户指令）：启动检查到 DSH 新版 → 弹窗询问（对齐壳更新体验）。
+ * v1.1.6（用户指令）：启动检查到 DSH 新版 → 弹窗询问（对齐壳更新体验）。
  * 「立即升级」走 upgradeDshVersion（改写 config.json + userData 记录 → relaunch，
  * 重启后 ensureDshRuntime 按目标版本安装）。当前版本优先取实际安装版本，
  * 未安装时取配置版本兜底。
@@ -1127,13 +1128,14 @@ function promptDshUpdate(latestVersion) {
                 title: APP_NAME,
                 message: 'DSH 升级失败',
                 detail: detailText,
-                buttons: ['打开更新窗口', '关闭'],
+                buttons: ['打开更新窗口', '手动下载安装包', '关闭'], // O3 v1.1.6：失败时给手动下载出路
                 defaultId: 0,
-                cancelId: 1,
+                cancelId: 2,
                 noLink: true,
               })
               .then(({ response: resp }) => {
                 if (resp === 0) openUpdateWindow();
+                else if (resp === 1) shell.openExternal('https://github.com/XWJ-z/dsh-Desktop/releases/latest');
               })
               .catch(() => {
                 /* ignore */

@@ -32,7 +32,7 @@ const { verifyKnownHash } = require('./shell-hashes');
 
 function createUpdater(deps) {
   const {
-    app, shell, https, crypto, fs, path, rmQuiet,
+    app, shell, crypto, fs, path, rmQuiet,   // O2 v1.1.6：移除不再使用的 https（downloadFile 已改 Electron net）
     net, // v1.1.3（用户反馈：下载更新失败）：版本检查改用 Electron net
     appendLog,
     readShellConfig, installedDshVersion, updateDshVersion,
@@ -70,6 +70,7 @@ function createUpdater(deps) {
             resolve(null);
             return;
           }
+          res.setEncoding('utf8'); // P2-1 v1.1.6：跨 chunk 不拆断 UTF-8，release_notes 中文无乱码
           let body = '';
           let aborted = false;
           const finish = (v) => {
@@ -276,7 +277,7 @@ function createUpdater(deps) {
         let done = false;
         resumeFrom = resumeSize();
         const timer = setTimeout(() => {         // P2-1：超时中止（保留 .part 供续传）
-          try { req.destroy(); } catch { /* ignore */ }
+          try { req.abort(); } catch { /* ignore */ } // O2：net.request 用 abort
           if (file) { try { file.destroy(); } catch { /* ignore */ } }
           onFail(new Error('下载超时'));
         }, DOWNLOAD_TIMEOUT_MS);
@@ -302,10 +303,13 @@ function createUpdater(deps) {
           return file;
         };
         const headers = resumeFrom > 0 ? { Range: `bytes=${resumeFrom}-` } : undefined;
-        req = https.get(target, { headers }, (res) => {
+        // O2 v1.1.6：downloadFile 请求层改用 Electron net（Chromium 网络栈 + 系统 CA），
+        // 根治 Node https 在真机 TLS 验证失败的隐患；保留断点续传/Range/重定向/416 逻辑。
+        req = net.request({ url: target, headers: headers || {} });
+        req.on('response', (res) => {
           if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
             res.resume();
-            req.destroy();
+            req.abort(); // O2：net.request 用 abort（原 https.get 用 destroy）
             // P3-5：重定向目标强制 https（防 https→http 降级投毒）
             if (!/^https:\/\//i.test(res.headers.location)) {
               cleanupTimer();
@@ -377,6 +381,7 @@ function createUpdater(deps) {
           });
         });
         req.on('error', (err) => onFail(err)); // 保留 .part 供续传
+        req.end(); // O2：net.request 需显式 end 发起请求
       };
       start(url);
     });

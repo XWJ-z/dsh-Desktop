@@ -16,7 +16,7 @@
  *  - 幂等：同一页面生命周期只安装一次（window.__dshDropInstalled）；
  *    overlay 被 SPA 清掉时 dragenter 自动重建；
  *  - 只对 Files 拖拽显示 overlay / 取路径；非文件拖拽不 preventDefault。
- *  - v1.1.5：纯图片拖拽（PNG/JPEG/WebP/GIF）放行给 DSH 原生附件处理（0.1.1-rc.2+），
+ *  - v1.1.6：纯图片拖拽（PNG/JPEG/WebP/GIF）放行给 DSH 原生附件处理（0.1.1-rc.2+），
  *    非图片/混合文件仍由本模块拦截复制进工作区。
  *    ⚠ Chromium 限制：dragenter/dragover 阶段（protected mode）读不到
  *    dataTransfer.files / items[].type，类型判断只能在 drop（readwrite）阶段做，
@@ -64,7 +64,7 @@ function createDragDrop(deps) {
         };
 
         const hasFiles = (dt) => !!dt && Array.from(dt.types || []).includes('Files');
-        // v1.1.5（DSH 0.1.1-rc.2 原生支持图片拖放）：纯图片拖拽放行给 DSH 原生处理。
+        // v1.1.6（DSH 0.1.1-rc.2 原生支持图片拖放）：纯图片拖拽放行给 DSH 原生处理。
         // ⚠ Chromium 限制：dragenter/dragover 阶段（mode=protected）dataTransfer.items[].type
         //   与 files 均为空/不可读，故该函数只在 drop 阶段可靠 —— 必须用 files[].type 判断，
         //   而非 items[].type（后者在这两个阶段恒为空，会把图片误判为非图片而拦截）。
@@ -115,7 +115,7 @@ function createDragDrop(deps) {
 
         window.addEventListener('drop', (e) => {
           if (!hasFiles(e.dataTransfer)) return;
-          // v1.1.5（DSH 0.1.1-rc.2 原生支持图片拖放）：纯图片拖拽放行给 DSH 原生处理。
+          // v1.1.6（DSH 0.1.1-rc.2 原生支持图片拖放）：纯图片拖拽放行给 DSH 原生处理。
           // 类型必须在此（drop，mode=readwrite）判断 —— files[].type 此刻才可靠；
           // 放行 = 不 preventDefault、不 stopPropagation，让事件继续冒泡到 DSH 的
           // document 级监听完成缩略图附件；同时收起我们的遮罩、归零深度。

@@ -65,6 +65,7 @@ function createHelpDoc(deps) {
             resolve(null);
             return;
           }
+          res.setEncoding('utf8'); // P2-1 v1.1.6：跨 chunk 不拆断 UTF-8，远程 help.html 中文无乱码
           let body = '';
           let done = false;
           const finish = (v) => {

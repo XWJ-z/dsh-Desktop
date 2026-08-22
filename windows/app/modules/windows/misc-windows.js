@@ -113,7 +113,7 @@ function createMiscWindowsModule(deps) {
   function openPromptLibWindow() {
     const existing = getPromptLibWin();
     if (existing && !existing.isDestroyed()) {
-      if (existing.isMinimized()) existing.restore(); // v1.1.5：最小化后再点入口，恢复显示
+      if (existing.isMinimized()) existing.restore(); // v1.1.6：最小化后再点入口，恢复显示
       existing.focus();
       return;
     }
@@ -121,7 +121,7 @@ function createMiscWindowsModule(deps) {
       width: 720,
       height: 560,
       resizable: true,
-      minimizable: true, // v1.1.5（用户指令）：体验优化，可最小化
+      minimizable: true, // v1.1.6（用户指令）：体验优化，可最小化
       minWidth: 560,
       minHeight: 420, // v1.0.2（用户反馈）：可自由拖动但加最小尺寸约束
       modal: false,
@@ -142,7 +142,7 @@ function createMiscWindowsModule(deps) {
   function openGlobalMemoryWindow() {
     const existing = getGlobalMemoryWin();
     if (existing && !existing.isDestroyed()) {
-      if (existing.isMinimized()) existing.restore(); // v1.1.5：最小化后再点入口，恢复显示
+      if (existing.isMinimized()) existing.restore(); // v1.1.6：最小化后再点入口，恢复显示
       existing.focus();
       return;
     }
@@ -150,7 +150,7 @@ function createMiscWindowsModule(deps) {
       width: 960,
       height: 660,
       resizable: true,
-      minimizable: true, // v1.1.5（用户指令）：体验优化，可最小化
+      minimizable: true, // v1.1.6（用户指令）：体验优化，可最小化
       minWidth: 640,
       minHeight: 480, // v1.0.2（用户反馈）：可自由拖动但加最小尺寸约束
       modal: false,
@@ -170,7 +170,7 @@ function createMiscWindowsModule(deps) {
   function openPluginMarketWindow() {
     const existing = getPluginMarketWin();
     if (existing && !existing.isDestroyed()) {
-      if (existing.isMinimized()) existing.restore(); // v1.1.5：最小化后再点入口，恢复显示
+      if (existing.isMinimized()) existing.restore(); // v1.1.6：最小化后再点入口，恢复显示
       existing.focus();
       return;
     }
@@ -178,7 +178,7 @@ function createMiscWindowsModule(deps) {
       width: 900,
       height: 600,
       resizable: true,
-      minimizable: true, // v1.1.5（用户指令）：体验优化，可最小化
+      minimizable: true, // v1.1.6（用户指令）：体验优化，可最小化
       minWidth: 700,
       minHeight: 500,
       modal: false,
