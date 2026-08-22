@@ -119,7 +119,7 @@ function createMiscWindowsModule(deps) {
       width: 720,
       height: 560,
       resizable: true,
-      minimizable: false, // v0.8.7：内容更多，窗口加大
+      minimizable: true, // v1.1.5（老大指令）：体验优化，可最小化
       minWidth: 560,
       minHeight: 420, // v1.0.2（老大反馈）：可自由拖动但加最小尺寸约束
       parent: getMainWindow(),
@@ -147,7 +147,7 @@ function createMiscWindowsModule(deps) {
       width: 960,
       height: 660,
       resizable: true,
-      minimizable: false, // v1.0.2b（老大反馈）：默认再宽一些（左右分栏更好用）
+      minimizable: true, // v1.1.5（老大指令）：体验优化，可最小化
       minWidth: 640,
       minHeight: 480, // v1.0.2（老大反馈）：可自由拖动但加最小尺寸约束
       parent: getMainWindow(),
@@ -174,7 +174,7 @@ function createMiscWindowsModule(deps) {
       width: 900,
       height: 600,
       resizable: true,
-      minimizable: false,
+      minimizable: true, // v1.1.5（老大指令）：体验优化，可最小化
       minWidth: 700,
       minHeight: 500,
       parent: getMainWindow(),
