@@ -72,18 +72,35 @@ function createBackup(deps) {
     const hasCustom = fs.existsSync(customPrompts);
     // v0.9.12：全局记忆 ~/.dsh/AGENTS.md 随 ~/.dsh 整目录备份（日志显式记录，便于核对）
     const hasAgents = hasDsh && fs.existsSync(path.join(dshHome, 'AGENTS.md'));
+    // v1.2.1 T9：项目记忆 —— 用户项目索引 + 各项目 <工作区>/AGENTS.md
+    const pmIndexFile = path.join(app.getPath('userData'), 'projects-memory-index.json');
+    const hasPmIndex = fs.existsSync(pmIndexFile);
+    const pmProjects = (() => {
+      try {
+        const idx = JSON.parse(fs.readFileSync(pmIndexFile, 'utf8'));
+        const projects = Array.isArray(idx && idx.projects) ? idx.projects : [];
+        return projects
+          .filter((p) => p && typeof p.path === 'string' && p.path)
+          .filter((p) => fs.existsSync(path.join(p.path, 'AGENTS.md')))
+          .map((p) => ({ path: p.path, name: String(p.name || path.basename(p.path)) }));
+      } catch {
+        return [];
+      }
+    })();
+    const hasPm = hasPmIndex || pmProjects.length > 0;
+    // v1.2.1 T9：技能目录 ~/.dsh/skills/ 随 ~/.dsh 整目录备份（无需单独处理）
 
-    if (!hasDsh && !hasSettings && !hasCustom) {
+    if (!hasDsh && !hasSettings && !hasCustom && !hasPm) {
       dialog.showMessageBox(owner, {
         type: 'warning', title: appName,
         message: '没有可备份的数据',
-        detail: '未找到 DSH 用户数据（~/.dsh）、设置文件或我的提示词。首次使用后再备份。',
+        detail: '未找到 DSH 用户数据（~/.dsh）、设置文件、我的提示词或项目记忆。首次使用后再备份。',
         buttons: ['确定'], noLink: true,
       });
       return;
     }
 
-    appendLog('info', `开始备份：~/.dsh=${hasDsh}（全局记忆 AGENTS.md=${hasAgents}）settings=${hasSettings} 我的提示词=${hasCustom} → ${filePath}`);
+    appendLog('info', `开始备份：~/.dsh=${hasDsh}（全局记忆 AGENTS.md=${hasAgents}）settings=${hasSettings} 我的提示词=${hasCustom} 项目记忆=${pmProjects.length} 个 → ${filePath}`);
 
     // v0.7.10：进度条（替代原「正在备份…」info 弹窗）
     openBackupProgress();
@@ -142,6 +159,23 @@ function createBackup(deps) {
         fs.copyFileSync(customPrompts, path.join(staging, 'custom-prompts.json'));
         entries.push('custom-prompts.json');
       }
+      // v1.2.1 T9：项目记忆 —— 索引 + 各项目 <工作区>/AGENTS.md（copy 到 staging/projects-pm/<i>.md）
+      let projectMemories = [];
+      if (hasPm) {
+        if (hasPmIndex) {
+          fs.copyFileSync(pmIndexFile, path.join(staging, 'projects-memory-index.json'));
+          entries.push('projects-memory-index.json');
+        }
+        if (pmProjects.length > 0) {
+          const pmDir = path.join(staging, 'projects-pm');
+          fs.mkdirSync(pmDir, { recursive: true });
+          pmProjects.forEach((p, i) => {
+            fs.copyFileSync(path.join(p.path, 'AGENTS.md'), path.join(pmDir, `${i}.md`));
+            projectMemories.push({ index: i, path: p.path, name: p.name });
+          });
+          entries.push('projects-pm');
+        }
+      }
       // manifest 记录（恢复时校验格式用）
       const manifest = {
         format: 'dsh-backup-v1',
@@ -150,6 +184,7 @@ function createBackup(deps) {
         dshVersion: installedDshVersion() ?? readShellConfig().dshVersion,
         backupTime: localTimestamp(),
         entries,
+        projectMemories, // v1.2.1 T9：项目记忆路径映射（恢复落位）
       };
       fs.writeFileSync(path.join(staging, 'manifest.json'), JSON.stringify(manifest, null, 2), 'utf8');
 
@@ -304,6 +339,28 @@ function createBackup(deps) {
         moveOld(customPrompts);
         fs.mkdirSync(path.dirname(customPrompts), { recursive: true });
         fs.renameSync(path.join(tmp, 'custom-prompts.json'), customPrompts);
+      }
+      // v1.2.1 T9：恢复项目记忆 —— 索引 + 各项目 <工作区>/AGENTS.md
+      if (entries.includes('projects-memory-index.json') && fs.existsSync(path.join(tmp, 'projects-memory-index.json'))) {
+        const pmIndex = path.join(app.getPath('userData'), 'projects-memory-index.json');
+        moveOld(pmIndex);
+        fs.mkdirSync(path.dirname(pmIndex), { recursive: true });
+        fs.renameSync(path.join(tmp, 'projects-memory-index.json'), pmIndex);
+      }
+      if (entries.includes('projects-pm') && Array.isArray(manifest.projectMemories)) {
+        let restoredPm = 0;
+        for (const pm of manifest.projectMemories) {
+          const src = path.join(tmp, 'projects-pm', `${pm.index}.md`);
+          const target = path.join(String(pm.path || ''), 'AGENTS.md');
+          // 安全：只写入已存在目录（对齐 save 侧校验，防恢复任意路径写）
+          try {
+            if (fs.existsSync(src) && fs.statSync(path.dirname(target)).isDirectory()) {
+              fs.copyFileSync(src, target);
+              restoredPm++;
+            }
+          } catch { /* 目标目录不存在/不可写：跳过该条 */ }
+        }
+        appendLog('info', `数据恢复：项目记忆还原 ${restoredPm} 条`);
       }
 
       appendLog('info', `数据恢复完成（来源：${backupFile}）`);
