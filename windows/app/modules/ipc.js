@@ -52,6 +52,8 @@ function registerIpc(deps) {
     // v0.9.12（用户指令）：全局记忆（读写 ~/.dsh/AGENTS.md + 打开编辑窗口）
     globalMemory,
     openGlobalMemoryWindow,
+    // v1.2.1 T1：项目记忆（读写 <工作区>/AGENTS.md + 索引）
+    projectMemory,
     // v0.9.13：角色选择（新对话选角色 / 双击输入框重选）
     pickAndInjectRole,
   } = deps;
@@ -240,6 +242,52 @@ function registerIpc(deps) {
     } catch (err) {
       appendLog('error', `恢复全局记忆异常：${err.message}`);
       return { ok: false, message: err.message };
+    }
+  });
+  // v1.2.1 T1：项目记忆 —— 当前工作区 + 历史项目列表 + 该项目记忆
+  ipcMain.handle('project-memory:data', async () => {
+    try {
+      return await projectMemory.data();
+    } catch (err) {
+      appendLog('error', `读数项目记忆异常：${err.message}`);
+      return { workspace: null, exists: false, path: '', content: '', head: '', sections: [], projects: [], message: err.message };
+    }
+  });
+  // v1.2.1 T1：保存项目记忆（workspacePath + content）→ 原子写 <ws>/AGENTS.md + 更新索引
+  ipcMain.handle('project-memory:save', async (_e, workspacePath, content) => {
+    try {
+      return projectMemory.saveProjectMemory(workspacePath, content || '');
+    } catch (err) {
+      appendLog('error', `保存项目记忆异常：${err.message}`);
+      return { ok: false, message: err.message };
+    }
+  });
+  // v1.2.1 T1：删除项目记忆（删 <ws>/AGENTS.md + 移出索引）
+  ipcMain.handle('project-memory:delete', async (_e, workspacePath) => {
+    try {
+      return projectMemory.deleteProjectMemory(workspacePath);
+    } catch (err) {
+      appendLog('error', `删除项目记忆异常：${err.message}`);
+      return { ok: false, message: err.message };
+    }
+  });
+  // v1.2.1 T1：历史项目列表（索引）
+  ipcMain.handle('project-memory:list', () => {
+    try {
+      return projectMemory.listProjects();
+    } catch (err) {
+      appendLog('error', `列出项目记忆异常：${err.message}`);
+      return [];
+    }
+  });
+  // v1.2.1 T1：打开某个项目记忆文件所在目录（供项目列表「打开目录」）
+  ipcMain.handle('project-memory:open-folder', async (_e, workspacePath) => {
+    try {
+      const dir = projectMemory.validateWorkspace(workspacePath);
+      if (dir) shell.openPath(dir);
+      return true;
+    } catch (err) {
+      return false;
     }
   });
   // v0.9.13（用户反馈）：双击 DSH 输入框重选角色 —— 弹窗选角色并注入

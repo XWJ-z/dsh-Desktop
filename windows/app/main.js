@@ -56,6 +56,7 @@ const { createDragDrop } = require('./modules/drag-drop'); // v0.9（T3）：拖
 const { createDropFiles } = require('./modules/drop-files'); // v0.9（T4/T5）：拖文件处理
 const { createCustomPrompts } = require('./modules/custom-prompts'); // v0.9.5（T2）：自定义提示词
 const { createGlobalMemory } = require('./modules/global-memory'); // v0.9.12：全局记忆（宠物菜单）
+const { createProjectMemory } = require('./modules/project-memory'); // v1.2.1 T1：项目记忆（工作区级）
 const { createRoleSelector } = require('./modules/role-selector'); // v0.9.13：新对话选择角色
 const { createRolePicker } = require('./modules/role-picker'); // v1.0.3（用户反馈 3）：角色选择竖排窗口
 const { createNoticeModule } = require('./modules/notice'); // v0.9.5（T3）：公告条/公告源
@@ -462,6 +463,9 @@ const promptInject = createPromptInject({
 // 工作区定位（当前 DSH 工作区绝对路径；途径 A localStorage + 途径 B 存储兜底）
 const workspaceApi = createWorkspaceLocator({ fs, os, path, appendLog });
 const { getWorkspacePath } = workspaceApi;
+
+// v1.2.1 T1：项目记忆 —— 工作区级记忆 <工作区>/AGENTS.md（DSH 自动读取，壳体只做编辑界面）
+const projectMemoryApi = createProjectMemory({ fs, path, app, appendLog, getWorkspacePath });
 
 // 主窗口拖拽监听注入（防导航 + overlay + 同步取路径）
 const dragDropApi = createDragDrop({ appendLog });
@@ -1243,6 +1247,8 @@ if (!gotLock) {
       globalMemory: globalMemoryApi,
       openGlobalMemoryWindow,
       getGlobalMemoryWin: () => globalMemoryWin,
+      // v1.2.1 T1：项目记忆（读写 <工作区>/AGENTS.md + 索引）
+      projectMemory: projectMemoryApi,
       // v0.9.13：角色选择（新对话选角色 / 双击输入框重选）
       pickAndInjectRole: () => roleSelectorApi.pickAndInject(),
     });

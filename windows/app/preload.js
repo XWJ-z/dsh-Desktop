@@ -111,6 +111,17 @@ contextBridge.exposeInMainWorld('dshDesktop', {
   openGlobalMemoryRoles: () => ipcRenderer.invoke('memory:open-roles'),
   /** v1.0.5（用户反馈 4）：解析异常时从备份（AGENTS.md.bak）一键恢复全局记忆 */
   restoreGlobalMemoryBackup: () => ipcRenderer.invoke('memory:restore-backup'),
+  // ── v1.2.1 T1：项目记忆（工作区级 <工作区>/AGENTS.md，DSH 自动读取）──
+  /** 读取项目记忆数据（当前工作区 + 历史项目 + 该工作区记忆） */
+  getProjectMemory: () => ipcRenderer.invoke('project-memory:data'),
+  /** 保存项目记忆（workspacePath + content）→ 返回 { ok, file?, message? } */
+  saveProjectMemory: (workspacePath, content) => ipcRenderer.invoke('project-memory:save', workspacePath, content),
+  /** 删除项目记忆（删 <ws>/AGENTS.md + 移出索引） */
+  deleteProjectMemory: (workspacePath) => ipcRenderer.invoke('project-memory:delete', workspacePath),
+  /** 历史项目列表（索引） */
+  listProjectMemories: () => ipcRenderer.invoke('project-memory:list'),
+  /** 打开项目记忆所在目录 */
+  openProjectMemoryFolder: (workspacePath) => ipcRenderer.invoke('project-memory:open-folder', workspacePath),
   // ── v0.9.13：角色选择（新对话选角色 / 双击输入框重选）──
   /** 弹窗选择角色并注入提示（无角色配置时不弹） */
   chooseRole: () => ipcRenderer.invoke('role:choose'),
