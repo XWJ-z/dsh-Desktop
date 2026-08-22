@@ -31,6 +31,7 @@ function createServerLifecycle(deps) {
     getServerChild, setServerChild,
     getServerStopRequested, setServerStopRequested,
     getMainWindow, getWebUrl, getResolvedPort,
+    getServerHost, // v1.2.1 T7：局域网访问 —— 绑定 host（'0.0.0.0' 或默认 '127.0.0.1'）
   } = deps;
 
   /** 应用退出：统一清理所有派生子进程，宽限期后强制结束 */
@@ -86,11 +87,13 @@ function createServerLifecycle(deps) {
           // 内部模块 loader）；真实 Node（内置/系统）下经 node-addon-require-builtin
           // 原生插件获取，无需该参数。
           const runnerArgs = runner.env.ELECTRON_RUN_AS_NODE === '1' ? ['--expose-internals'] : [];
+          // v1.2.1 T7：局域网访问时绑定 0.0.0.0（否则回 127.0.0.1）
+          const host = (getServerHost && getServerHost()) || defaultHost;
           const args = [
             ...runnerArgs,
             dshBin,
             'web',
-            '--host', defaultHost,
+            '--host', host,
             '--port', String(port),
           ];
           const cfg = readShellConfig();

@@ -362,6 +362,41 @@ function createMiscWindowsModule(deps) {
     }
   }
 
+  // ── v1.2.1 T7：局域网扫码二维码窗口（极简，仿备份进度窗口外观）──
+  let lanQrWin = null;
+
+  /** 打开局域网扫码窗口（幂等：已存在则复用/聚焦） */
+  function openLanQrWindow() {
+    if (lanQrWin && !lanQrWin.isDestroyed()) {
+      lanQrWin.show();
+      lanQrWin.focus();
+      return;
+    }
+    lanQrWin = new BrowserWindow({
+      width: 360,
+      height: 400,
+      resizable: false,
+      minimizable: false,
+      maximizable: false,
+      parent: getMainWindow(),
+      modal: false,
+      title: '局域网访问',
+      autoHideMenuBar: true,
+      backgroundColor: nativeTheme.shouldUseDarkColors ? '#0f1115' : '#eef0f4',
+      webPreferences: secureWebPreferences(),
+    });
+    lanQrWin.loadFile(path.join(app.getAppPath(), 'renderer', 'lan-qr.html'));
+    lanQrWin.on('closed', () => {
+      lanQrWin = null;
+    });
+  }
+
+  /** 关闭局域网扫码窗口 */
+  function closeLanQrWindow() {
+    if (lanQrWin && !lanQrWin.isDestroyed()) lanQrWin.close();
+    lanQrWin = null;
+  }
+
   return {
     openChangelogWindow,
     openNoticeWindow,
@@ -375,6 +410,8 @@ function createMiscWindowsModule(deps) {
     openBackupProgress,
     updateBackupProgress,
     closeBackupProgress,
+    openLanQrWindow, // v1.2.1 T7：局域网扫码窗口
+    closeLanQrWindow,
   };
 }
 

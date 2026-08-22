@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' file: data:; style-src 'self' file: 'unsafe-inline'; script-src 'self' file:; img-src 'self' file: data:" />
+  <title>局域网访问</title>
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    body { padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+    h1 { font-size: 16px; font-weight: 600; margin-bottom: 0px; }
+    .subtitle { font-size: 11.5px; color: var(--text-quaternary); line-height: 1.7; }
+    .qr-box { display: flex; flex-direction: column; gap: 6px; }
+    .qrcode { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 0; }
+    .qrcode img { width: 200px; height: 200px; border-radius: 8px; background: #fff; padding: 6px; object-fit: contain; }
+    .qrcode .url { font-family: Consolas, "Courier New", "Microsoft YaHei", monospace; font-size: 12px; color: var(--text-primary); user-select: text; }
+    .warn { font-size: 11.5px; color: #e5484d; font-weight: 590; line-height: 1.7; background: rgba(229,72,77,.08); border: 1px solid rgba(229,72,77,.35); border-radius: var(--radius-btn); padding: 8px 10px; }
+    .firewall { font-size: 11.5px; color: var(--warn); line-height: 1.7; background: rgba(245,166,35,.08); border: 1px solid rgba(245,166,35,.3); border-radius: var(--radius-btn); padding: 8px 10px; }
+    .empty { font-size: 12px; color: var(--text-quaternary); text-align: center; padding: 12px 0; }
+  </style>
+</head>
+<body>
+  <h1>📱 手机访问</h1>
+  <div class="subtitle">手机连同一 WiFi，扫描二维码或用浏览器打开下方地址即可使用 DSH。</div>
+  <div class="qr-box" id="qr-box"></div>
+  <div class="firewall" id="firewall" hidden>
+    首次使用如无法访问：在 Windows 防火墙放行 DSH-Desktop（或允许 Node/Electron 访问专用网络），并确保手机与电脑在同一局域网。
+  </div>
+  <div class="warn">⚠️ 仅限信任 WiFi 使用 —— 局域网访问会让同一网络内的设备都能连到你的 DSH。</div>
+  <script src="lan-qr.js"></script>
+</body>
+</html>

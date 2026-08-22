@@ -36,6 +36,7 @@ function registerIpc(deps) {
     openPromptLibWindow,
     openPluginMarketWindow,
     openSkillLibraryWindow, // v1.2.1 T5：技能库窗口
+    openLanQrWindow, // v1.2.1 T7：局域网扫码窗口
     openUpdateWindow,
     getWebUrl,
     // v0.9：提示词注入公共链路 + 拖文件处理（drop:files）
@@ -57,6 +58,8 @@ function registerIpc(deps) {
     projectMemory,
     // v1.2.1 T4：技能库（扫描/读写/删除 + 市场）
     skillLibrary,
+    // v1.2.1 T7：局域网扫码访问
+    lanApi,
     // v0.9.13：角色选择（新对话选角色 / 双击输入框重选）
     pickAndInjectRole,
   } = deps;
@@ -375,6 +378,34 @@ function registerIpc(deps) {
       appendLog('error', `安装技能异常：${err.message}`);
       return { ok: false, message: err.message };
     }
+  });
+  // v1.2.1 T7：局域网扫码 —— 二维码窗口数据（每个 IP 生成 QR dataURL）/ 开关 / 打开窗口
+  ipcMain.handle('lan:qr-data', async () => {
+    try {
+      const data = lanApi.getQrData();
+      const ips = [];
+      for (const item of data.ips) {
+        const qr = await lanApi.qrFor(item.url);
+        ips.push({ ip: item.ip, url: item.url, qr });
+      }
+      return { enabled: data.enabled, port: data.port, ips };
+    } catch (err) {
+      appendLog('error', `局域网二维码数据异常：${err.message}`);
+      return { enabled: false, port: 0, ips: [] };
+    }
+  });
+  ipcMain.handle('lan:set', async (_e, enabled) => {
+    try {
+      return await lanApi.setLanMode(!!enabled);
+    } catch (err) {
+      appendLog('error', `切换局域网访问异常：${err.message}`);
+      return { ok: false, message: err.message };
+    }
+  });
+  ipcMain.handle('lan:enabled', () => lanApi.isEnabled());
+  ipcMain.handle('lan:open-window', () => {
+    openLanQrWindow();
+    return true;
   });
   // v0.9.13（用户反馈）：双击 DSH 输入框重选角色 —— 弹窗选角色并注入
   ipcMain.handle('role:choose', () => pickAndInjectRole());

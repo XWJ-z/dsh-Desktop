@@ -139,6 +139,15 @@ contextBridge.exposeInMainWorld('dshDesktop', {
   refreshSkillMarket: () => ipcRenderer.invoke('skill:market-refresh'),
   /** 从市场安装技能（{ name, repo, file }）→ { ok, path?, message? } */
   installSkill: (skill) => ipcRenderer.invoke('skill:install', skill),
+  // ── v1.2.1 T7：局域网扫码访问 ──
+  /** 打开局域网扫码窗口 */
+  openLanQr: () => ipcRenderer.invoke('lan:open-window'),
+  /** 局域网二维码数据（每个 IP 带 QR dataURL）→ { enabled, port, ips: [{ip,url,qr}] } */
+  getLanQrData: () => ipcRenderer.invoke('lan:qr-data'),
+  /** 开启/关闭局域网访问（重启服务 + 弹/关二维码窗口）→ { ok, message? } */
+  setLanAccess: (enabled) => ipcRenderer.invoke('lan:set', enabled),
+  /** 是否已开启局域网访问 */
+  getLanAccess: () => ipcRenderer.invoke('lan:enabled'),
   // ── v0.9.13：角色选择（新对话选角色 / 双击输入框重选）──
   /** 弹窗选择角色并注入提示（无角色配置时不弹） */
   chooseRole: () => ipcRenderer.invoke('role:choose'),

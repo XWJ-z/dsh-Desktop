@@ -58,6 +58,7 @@ const { createCustomPrompts } = require('./modules/custom-prompts'); // v0.9.5�
 const { createGlobalMemory } = require('./modules/global-memory'); // v0.9.12：全局记忆（宠物菜单）
 const { createProjectMemory } = require('./modules/project-memory'); // v1.2.1 T1：项目记忆（工作区级）
 const { createSkillLibrary } = require('./modules/skill-library'); // v1.2.1 T4：技能库（扫描/读写/市场）
+const { createLanAccess } = require('./modules/lan-access'); // v1.2.1 T7：局域网扫码访问
 const { createRoleSelector } = require('./modules/role-selector'); // v0.9.13：新对话选择角色
 const { createRolePicker } = require('./modules/role-picker'); // v1.0.3（用户反馈 3）：角色选择竖排窗口
 const { createNoticeModule } = require('./modules/notice'); // v0.9.5（T3）：公告条/公告源
@@ -245,6 +246,7 @@ const serverApi = createServerLifecycle({
   getMainWindow: () => mainWindow,
   getWebUrl: webUrl,
   getResolvedPort: () => resolvedPort,
+  getServerHost: () => (settings.lanAccess ? '0.0.0.0' : DEFAULT_HOST), // v1.2.1 T7：局域网访问绑定 host
 });
 const { stopServer, stopServerOnly, spawnServer } = serverApi;
 
@@ -654,12 +656,22 @@ const {
   openPluginMarketWindow, // v1.1.1：插件市场窗口
   openHelpDocWindow, // v1.1.1 二轮：帮助文档窗口
   openSkillLibraryWindow, // v1.2.1 T5：技能库窗口
+  openLanQrWindow, // v1.2.1 T7：局域网扫码窗口
+  closeLanQrWindow,
   openCloseChoiceWindow,
   openBackupProgress,
   updateBackupProgress,
   closeBackupProgress,
 } = miscWindowsModule;
 openHelpDocWindowRef = openHelpDocWindow; // 晚绑定（helpDocApi 组装于 misc-windows 之前）
+
+// v1.2.1 T7：局域网访问 —— 重启 DSH 服务（读取 settings.lanAccess 决定绑定 host）
+async function restartServerForLan() {
+  await stopServerOnly(); // 只停 DSH 服务（不退出应用），恢复数据前同机制
+  await spawnServer(resolvedPort);
+  await waitForServer(DEFAULT_HOST, resolvedPort, SERVER_READY_TIMEOUT_MS);
+  appendLog('info', `DSH 服务已重启（局域网访问${settings.lanAccess ? '开，绑定 0.0.0.0' : '关，绑定 127.0.0.1'}）：${webUrl()}`);
+}
 
 // v1.0.3（用户反馈 3）：角色选择竖排窗口 —— 依赖 secureWebPreferences（组装于其后）
 const rolePickerApi = createRolePicker({
@@ -779,6 +791,18 @@ const settingsApi = createSettings({
   refreshMenus: () => refreshMenusRef(), // v0.8.12：menuApi 晚绑定（避免循环依赖）
 });
 
+// v1.2.1 T7：局域网扫码访问 —— getLanIps / 开关切换（重启服务 + 弹二维码窗口）
+const lanApi = createLanAccess({
+  os,
+  appendLog,
+  getSettings: () => settings,
+  saveSettings: () => settingsApi.saveSettings(),
+  getResolvedPort: () => resolvedPort,
+  restartServer: () => restartServerForLan(),
+  openQrWindow: () => openLanQrWindow(),
+  closeQrWindow: () => closeLanQrWindow(),
+});
+
 // v0.8.1（T5）：托盘模块 —— tray / trayExitConfirmed 状态收敛到模块内部
 const trayApi = createTrayModule({
   app,
@@ -869,6 +893,8 @@ let settings = {
   petInjectCountDate: '', // v0.8.11（T4）：注入次数统计日期（localDate，跨天清零）
   appearance: 'system', // v0.8.18：外观 'system' | 'light' | 'dark'（nativeTheme.themeSource）
   guideShown: false, // v1.1.1（26 方案七 ②）：首次启动引导弹窗已展示（只弹一次）
+  lanAccess: false, // v1.2.1 T7：局域网访问（设置菜单开关；默认关）
+  taskNotify: true, // v1.2.1 T8：任务完成通知（设置菜单开关；默认开）
 };
 
 // v0.8.1（T5）：settingsFile/loadSettings/saveSettings/setAutostart/setMinimizeToTray/
@@ -889,6 +915,7 @@ const menuApi = createMenu({
   setMinimizeToTray: settingsApi.setMinimizeToTray,
   setCloseAsk: settingsApi.setCloseAsk, // v1.0.3：关闭时总是询问开关
   setCheckUpdateOnStart: settingsApi.setCheckUpdateOnStart,
+  setLanAccess: (enabled) => lanApi.setLanMode(enabled), // v1.2.1 T7：局域网访问开关
   clearCloseChoice: settingsApi.clearCloseChoice,
   saveSettings: settingsApi.saveSettings,
   setHotkey: hotkeyApi.setHotkey,
@@ -1266,6 +1293,8 @@ if (!gotLock) {
       projectMemory: projectMemoryApi,
       // v1.2.1 T4：技能库（扫描/读写/删除 + 市场）
       skillLibrary: skillLibraryApi,
+      // v1.2.1 T7：局域网扫码访问
+      lanApi,
       // v0.9.13：角色选择（新对话选角色 / 双击输入框重选）
       pickAndInjectRole: () => roleSelectorApi.pickAndInject(),
     });

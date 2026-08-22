@@ -36,6 +36,7 @@ function createMenu(deps) {
     setMinimizeToTray,
     setCloseAsk,
     setCheckUpdateOnStart,
+    setLanAccess, // v1.2.1 T7：局域网访问开关（重启服务 + 弹二维码）
     clearCloseChoice,
     saveSettings,
     setHotkey,
@@ -179,6 +180,13 @@ function createMenu(deps) {
             type: 'checkbox',
             checked: settings.checkUpdateOnStart,
             click: (item) => setCheckUpdateOnStart(item.checked),
+          },
+          {
+            // v1.2.1 T7：局域网扫码访问（默认关）—— 开启后服务绑定 0.0.0.0 + 弹二维码窗口
+            label: '局域网访问',
+            type: 'checkbox',
+            checked: !!settings.lanAccess,
+            click: (item) => setLanAccess(item.checked),
           },
           { type: 'separator' },
           // ── 外观 / 快捷键 ──
