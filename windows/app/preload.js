@@ -124,6 +124,21 @@ contextBridge.exposeInMainWorld('dshDesktop', {
   readProjectMemory: (workspacePath) => ipcRenderer.invoke('project-memory:read', workspacePath),
   /** 打开项目记忆所在目录 */
   openProjectMemoryFolder: (workspacePath) => ipcRenderer.invoke('project-memory:open-folder', workspacePath),
+  // ── v1.2.1 T4：技能库（扫描/读写/删除 + 市场）──
+  /** 列出已装技能（扫描 DSH 技能目录 + dedup）→ [{ name, desc, level, path }] */
+  listInstalledSkills: () => ipcRenderer.invoke('skill:list-installed'),
+  /** 读取单个技能正文（查看详情）→ { ok, name, content, path } */
+  readSkill: (name) => ipcRenderer.invoke('skill:read', name),
+  /** 保存技能（{ name, description, whenToUse, body }）→ { ok, path?, message? } */
+  saveSkill: (payload) => ipcRenderer.invoke('skill:save', payload),
+  /** 删除技能（kebab-case 名）→ { ok, message? } */
+  deleteSkill: (name) => ipcRenderer.invoke('skill:delete', name),
+  /** 技能市场列表（7 天缓存优先）→ [{ name, description, category, repo, file }] */
+  getSkillMarket: () => ipcRenderer.invoke('skill:market-list'),
+  /** 刷新技能市场（绕过缓存） */
+  refreshSkillMarket: () => ipcRenderer.invoke('skill:market-refresh'),
+  /** 从市场安装技能（{ name, repo, file }）→ { ok, path?, message? } */
+  installSkill: (skill) => ipcRenderer.invoke('skill:install', skill),
   // ── v0.9.13：角色选择（新对话选角色 / 双击输入框重选）──
   /** 弹窗选择角色并注入提示（无角色配置时不弹） */
   chooseRole: () => ipcRenderer.invoke('role:choose'),

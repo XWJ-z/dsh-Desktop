@@ -54,6 +54,8 @@ function registerIpc(deps) {
     openGlobalMemoryWindow,
     // v1.2.1 T1：项目记忆（读写 <工作区>/AGENTS.md + 索引）
     projectMemory,
+    // v1.2.1 T4：技能库（扫描/读写/删除 + 市场）
+    skillLibrary,
     // v0.9.13：角色选择（新对话选角色 / 双击输入框重选）
     pickAndInjectRole,
   } = deps;
@@ -309,6 +311,63 @@ function registerIpc(deps) {
       return true;
     } catch (err) {
       return false;
+    }
+  });
+  // v1.2.1 T4：技能库 —— 已装技能（扫描 DSH 技能目录 + dedup）；读/存/删；市场列表/安装
+  ipcMain.handle('skill:list-installed', async () => {
+    try {
+      return await skillLibrary.listInstalled();
+    } catch (err) {
+      appendLog('error', `列出已装技能异常：${err.message}`);
+      return [];
+    }
+  });
+  ipcMain.handle('skill:read', async (_e, name) => {
+    try {
+      return skillLibrary.readSkill(name);
+    } catch (err) {
+      appendLog('error', `读取技能异常：${err.message}`);
+      return { ok: false, message: err.message };
+    }
+  });
+  ipcMain.handle('skill:save', async (_e, payload) => {
+    try {
+      return skillLibrary.saveSkill(payload || {});
+    } catch (err) {
+      appendLog('error', `保存技能异常：${err.message}`);
+      return { ok: false, message: err.message };
+    }
+  });
+  ipcMain.handle('skill:delete', async (_e, name) => {
+    try {
+      return skillLibrary.deleteSkill(name);
+    } catch (err) {
+      appendLog('error', `删除技能异常：${err.message}`);
+      return { ok: false, message: err.message };
+    }
+  });
+  ipcMain.handle('skill:market-list', async () => {
+    try {
+      return await skillLibrary.getMarketList();
+    } catch (err) {
+      appendLog('error', `技能市场列表异常：${err.message}`);
+      return [];
+    }
+  });
+  ipcMain.handle('skill:market-refresh', async () => {
+    try {
+      return await skillLibrary.refreshMarketList();
+    } catch (err) {
+      appendLog('error', `刷新技能市场异常：${err.message}`);
+      return [];
+    }
+  });
+  ipcMain.handle('skill:install', async (_e, skill) => {
+    try {
+      return await skillLibrary.installFromMarket(skill || {});
+    } catch (err) {
+      appendLog('error', `安装技能异常：${err.message}`);
+      return { ok: false, message: err.message };
     }
   });
   // v0.9.13（用户反馈）：双击 DSH 输入框重选角色 —— 弹窗选角色并注入

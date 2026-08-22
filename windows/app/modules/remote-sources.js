@@ -49,4 +49,6 @@ module.exports = {
   HELP_DOC_URLS: buildSources('help.html'),
   /** 插件中文描述（内置随包 + 远程可更新，push 即生效） */
   PLUGIN_DESC_URLS: buildSources('plugin-desc-zh.json'),
+  /** 技能市场列表（v1.2.1 T4：我们仓库维护 skills-list.json，老大精选） */
+  SKILLS_LIST_URLS: buildSources('skills-list.json'),
 };
