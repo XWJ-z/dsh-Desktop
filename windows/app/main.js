@@ -1309,6 +1309,8 @@ if (!gotLock) {
       refreshMenus: () => refreshMenusRef(),
       openPromptLibWindow,
       openPluginMarketWindow, // v1.1.1：插件市场窗口（直接引用，供 IPC handler 调用）
+      openSkillLibraryWindow, // v1.2.1 T5：技能库窗口（供 IPC handler 调用）
+      openLanQrWindow, // v1.2.1 T7：局域网扫码窗口（供 IPC handler 调用）
       openUpdateWindow,
       getWebUrl: webUrl,
       getResolvedPort: () => resolvedPort,
