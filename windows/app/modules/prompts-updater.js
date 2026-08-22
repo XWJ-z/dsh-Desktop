@@ -15,28 +15,8 @@
  *  - fetchJson      updater 模块导出（8s 超时 + 5MB 上限）
  */
 
-const PROMPTS_VERSION_URLS = [
-  { name: 'jsDelivr', url: 'https://cdn.jsdelivr.net/gh/XWJ-z/dsh-Desktop@main/prompts.version.json' },
-  {
-    name: 'GitHub API',
-    url: 'https://api.github.com/repos/XWJ-z/dsh-Desktop/contents/prompts.version.json?ref=main',
-    headers: { 'User-Agent': 'DSH-Desktop', Accept: 'application/vnd.github.raw+json' },
-  },
-  {
-    name: 'raw.githubusercontent',
-    url: 'https://raw.githubusercontent.com/XWJ-z/dsh-Desktop/main/prompts.version.json',
-  },
-];
-
-const PROMPTS_DATA_URLS = [
-  { name: 'jsDelivr', url: 'https://cdn.jsdelivr.net/gh/XWJ-z/dsh-Desktop@main/prompts.json' },
-  {
-    name: 'GitHub API',
-    url: 'https://api.github.com/repos/XWJ-z/dsh-Desktop/contents/prompts.json?ref=main',
-    headers: { 'User-Agent': 'DSH-Desktop', Accept: 'application/vnd.github.raw+json' },
-  },
-  { name: 'raw.githubusercontent', url: 'https://raw.githubusercontent.com/XWJ-z/dsh-Desktop/main/prompts.json' },
-];
+// v1.1.3 重构：三源 URL 集中到 remote-sources.js
+const { PROMPTS_VERSION_URLS, PROMPTS_DATA_URLS } = require('./remote-sources');
 
 const MAX_PROMPTS_SIZE = 1024 * 1024; // 1MB 上限
 

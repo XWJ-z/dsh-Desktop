@@ -1,16 +1,18 @@
-# DSH-Desktop 统一编辑器行为（优化方案 2026-08-16 阶段六）
+# DSH-Desktop 统一编辑器行为
+# EditorConfig：让支持该规范的编辑器自动统一本项目代码风格（编码/换行/缩进），
+# 避免不同编辑器打开后各行其是；VS Code 需安装 EditorConfig 扩展才生效
 root = true
 
 [*]
-charset = utf-8
-end_of_line = lf
-indent_style = space
-indent_size = 2
-trim_trailing_whitespace = true
-insert_final_newline = true
+charset = utf-8                 # 文件编码统一 UTF-8（含中文注释/文案）
+end_of_line = lf                # 换行统一 LF（而非 Windows CRLF）
+indent_style = space            # 空格缩进（不用 Tab）
+indent_size = 2                 # 缩进宽度 2 空格（与项目 JS 代码一致）
+trim_trailing_whitespace = true # 保存时自动去除行尾空白
+insert_final_newline = true     # 保存时文件末尾自动补一个换行（POSIX 惯例，diff 更干净）
 
 [*.md]
-trim_trailing_whitespace = false
+trim_trailing_whitespace = false # Markdown 例外：行尾 2 空格 = 手动换行符，不能删
 
 [*.{yml,yaml}]
-indent_size = 2
+indent_size = 2                  # YAML 缩进明确 2 空格（yaml 语法对缩进敏感）

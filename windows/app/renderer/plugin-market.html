@@ -5,70 +5,77 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' file: data:; style-src 'self' file: 'unsafe-inline'; script-src 'self' file:; img-src 'self' file: data:" />
     <title>插件市场</title>
-    <!-- v1.1.1（老大反馈：插件市场没适配深色模式）：接入 shared.css ——
-         主题 token（深色默认 + prefers-color-scheme: light 浅色），
-         与提示词库/公告等弹窗一致跟随外观设置（nativeTheme → media query） -->
+    <!-- v1.1.5（UI 协调）：统一接入 shared.css —— 去掉渐变/硬编码蓝，
+         全站锁定靛紫品牌 token，与其他弹窗（提示词库/公告/更新）同一设计语言 -->
     <link rel="stylesheet" href="shared.css" />
     <style>
-      /* shared.css 已提供 body 基础（flex 列 + 主题背景）；此处覆盖为全屏布局 */
+      /* shared.css 提供主题 token + body 基础；此处覆盖为全屏布局 */
       body {
         align-items: stretch;
         padding: 0;
         height: 100vh;
         overflow: hidden;
       }
+      /* 头部：干净 surface + hairline 底边，取代旧渐变头 */
       .header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 20px;
+        background: var(--bg-surface);
+        border-bottom: 1px solid var(--border-standard);
+        padding: 18px 22px 16px;
         text-align: center;
         flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
       }
       .header h1 {
-        font-size: 24px;
-        margin-bottom: 10px;
+        font-size: 18px;
+        font-weight: 640;
+        letter-spacing: -0.3px;
+        color: var(--text-primary);
+        margin: 0;
       }
       .search-box {
         display: flex;
-        max-width: 500px;
+        max-width: 520px;
         margin: 0 auto;
+        width: 100%;
       }
       .search-box input {
         flex: 1;
-        padding: 10px 15px;
-        border: none;
-        border-radius: 5px 0 0 5px;
-        font-size: 14px;
-        background: var(--bg-input, #fff);
+        padding: 9px 14px;
+        border: 1px solid var(--border-standard);
+        border-radius: var(--radius-btn) 0 0 var(--radius-btn);
+        font-size: 13px;
+        background: var(--bg-input);
         color: var(--text-primary);
+        outline: none;
       }
-      .search-box input::placeholder {
-        color: var(--text-quaternary);
-      }
+      .search-box input:focus { border-color: var(--ring-focus); }
+      .search-box input::placeholder { color: var(--text-quaternary); }
       .search-box button {
-        padding: 10px 20px;
-        background: var(--success);
-        color: white;
+        padding: 9px 20px;
+        background: var(--brand);
+        color: #fff;
         border: none;
-        border-radius: 0 5px 5px 0;
+        border-radius: 0 var(--radius-btn) var(--radius-btn) 0;
         cursor: pointer;
+        font-size: 13px;
+        font-weight: 590;
+        transition: background .12s ease;
+        flex-shrink: 0;
       }
-      .search-box button:hover {
-        filter: brightness(1.08);
-      }
-      /* v1.1.1 二轮（老大确认）：手动刷新按钮 —— 半透明白，与绿色搜索区分 */
+      .search-box button:hover { background: var(--accent-hover); }
+      /* v1.1.1 二轮：手动刷新按钮 —— ghost 风格，与品牌搜索区分 */
       .search-box button#refreshBtn {
-        background: rgba(255, 255, 255, 0.22);
-        margin-left: 6px;
-        border-radius: 5px;
+        background: var(--bg-hover);
+        color: var(--text-secondary);
+        border: 1px solid var(--border-standard);
+        border-radius: var(--radius-btn);
+        margin-left: 8px;
+        padding: 9px 14px;
       }
-      .search-box button#refreshBtn:hover {
-        background: rgba(255, 255, 255, 0.34);
-      }
-      .search-box button#refreshBtn:disabled {
-        opacity: 0.55;
-        cursor: not-allowed;
-      }
+      .search-box button#refreshBtn:hover { color: var(--text-primary); border-color: var(--border-strong); }
+      .search-box button#refreshBtn:disabled { opacity: 0.55; cursor: not-allowed; }
       .main-container {
         display: flex;
         flex: 1;
@@ -76,40 +83,41 @@
         overflow: hidden;
       }
       .sidebar {
-        width: 200px;
-        background: var(--bg-surface);
+        width: 204px;
+        background: var(--bg-panel);
         border-right: 1px solid var(--border-standard);
         overflow-y: auto;
         flex-shrink: 0;
       }
       .sidebar h3 {
-        padding: 15px;
-        background: var(--bg-hover);
+        padding: 14px 16px;
+        background: transparent;
         border-bottom: 1px solid var(--border-standard);
-        color: var(--text-primary);
-        font-size: 14px;
+        color: var(--text-secondary);
+        font-size: 12px;
+        font-weight: 620;
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
       }
-      .category-list {
-        list-style: none;
-      }
+      .category-list { list-style: none; }
       .category-item {
-        padding: 12px 15px;
+        padding: 11px 16px;
         cursor: pointer;
-        border-bottom: 1px solid var(--border-subtle);
+        border: none;
+        border-left: 3px solid transparent;
+        background: transparent;
         display: flex;
         align-items: center;
         color: var(--text-secondary);
         font-size: 13px;
+        transition: background .12s ease, color .12s ease, border-color .12s ease;
       }
-      .category-item:hover {
-        background: var(--bg-hover);
-        color: var(--text-primary);
-      }
+      .category-item:hover { background: var(--bg-hover); color: var(--text-primary); }
       .category-item.active {
-        background: rgba(33, 150, 243, 0.15);
-        border-left: 3px solid #2196f3;
+        background: rgba(94,106,210,0.10);
+        border-left-color: var(--brand);
         color: var(--text-primary);
-        font-weight: 600;
+        font-weight: 620;
       }
       .content {
         flex: 1;
@@ -120,203 +128,170 @@
       .plugin-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-        gap: 20px;
+        gap: 16px;
       }
       .plugin-card {
         background: var(--bg-surface);
         border: 1px solid var(--border-subtle);
         border-radius: var(--radius-card);
-        padding: 20px;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
-        transition: transform 0.2s;
+        padding: 18px;
+        box-shadow: var(--shadow-card);
+        transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease;
+        display: flex; flex-direction: column; gap: 10px;
       }
       .plugin-card:hover {
         transform: translateY(-2px);
-        border-color: rgba(94, 106, 210, 0.45);
+        border-color: rgba(94,106,210,0.45);
+        box-shadow: var(--shadow-pop);
       }
       .plugin-name {
-        font-size: 18px;
-        font-weight: bold;
-        margin-bottom: 10px;
+        font-size: 15px;
+        font-weight: 640;
+        letter-spacing: -0.2px;
         color: var(--text-primary);
       }
       .plugin-description {
         color: var(--text-tertiary);
-        margin-bottom: 15px;
-        line-height: 1.5;
+        line-height: 1.55;
+        font-size: 13px;
+        flex: 1;
       }
       .plugin-category {
-        display: inline-block;
-        background: rgba(33, 150, 243, 0.12);
-        color: var(--accent);
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-size: 12px;
-        margin-bottom: 10px;
+        display: inline-flex;
+        align-items: center;
+        align-self: flex-start;
+        background: rgba(94,106,210,0.12);
+        color: var(--brand);
+        padding: 3px 9px;
+        border-radius: 999px;
+        font-size: 11.5px;
+        font-weight: 590;
       }
-      .plugin-actions {
-        display: flex;
-        gap: 10px;
-      }
+      .plugin-actions { display: flex; gap: 8px; }
       .btn {
-        padding: 8px 15px;
+        padding: 8px 14px;
         border: none;
-        border-radius: 5px;
+        border-radius: var(--radius-btn);
         cursor: pointer;
         font-size: 13px;
-        transition: background 0.2s;
+        font-weight: 590;
+        flex: 1;
+        transition: background .12s ease, border-color .12s ease, color .12s ease;
       }
-      .btn-primary {
-        background: #2196f3;
-        color: white;
-      }
-      .btn-primary:hover {
-        background: #1976d2;
-      }
+      .btn-primary { background: var(--brand); color: #fff; }
+      .btn-primary:hover { background: var(--accent-hover); }
       .btn-secondary {
         background: var(--bg-hover);
         color: var(--text-secondary);
         border: 1px solid var(--border-standard);
       }
-      .btn-secondary:hover {
-        color: var(--text-primary);
-        border-color: rgba(94, 106, 210, 0.45);
-      }
+      .btn-secondary:hover { color: var(--text-primary); border-color: var(--border-strong); }
+      /* v1.1.1：红色醒目 + 置顶 + 单行（老大指令，⚠️ 保留）—— theme-aware token 化 */
       .security-warning {
-        /* v1.1.1：红色醒目 + 置顶 + 单行（老大指令，⚠️ 保留） */
-        background: #fdecea;
-        border: 2px solid #e53935;
-        border-radius: 8px;
+        background: rgba(242,85,90,0.10);
+        border: 1px solid rgba(242,85,90,0.42);
+        border-radius: var(--radius-card);
         padding: 10px 16px;
-        margin: 10px 20px 0;
+        margin: 12px 20px 0;
         text-align: center;
-        color: #d32f2f;
-        font-size: 13.5px;
-        font-weight: 600;
+        color: var(--danger);
+        font-size: 13px;
+        font-weight: 640;
         flex-shrink: 0;
       }
       @media (prefers-color-scheme: dark) {
-        /* v1.1.1：深色模式下红色警示改为暗红底 + 亮红字（保持醒目不刺眼） */
         .security-warning {
-          background: rgba(229, 57, 53, 0.16);
-          border-color: #e53935;
-          color: #ff8a80;
+          background: rgba(242,85,90,0.14);
+          border-color: rgba(242,85,90,0.5);
+          color: #ff9aa0;
         }
       }
-      .empty-state {
-        text-align: center;
-        padding: 50px;
-        color: var(--text-quaternary);
-      }
-      .loading {
-        text-align: center;
-        padding: 50px;
-        color: var(--text-tertiary);
-      }
+      .empty-state { text-align: center; padding: 50px; color: var(--text-quaternary); font-size: 13.5px; }
+      .loading { text-align: center; padding: 50px; color: var(--text-tertiary); font-size: 13.5px; }
       .banner {
         display: none;
         padding: 8px 16px;
-        background: var(--success);
-        color: white;
+        background: var(--bg-surface);
+        border: 1px solid var(--border-standard);
+        color: var(--text-secondary);
         text-align: center;
         font-size: 13px;
         flex-shrink: 0;
+        border-bottom: 1px solid var(--border-standard);
       }
       /* v1.1.1：免责声明确认模态框（复制安装命令前必须确认） */
       .modal-overlay {
         display: none;
         position: fixed;
         inset: 0;
-        background: rgba(0, 0, 0, 0.45);
+        background: rgba(0, 0, 0, 0.5);
         z-index: 9999;
         align-items: center;
         justify-content: center;
+        padding: 16px;
       }
       .modal-box {
         background: var(--bg-surface);
         border: 1px solid var(--border-standard);
-        border-radius: 10px;
+        border-radius: var(--radius-panel);
         padding: 24px 28px;
         max-width: 440px;
-        width: 90%;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+        width: 100%;
+        box-shadow: var(--shadow-pop);
         text-align: center;
         max-height: 88vh;
         overflow-y: auto;
       }
       .modal-box h3 {
-        color: #c62828;
+        color: var(--danger);
         font-size: 17px;
+        font-weight: 640;
         margin-bottom: 12px;
       }
-      @media (prefers-color-scheme: dark) {
-        .modal-box h3 {
-          color: #ff8a80;
-        }
-      }
+      @media (prefers-color-scheme: dark) { .modal-box h3 { color: #ff9aa0; } }
       /* v1.1.1（26 方案八）：安装须知（人话版）+ 群号兜底 */
       .modal-notices {
         text-align: left;
-        background: var(--bg-input, #f5f5f5);
+        background: var(--bg-input);
         border: 1px solid var(--border-subtle);
-        border-radius: 8px;
+        border-radius: var(--radius-card);
         padding: 12px 14px;
         margin-bottom: 12px;
       }
       .modal-notices p {
         color: var(--text-secondary);
         font-size: 13px;
-        font-weight: 600;
+        font-weight: 590;
         margin-bottom: 8px;
       }
-      .modal-notices ul {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-      }
+      .modal-notices ul { list-style: none; padding: 0; margin: 0; }
       .modal-notices li {
-        color: var(--text-secondary);
+        color: var(--text-tertiary);
         font-size: 13px;
         line-height: 1.8;
       }
-      .modal-notices li::before {
-        content: '▸ ';
-        color: var(--accent);
-      }
+      .modal-notices li::before { content: '▸ '; color: var(--brand); }
       /* v1.1.1 二轮（老大反馈）：免责声明红色加粗 */
       .modal-box .modal-disclaimer {
-        color: #c62828;
+        color: var(--danger);
         font-size: 13.5px;
         font-weight: 700;
         line-height: 1.7;
         margin-bottom: 12px;
       }
-      @media (prefers-color-scheme: dark) {
-        .modal-box .modal-disclaimer {
-          color: #ff8a80;
-        }
-      }
+      @media (prefers-color-scheme: dark) { .modal-box .modal-disclaimer { color: #ff9aa0; } }
       .modal-box .modal-cmd {
-        background: var(--bg-input, #f5f5f5);
-        border-radius: 6px;
+        background: var(--bg-input);
+        border-radius: var(--radius-btn);
         padding: 8px 10px;
         font-size: 12.5px;
         word-break: break-all;
         color: var(--text-secondary);
+        font-family: var(--font-mono);
       }
-      .modal-box .modal-cmd code {
-        color: var(--accent);
-        font-weight: 600;
-      }
-      .modal-btns {
-        display: flex;
-        gap: 10px;
-        justify-content: center;
-        margin-top: 16px;
-      }
-      .modal-btns .btn {
-        min-width: 110px;
-      }
+      .modal-box .modal-cmd code { color: var(--accent); font-weight: 600; }
+      .modal-btns { display: flex; gap: 10px; justify-content: center; margin-top: 16px; }
+      .modal-btns .btn { min-width: 110px; }
     </style>
   </head>
   <body>

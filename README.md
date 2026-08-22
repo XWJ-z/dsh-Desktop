@@ -1,3 +1,13 @@
+<!--  
+- 快捷键：`Ctrl+Shift+V`（当前文件）或 `Ctrl+K V`（分屏侧边预览）
+- 右上角双页图标（预览按钮），或在命令面板 `Ctrl+Shift+P` 输入 `Markdown: Open Preview` / `Markdown Preview Enhanced: Open Preview`
+
+两个扩展的预览区别__：
+- `Ctrl+Shift+V` 打开的是 VS Code 内置预览 + 两个扩展的增强（Markdown All in One 提供同步滚动、目录跳转等）
+- Markdown Preview Enhanced 有自己独立的预览窗口（更强，支持公式/图表/导出），用命令面板里搜 `Markdown Preview Enhanced` 相关命令打开
+
+-->
+
 <div align="center">
 
 <img src="windows/app/assets/icon.png" width="120" alt="DSH-Desktop 图标"/>
@@ -33,8 +43,8 @@
 > 💡 **普通用户请直接下载安装包**（下方按钮），无需安装 Node.js。
 > 源码仅供开发者研究/二开使用。
 
-<a href="https://github.com/XWJ-z/dsh-Desktop/releases/download/v1.1.3/DSH-Desktop-Setup-1.1.3.exe">
-<img src="https://img.shields.io/badge/下载安装包-DSH--Desktop--Setup--1.1.3.exe%20%E7%BA%A6114MB-2ea44f?style=for-the-badge&logo=windows&logoColor=white" alt="下载 DSH-Desktop 安装包"/>
+<a href="https://github.com/XWJ-z/dsh-Desktop/releases/download/v1.1.5/DSH-Desktop-Setup-1.1.5.exe">
+<img src="https://img.shields.io/badge/下载安装包-DSH--Desktop--Setup--1.1.5.exe%20%E7%BA%A6114MB-2ea44f?style=for-the-badge&logo=windows&logoColor=white" alt="下载 DSH-Desktop 安装包"/>
 </a>
 
 📖 详细说明（特性 / 打包 / 安装 / 升级 / 目录结构 / 运行原理）→ **[windows/README.md](windows/README.md)**
@@ -72,6 +82,7 @@
 | v1.0.3 | 修复与优化：托盘/关闭询问联动 / 角色竖排选择 / 点击角色编辑（名称≤30字）/ 提示词二级子分类 / 更新回退修复 |
 | v1.0.5 | 提示词库扩充至 201 条 / 全局记忆：区块删除生效 + 角色记忆说明 + 自动备份一键恢复 |
 | v1.1.3 | 帮助文档远程下发（push 即更新）/ 提示词库独立升级 / 插件市场（官方社区 18 分类）/ 启动行为修正（不再自动弹系统浏览器、公告条回归公告窗口、启动界面帮助文档按钮）/ 自动更新修复（三源改用 Electron net） |
+| v1.1.5 | 启动检查更新同时检查 DSH 并弹窗提示 / 首次安装直接装最新版 DSH（dshVersion=latest）/ 全窗口 UI 协调优化（共享设计 token 升级、插件市场去除渐变与硬编码色、帮助文档现代化、角色选择修复浅色模式） |
 
 > 本项目（Windows 版 & 飞牛版）版本号统一遵循 `vX.Y.Z` 三段式规则（Z 从 1 开始，无 0）：
 

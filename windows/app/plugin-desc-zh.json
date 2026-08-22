@@ -1,4 +1,5 @@
 {
+  "_comment": "插件市场中文描述映射表（v1.1.1）：键为插件 GitHub 仓库名，值为其中文一句话简介。消费方 windows/app/modules/plugin-market.js：远程三源（jsDelivr / GitHub API / raw.githubusercontent）并发取最快成功，7 天缓存，全部失败回退包内置副本（windows/app/plugin-desc-zh.json）；push 到 main 即热更新、无需发版。渲染端中文优先，无匹配回退 README 英文。注意：本文件为纯 JSON，不允许 // 或 /* */ 注释，用途说明统一用 _comment 键。",
   "dsh-spotlight": "键盘优先的命令面板，快速执行 DSH Web UI 操作。",
   "dsh-web-restart": "侧边栏底部重启按钮，一键重启 dsh web 进程（重启后状态保持）。",
   "dsh-composer-expand": "输入框展开/收起切换，长文写作时扩到 70vh 高。",

@@ -1,5 +1,5 @@
 ; ─────────────────────────────────────────────────────────────────────────
-; DSH-Desktop 安装器自定义脚本（v0.9.6，老大指令：安装时显示"正在干啥"）
+; DSH-Desktop 安装器自定义脚本（安装时显示"正在干啥"）
 ;
 ; ⚠ electron-builder 模板坑（源码 + mini 安装器 UIA 实验实锤）：
 ;   1. common.nsh 有 `ShowInstDetails nevershow`（只有进度条）→ customHeader

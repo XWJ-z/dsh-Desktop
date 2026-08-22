@@ -25,15 +25,8 @@
  *  - fetchJson      updater 模块导出（8s 超时 + 5MB 上限）
  */
 
-const NOTICE_URLS = [
-  { name: 'jsDelivr', url: 'https://cdn.jsdelivr.net/gh/XWJ-z/dsh-Desktop@main/notice.json' },
-  {
-    name: 'GitHub API',
-    url: 'https://api.github.com/repos/XWJ-z/dsh-Desktop/contents/notice.json?ref=main',
-    headers: { 'User-Agent': 'DSH-Desktop', Accept: 'application/vnd.github.raw+json' },
-  },
-  { name: 'raw.githubusercontent', url: 'https://raw.githubusercontent.com/XWJ-z/dsh-Desktop/main/notice.json' },
-];
+// v1.1.3 重构：三源 URL 集中到 remote-sources.js
+const { NOTICE_URLS } = require('./remote-sources');
 
 const DEFAULT_MARQUEE = '欢迎加入 QQ 群 916607090';
 

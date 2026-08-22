@@ -511,22 +511,8 @@ const roleSelectorApi = createRoleSelector({
 // v0.5.9：三源并发（jsDelivr @main 快但会卡缓存 / api.github.com 国内最稳、
 // 永远最新 / raw.githubusercontent 兜底），取可达源中版本号最高者，
 // 规避 jsDelivr @main 解析缓存卡死导致漏报更新。
-const SHELL_UPDATE_URLS = [
-  {
-    name: 'jsDelivr',
-    url: 'https://cdn.jsdelivr.net/gh/XWJ-z/dsh-Desktop@main/version.json',
-  },
-  {
-    // api.github.com：Accept raw+json 直接返回文件原文，无 CDN 缓存，永远最新
-    name: 'GitHub API',
-    url: 'https://api.github.com/repos/XWJ-z/dsh-Desktop/contents/version.json?ref=main',
-    headers: { 'User-Agent': 'DSH-Desktop', Accept: 'application/vnd.github.raw+json' },
-  },
-  {
-    name: 'raw.githubusercontent',
-    url: 'https://raw.githubusercontent.com/XWJ-z/dsh-Desktop/main/version.json',
-  },
-];
+// v1.1.3 重构：三源 URL 集中到 modules/remote-sources.js（见下方 require 区）
+const { VERSION_JSON_URLS } = require('./modules/remote-sources');
 
 // v0.8.11（T0.6）：远程公告 —— v0.9.5（T3）起公告唯一源 = notice.json，
 // 独立公告模块（三源并发 + 本地缓存），不再依赖 version.json notices。
@@ -544,7 +530,7 @@ const updaterApi = createUpdater({
   installedDshVersion,
   updateDshVersion,
   getMainWindow: () => mainWindow,
-  shellUpdateUrls: SHELL_UPDATE_URLS,
+  shellUpdateUrls: VERSION_JSON_URLS,
 });
 const {
   fetchLatestDshVersion,
@@ -984,12 +970,15 @@ async function checkUpdatesOnStart() {
     });
   const [dshLatest, shellInfo] = await Promise.all([fetchLatestDshVersion(), fetchLatestShellVersion()]);
 
-  // DSH 侧：保持静默提示（升级入口在更新窗口，一键升级改 config 重启）
+  // DSH 侧：v1.1.5（老大指令）—— 启动检查到 DSH 新版同样弹窗提示（对齐壳更新体验）。
+  // 升级入口保留在更新窗口（一键升级改 config 重启）；「立即升级」走同一链路。
   if (dshLatest) {
     const dshCurrent = installedDshVersion() ?? cfg.dshVersion;
     if (compareSemver(dshCurrent, dshLatest) < 0) {
       dshHasUpdate = true;
       appendLog('info', `DSH 有新版本：${dshCurrent} → ${dshLatest}（更新窗口可一键升级）`);
+      // 受「启动时检查更新」开关控制，与壳更新一致；升级后 relaunch 重启安装
+      if (settings.checkUpdateOnStart) promptDshUpdate(dshLatest);
     }
   }
 
@@ -1095,6 +1084,65 @@ function promptShellUpdate(info) {
             });
         }
       });
+    })
+    .catch(() => {
+      /* ignore */
+    });
+}
+
+/**
+ * v1.1.5（老大指令）：启动检查到 DSH 新版 → 弹窗询问（对齐壳更新体验）。
+ * 「立即升级」走 upgradeDshVersion（改写 config.json + userData 记录 → relaunch，
+ * 重启后 ensureDshRuntime 按目标版本安装）。当前版本优先取实际安装版本，
+ * 未安装时取配置版本兜底。
+ */
+function promptDshUpdate(latestVersion) {
+  const owner = mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined;
+  const current = installedDshVersion() ?? readShellConfig().dshVersion;
+  dialog
+    .showMessageBox(owner, {
+      type: 'info',
+      title: APP_NAME,
+      message: `发现 DSH 新版本 v${latestVersion}（当前 v${current}）`,
+      detail: '是否立即升级？升级将改写配置并自动重启，重启完成后自动安装新版本。',
+      buttons: ['立即升级', '稍后'],
+      defaultId: 0,
+      cancelId: 1,
+      noLink: true,
+    })
+    .then(({ response }) => {
+      if (response !== 0) return;
+      appendLog('info', '用户确认升级 DSH，改写配置并重启…');
+      upgradeDshVersion()
+        .then((r) => {
+          if (r && !r.ok) {
+            appendLog('error', `DSH 升级失败：${r.reason}`);
+            const detailText =
+              r.reason === 'write-failed'
+                ? `改写 config.json 失败（${r.configPath || ''}）。请以管理员身份运行，或到「检查更新」窗口手动升级。`
+                : '当前已是最新版本或查询失败，请稍后重试。';
+            dialog
+              .showMessageBox(mainWindow, {
+                type: 'error',
+                title: APP_NAME,
+                message: 'DSH 升级失败',
+                detail: detailText,
+                buttons: ['打开更新窗口', '关闭'],
+                defaultId: 0,
+                cancelId: 1,
+                noLink: true,
+              })
+              .then(({ response: resp }) => {
+                if (resp === 0) openUpdateWindow();
+              })
+              .catch(() => {
+                /* ignore */
+              });
+          }
+        })
+        .catch(() => {
+          appendLog('error', 'DSH 升级调用异常');
+        });
     })
     .catch(() => {
       /* ignore */

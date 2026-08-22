@@ -1,6 +1,20 @@
 {
   "versions": [
     {
+      "version": "1.1.5",
+      "date": "2026-08-22",
+      "notes": [
+        "🎉 v1.1.5 —— 启动更新检查 DSH 弹窗提示 + 首次安装直达最新 DSH + 全窗口 UI 协调优化",
+        "新增（启动更新检查）：启动时检查更新同时检查 DSH 运行时新版 —— 与壳更新一致弹窗询问「立即升级 / 稍后」，点「立即升级」改写配置并重启自动安装新版本（受「启动时检查更新」开关控制）",
+        "优化（首次安装）：默认 DSH 版本改为 latest —— 首次安装自动解析 npm registry 最新版并固定安装（当前 0.1.1-rc.2），不再安装旧版 0.1.0；老用户选择过的版本不受影响（userData 记录优先生效）",
+        "优化（UI 协调）：共享样式 shared.css 设计 token 升级 —— 补齐带色偏阴影 / focus 态 / danger / border-strong / bg-app 等，所有弹窗统一单一靛紫品牌色、hairline 边框、明确交互动效",
+        "优化（插件市场）：去除渐变头部与硬编码蓝（#2196f3）/红，全面接入共享 token —— 头部改干净 surface、搜索与按钮品牌色、分类选中与插件分类徽章、免责确认模态框全部主题化；卡片加悬浮动效",
+        "优化（帮助文档）：现代化协调设计 —— 靛紫主题、卡片化 section、品牌色下载按钮、琥珀色提示条；修正内置副本百度网盘提取码（dsh2024 → 8yh8，与链接一致）",
+        "修复（角色选择）：浅色模式下背景回退硬编码深色 —— 新增 --bg-app 主题 token 别名，角色窗口跟随外观设置"
+      ],
+      "released": false
+    },
+    {
       "version": "1.1.3",
       "date": "2026-08-20",
       "notes": [
@@ -20,7 +34,7 @@
         "修复（自动更新）：真机 Node https 访问 api.github.com / raw.githubusercontent TLS 证书验证失败（unable to verify the first certificate）→ 三源只剩 jsDelivr 可达 → 防投毒机制拒绝自动下载（sourcesAgree=false）。版本检查改用 Electron net（Chromium 网络栈 + 系统 CA，与帮助文档/插件市场同款修复），三源全通后自动更新恢复",
         "❤️ 喜欢 DSH-Desktop？加入 QQ 群 916607090——你的反馈决定下一个功能！"
       ],
-      "released": false
+      "released": true
     },
     {
       "version": "1.0.5",

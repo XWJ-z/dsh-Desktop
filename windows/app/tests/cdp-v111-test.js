@@ -150,12 +150,12 @@ async function main() {
   fs.mkdirSync(path.join(userData, 'dshenv'), { recursive: true });
   fs.mkdirSync(path.join(dshHome, 'storages'), { recursive: true });
   fs.mkdirSync(workspace, { recursive: true });
-  // dshenv 源：优先 dsh-sim8（记忆文件指定），其次 v097/v095 仿真，最后标准 Temp
+  // dshenv 源：优先 dsh-sim8（记忆文件指定），其次 v097/v095 仿真，最后项目内 temp/.sim-promo（2026-08-20 起临时目录统一归集到根 temp/）
   const dshenvCandidates = [
     path.join(WIN_TEMP, 'dsh-sim8', 'dshenv'),
     path.join(WIN_TEMP, 'dsh-sim-v097', 'userdata', 'dshenv'),
     path.join(WIN_TEMP, 'dsh-sim-v095', 'userdata', 'dshenv'),
-    path.join(APP_ROOT, '..', '..', '.sim-promo', 'userdata', 'dshenv'),
+    path.join(APP_ROOT, '..', '..', 'temp', '.sim-promo', 'userdata', 'dshenv'),
   ];
   let dshenvSrc = null;
   for (const c of dshenvCandidates) {

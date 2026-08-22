@@ -1,0 +1,46 @@
+# DSH-Desktop git 属性配置（2026-08-20 补充，与 .editorconfig 配套）
+# 作用：统一 git 的换行处理 —— 仓库内统一 LF，检出时按平台自动转换，
+#       防止 Windows 下 CRLF 混入提交造成 diff 噪音 / 文件整体变红
+# 配套：.editorconfig 管编辑器行为（排版），.gitattributes 管 git 行为（换行/二进制），两者互补
+
+# 1. 基础：文本文件自动检测（含编码识别，无扩展名文件也适用）
+* text=auto
+
+# 2. 明确声明文本类型（提交入库强制 LF；检出时 git 按 core.autocrlf 决定是否转 CRLF）
+*.js           text eol=lf
+*.mjs          text eol=lf
+*.cjs          text eol=lf
+*.ts           text eol=lf
+*.json         text eol=lf
+*.md           text eol=lf
+*.html         text eol=lf
+*.css          text eol=lf
+*.svg          text eol=lf
+*.yml          text eol=lf
+*.yaml         text eol=lf
+*.txt          text eol=lf
+# NSIS 安装脚本
+*.nsh          text eol=lf
+*.ini          text eol=lf
+*.cfg          text eol=lf
+*.conf         text eol=lf
+*.editorconfig text eol=lf
+.gitignore     text eol=lf
+.gitattributes text eol=lf
+
+# 3. 二进制文件（绝不转换换行；git 按二进制比较，diff 不逐行）
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.webp binary
+*.bmp  binary
+*.ico  binary
+*.exe  binary
+*.dll  binary
+*.mp4  binary
+*.zip  binary
+*.7z   binary
+*.docx binary
+# fnOS 打包产物
+*.fpk  binary

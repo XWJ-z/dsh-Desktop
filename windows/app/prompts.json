@@ -1,4 +1,5 @@
 {
+  "_comment": "内置提示词库远程更新源（v1.1.1 起独立升级）：prompts-updater.js 先三源拉 prompts.version.json，版本号大于缓存才拉本文件，用户打开提示词库自动更新，无需发版；断网用缓存，无缓存回退包内置",
   "version": "2026-08-19",
   "description": "DSH-Desktop 内置提示词库（v1.1.1：6 分类下细分二级子分类，共 201 条；我的提示词不受影响；版本按日期命名）",
   "categories": [

@@ -1,4 +1,5 @@
 {
+  "_comment": "帮助文档远程下发功能的版本标记（v1.1.1 引入，当前代码未引用，预留）",
   "version": 1,
   "updated": "2026-08-19",
   "description": "DSH-Desktop 帮助文档版本"

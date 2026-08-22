@@ -16,21 +16,8 @@
  *  - openHelpDocWindow   打开帮助文档窗口回调（misc-windows 模块，晚绑定注入）
  */
 
-const HELP_DOC_URLS = [
-  {
-    name: 'jsDelivr',
-    url: 'https://cdn.jsdelivr.net/gh/XWJ-z/dsh-Desktop@main/help.html',
-  },
-  {
-    name: 'GitHub API',
-    url: 'https://api.github.com/repos/XWJ-z/dsh-Desktop/contents/help.html?ref=main',
-    headers: { 'User-Agent': 'DSH-Desktop', Accept: 'application/vnd.github.raw+json' },
-  },
-  {
-    name: 'raw.githubusercontent',
-    url: 'https://raw.githubusercontent.com/XWJ-z/dsh-Desktop/main/help.html',
-  },
-];
+// v1.1.3 重构：三源 URL 集中到 remote-sources.js
+const { HELP_DOC_URLS } = require('./remote-sources');
 
 function createHelpDoc(deps) {
   const { app, path, fs, net, appendLog, openHelpDocWindow } = deps;

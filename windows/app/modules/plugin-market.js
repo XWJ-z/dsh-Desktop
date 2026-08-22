@@ -40,22 +40,9 @@ const PLUGIN_README_URLS = [
 
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 天缓存
 
-// v1.1.1（老大指令）：插件中文描述 —— 仓库根 plugin-desc-zh.json 远程下发（push 即更新，无需发版）
-const PLUGIN_DESC_URLS = [
-  {
-    name: 'jsDelivr',
-    url: 'https://cdn.jsdelivr.net/gh/XWJ-z/dsh-Desktop@main/plugin-desc-zh.json',
-  },
-  {
-    name: 'GitHub API',
-    url: 'https://api.github.com/repos/XWJ-z/dsh-Desktop/contents/plugin-desc-zh.json?ref=main',
-    headers: { 'User-Agent': 'DSH-Desktop', Accept: 'application/vnd.github.raw+json' },
-  },
-  {
-    name: 'raw.githubusercontent',
-    url: 'https://raw.githubusercontent.com/XWJ-z/dsh-Desktop/main/plugin-desc-zh.json',
-  },
-];
+// v1.1.3 重构：本仓库下发源 URL 集中到 remote-sources.js（plugin-desc-zh.json）
+// 注意：PLUGIN_README_URLS 是第三方仓库（Anil-matcha/awesome-dsh-plugin）数据源，不属于本仓库下发源，保留原位
+const { PLUGIN_DESC_URLS } = require('./remote-sources');
 
 // 官方分类（README「## Plugin Categories」18 类 + 兜底其他）；match 用于标题匹配
 // v1.1.1：去掉 icon 表情符号（老大指令：插件市场不显示表情）
