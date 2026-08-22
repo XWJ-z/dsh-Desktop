@@ -67,20 +67,23 @@ function createBackup(deps) {
     const settings = settingsFile();
     const hasDsh = fs.existsSync(dshHome);
     const hasSettings = fs.existsSync(settings);
+    // v1.1.6：我的提示词（userData/custom-prompts.json）纳入备份
+    const customPrompts = path.join(app.getPath('userData'), 'custom-prompts.json');
+    const hasCustom = fs.existsSync(customPrompts);
     // v0.9.12：全局记忆 ~/.dsh/AGENTS.md 随 ~/.dsh 整目录备份（日志显式记录，便于核对）
     const hasAgents = hasDsh && fs.existsSync(path.join(dshHome, 'AGENTS.md'));
 
-    if (!hasDsh && !hasSettings) {
+    if (!hasDsh && !hasSettings && !hasCustom) {
       dialog.showMessageBox(owner, {
         type: 'warning', title: appName,
         message: '没有可备份的数据',
-        detail: '未找到 DSH 用户数据（~/.dsh）和设置文件。首次使用后再备份。',
+        detail: '未找到 DSH 用户数据（~/.dsh）、设置文件或我的提示词。首次使用后再备份。',
         buttons: ['确定'], noLink: true,
       });
       return;
     }
 
-    appendLog('info', `开始备份：~/.dsh=${hasDsh}（全局记忆 AGENTS.md=${hasAgents}）settings=${hasSettings} → ${filePath}`);
+    appendLog('info', `开始备份：~/.dsh=${hasDsh}（全局记忆 AGENTS.md=${hasAgents}）settings=${hasSettings} 我的提示词=${hasCustom} → ${filePath}`);
 
     // v0.7.10：进度条（替代原「正在备份…」info 弹窗）
     openBackupProgress();
@@ -134,6 +137,10 @@ function createBackup(deps) {
       if (hasSettings) {
         fs.copyFileSync(settings, path.join(staging, 'settings.json'));
         entries.push('settings.json');
+      }
+      if (hasCustom) {
+        fs.copyFileSync(customPrompts, path.join(staging, 'custom-prompts.json'));
+        entries.push('custom-prompts.json');
       }
       // manifest 记录（恢复时校验格式用）
       const manifest = {
@@ -290,6 +297,13 @@ function createBackup(deps) {
         moveOld(settings);
         fs.mkdirSync(path.dirname(settings), { recursive: true });
         fs.renameSync(path.join(tmp, 'settings.json'), settings);
+      }
+      // v1.1.6：恢复我的提示词（userData/custom-prompts.json）
+      if (entries.includes('custom-prompts.json') && fs.existsSync(path.join(tmp, 'custom-prompts.json'))) {
+        const customPrompts = path.join(app.getPath('userData'), 'custom-prompts.json');
+        moveOld(customPrompts);
+        fs.mkdirSync(path.dirname(customPrompts), { recursive: true });
+        fs.renameSync(path.join(tmp, 'custom-prompts.json'), customPrompts);
       }
 
       appendLog('info', `数据恢复完成（来源：${backupFile}）`);
