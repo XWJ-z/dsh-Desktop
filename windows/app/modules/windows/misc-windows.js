@@ -122,9 +122,8 @@ function createMiscWindowsModule(deps) {
       minimizable: true, // v1.1.5（用户指令）：体验优化，可最小化
       minWidth: 560,
       minHeight: 420, // v1.0.2（用户反馈）：可自由拖动但加最小尺寸约束
-      parent: getMainWindow(),
       modal: false,
-      title: '提示词库', // modal:false —— 面板随时可点主窗口连续注入
+      title: '提示词库', // 独立窗口（可最小化到任务栏），随时可点主窗口连续注入
       autoHideMenuBar: true, // v0.9.12（用户反馈）：弹窗不显示菜单栏
       backgroundColor: nativeTheme.shouldUseDarkColors ? '#0f1115' : '#eef0f4', // v0.9.9：跟随外观
       webPreferences: secureWebPreferences(),
@@ -150,7 +149,6 @@ function createMiscWindowsModule(deps) {
       minimizable: true, // v1.1.5（用户指令）：体验优化，可最小化
       minWidth: 640,
       minHeight: 480, // v1.0.2（用户反馈）：可自由拖动但加最小尺寸约束
-      parent: getMainWindow(),
       modal: false,
       title: '全局记忆',
       autoHideMenuBar: true, // v0.9.12（用户反馈）：弹窗不显示菜单栏
@@ -177,7 +175,6 @@ function createMiscWindowsModule(deps) {
       minimizable: true, // v1.1.5（用户指令）：体验优化，可最小化
       minWidth: 700,
       minHeight: 500,
-      parent: getMainWindow(),
       modal: false,
       title: '插件市场', // v1.1.1：去掉 💎（用户指令：插件市场不显示表情）
       autoHideMenuBar: true,
