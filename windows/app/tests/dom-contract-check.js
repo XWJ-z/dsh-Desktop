@@ -5,9 +5,9 @@ const fs = require('node:fs');
 const js = fs.readFileSync(process.argv[2], 'utf8');
 const html = fs.readFileSync(process.argv[3], 'utf8');
 const ids = new Set();
-for (const m of js.matchAll(/getElementById\(\s*['\"]([^'\"]+)['\"]\s*\)/g)) ids.add(m[1]);
-for (const m of js.matchAll(/\$\(\s*['\"]([^'\"]+)['\"]\s*\)/g)) ids.add(m[1]);
-for (const m of js.matchAll(/\bel\(\s*['\"]([^'\"]+)['\"]\s*\)/g)) ids.add(m[1]);
+for (const m of js.matchAll(/getElementById\(\s*['"]([^'"]+)['"]\s*\)/g)) ids.add(m[1]);
+for (const m of js.matchAll(/\$\(\s*['"]([^'"]+)['"]\s*\)/g)) ids.add(m[1]);
+for (const m of js.matchAll(/\bel\(\s*['"]([^'"]+)['"]\s*\)/g)) ids.add(m[1]);
 const missing = [];
 for (const id of ids) {
   if (!html.includes('id="' + id + '"') && !html.includes("id='" + id + "'")) missing.push(id);

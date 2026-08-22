@@ -18,7 +18,7 @@ function ok(cond, name) {
   else { failed++; console.error(`  ✗ ${name}`); }
 }
 
-function makeEnv(opts) {
+function makeEnv() {
   const state = { taskNotify: true };
   const calls = { notify: 0, click: 0 };
   let child = null;
@@ -29,7 +29,6 @@ function makeEnv(opts) {
     notify: () => { calls.notify++; },
     showMainWindow: () => { calls.click++; },
     idleMs: 60, // 最快能触发
-    __state: state,
   });
   return { tn, state, calls, setChild: (c) => { child = c; } };
 }
@@ -76,7 +75,6 @@ async function run() {
     const child1 = new EventEmitter(); child1.stdout = new EventEmitter(); child1.stderr = new EventEmitter();
     e.setChild(child1);
     e.tn.watchServer();
-    const st1 = e.tn.getState();
     e.tn.feed('a'); // 直接 feed 计入活动（getState 不依赖输出流）
     // 再次 watch 同一 child：不应重复失败
     e.tn.watchServer();

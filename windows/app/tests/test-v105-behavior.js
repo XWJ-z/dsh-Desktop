@@ -73,7 +73,7 @@ function run() {
     ok(fs.existsSync(e.bak()), '第二次保存（有旧文件）自动生成 .bak');
     ok(fs.readFileSync(e.bak(), 'utf8').includes('## 区块B'), '.bak = 上一次版本（含 区块B）');
     // 第三次：提交 A + 新 C → C 追加末尾
-    r = gm.save({ users: [{ name: '用户的称呼', value: '用户' }], sections: [
+    gm.save({ users: [{ name: '用户的称呼', value: '用户' }], sections: [
       { title: '区块A', body: '内容A改' },
       { title: '区块C', body: '内容C' },
     ] });
@@ -81,7 +81,7 @@ function run() {
     ok(raw.includes('## 区块C'), '新增 区块C 保存成功');
     ok(raw.indexOf('## 区块C') > raw.indexOf('## 区块A'), '新增区块追加在末尾');
     // 第四次：改标题（A → D）→ 旧标题删除、新标题出现
-    r = gm.save({ users: [{ name: '用户的称呼', value: '用户' }], sections: [
+    gm.save({ users: [{ name: '用户的称呼', value: '用户' }], sections: [
       { title: '区块D', body: '内容D' },
       { title: '区块C', body: '内容C' },
     ] });
