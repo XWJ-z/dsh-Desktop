@@ -154,7 +154,7 @@ function createMiscWindowsModule(deps) {
       minWidth: 640,
       minHeight: 480, // v1.0.2（用户反馈）：可自由拖动但加最小尺寸约束
       modal: false,
-      title: '全局记忆',
+      title: '记忆管理', // v1.2.1：原「全局记忆」改「记忆管理」（全局 + 项目双 Tab）
       autoHideMenuBar: true, // v0.9.12（用户反馈）：弹窗不显示菜单栏
       backgroundColor: nativeTheme.shouldUseDarkColors ? '#0f1115' : '#eef0f4', // v0.9.9：跟随外观
       webPreferences: secureWebPreferences(),

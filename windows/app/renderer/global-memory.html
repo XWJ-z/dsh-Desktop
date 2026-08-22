@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' file: data:; style-src 'self' file: 'unsafe-inline'; script-src 'self' file:; img-src 'self' file: data:" />
-  <title>全局记忆</title>
+  <title>记忆管理</title>
   <link rel="stylesheet" href="shared.css" />
   <style>
     body {
@@ -17,6 +17,59 @@
     h1 { font-size: 18px; font-weight: 590; margin-bottom: 2px; }
     .subtitle { font-size: 12px; color: var(--text-quaternary); margin-bottom: 12px; line-height: 1.7; }
     .subtitle code { background: var(--bg-hover); padding: 1px 5px; border-radius: 4px; font-size: 11px; }
+    /* v1.2.1：记忆管理双 Tab（全局记忆 / 项目记忆） */
+    .tabs {
+      display: flex; gap: 6px; margin-bottom: 14px; flex-shrink: 0;
+      background: var(--bg-hover); padding: 4px; border-radius: var(--radius-btn);
+    }
+    .tabs .tab {
+      flex: 1; padding: 8px 12px; border: none; border-radius: calc(var(--radius-btn) - 2px);
+      background: transparent; cursor: pointer; font-size: 13px; font-weight: 590;
+      color: var(--text-secondary); transition: background .15s ease, color .15s ease;
+    }
+    .tabs .tab:hover { color: var(--text-primary); }
+    .tabs .tab.active { background: var(--bg-surface); color: var(--text-primary); box-shadow: 0 1px 4px rgba(0,0,0,.15); }
+    .panel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+    .panel[hidden] { display: none; }
+    /* 项目记忆 Tab 2 */
+    .pm-layout { display: flex; flex-direction: column; gap: 10px; flex: 1; min-height: 0; overflow-y: auto; }
+    .pm-ws-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-secondary); }
+    .pm-ws-row code { background: var(--bg-hover); padding: 3px 7px; border-radius: 5px; font-size: 11px; color: var(--text-primary); }
+    .pm-ws-row .btn.ghost { padding: 5px 12px; font-size: 12px; }
+    .pm-guide {
+      font-size: 12.5px; line-height: 1.7; color: var(--warn);
+      background: rgba(245,166,35,.08); border: 1px solid rgba(245,166,35,.3);
+      border-radius: var(--radius-btn); padding: 10px 12px;
+    }
+    .pm-main { display: flex; gap: 12px; flex: 1; min-height: 0; }
+    .pm-side { width: 210px; flex-shrink: 0; display: flex; flex-direction: column; gap: 6px; overflow-y: auto; }
+    .pm-side-head { font-size: 12px; font-weight: 590; color: var(--text-secondary); margin: 2px 4px 0; }
+    .pm-item {
+      display: flex; align-items: center; gap: 7px; padding: 8px 10px;
+      border-radius: var(--radius-btn); cursor: pointer; background: var(--bg-input);
+      border: 1px solid var(--border-standard); color: var(--text-secondary); flex-shrink: 0;
+    }
+    .pm-item:hover { border-color: rgba(94,106,210,.5); }
+    .pm-item.active { background: linear-gradient(90deg, rgba(124,120,255,0.16), rgba(124,120,255,0.04)); border-color: rgba(124,120,255,0.55); color: var(--text-primary); }
+    .pm-item-name { font-size: 12.5px; font-weight: 590; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pm-item-date { font-size: 10px; color: var(--text-quaternary); flex-shrink: 0; }
+    .pm-editor { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; background: var(--bg-input); border: 1px solid var(--border-standard); border-radius: var(--radius-btn); padding: 12px 14px; }
+    .pm-head-input { width: 100%; min-height: 44px; resize: vertical; box-sizing: border-box; padding: 8px 11px; background: var(--bg-input); border: 1px solid var(--border-standard); border-radius: var(--radius-btn); color: var(--text-primary); font: 12.5px/1.6 Consolas, "Courier New", "Microsoft YaHei", monospace; outline: none; white-space: pre-wrap; }
+    .pm-head-input:focus { border-color: rgba(94,106,210,.55); }
+    .pm-sec { display: flex; flex-direction: column; gap: 5px; background: var(--bg-input); border: 1px solid var(--border-standard); border-radius: var(--radius-btn); padding: 8px 10px; }
+    .pm-sec-head { display: flex; align-items: center; gap: 6px; }
+    .pm-sec-head .hash { font: 600 14px Consolas, monospace; color: var(--brand); }
+    .pm-sec-title { flex: 1; padding: 6px 9px; font-size: 13px; font-weight: 590; background: var(--bg-input); border: 1px solid var(--border-standard); border-radius: 8px; color: var(--text-primary); outline: none; }
+    .pm-sec-title:focus { border-color: rgba(94,106,210,.55); }
+    .pm-sec-body { width: 100%; min-height: 76px; resize: vertical; box-sizing: border-box; padding: 8px 10px; background: var(--bg-input); border: 1px solid var(--border-standard); border-radius: 8px; color: var(--text-primary); font: 12.5px/1.6 Consolas, "Courier New", "Microsoft YaHei", monospace; outline: none; white-space: pre; }
+    .pm-sec-body:focus { border-color: rgba(94,106,210,.55); }
+    .pm-sec .del { width: 26px; height: 26px; flex-shrink: 0; border: none; background: transparent; cursor: pointer; color: var(--text-quaternary); font-size: 14px; border-radius: 6px; }
+    .pm-sec .del:hover { color: #ff6b6b; background: rgba(255,107,107,.12); }
+    .pm-empty { font-size: 12.5px; color: var(--text-quaternary); padding: 18px 4px; text-align: center; }
+    .pm-add { align-self: flex-start; padding: 7px 14px; border: 1px dashed var(--border-standard); border-radius: var(--radius-btn); background: transparent; color: var(--text-secondary); cursor: pointer; font-size: 12.5px; font-weight: 590; }
+    .pm-add:hover { color: var(--brand); border-color: rgba(94,106,210,.55); background: var(--bg-hover); }
+    .pm-foot { display: flex; align-items: center; gap: 10px; }
+    .pm-foot .spacer { flex: 1; }
     /* 反馈横幅 */
     .banner {
       display: none; padding: 9px 14px; margin-bottom: 12px;
@@ -288,8 +341,14 @@
   </style>
 </head>
 <body>
-  <h1>🧠 全局记忆 <span class="dsh-view">(DSH 视角)</span></h1>
-  <div class="subtitle">写入 <code>~/.dsh/AGENTS.md</code>（DSH 的视角）：「用户设定」记用户是谁、「我的设定」记 DSH 自己（含默认角色下拉）、「全局记忆区块」汇总其他 ## 区块、「DSH 角色」每个角色对应 <code>~/.dsh/roles/</code> 一个文件（输入框即文件全文，两边同步）。覆盖已有内容保存时需二次确认。</div>
+  <h1>🧠 记忆管理</h1>
+  <div class="subtitle"><b>全局记忆</b>用于所有对话（写入 <code>~/.dsh/AGENTS.md</code>）；<b>项目记忆</b>仅当前项目生效（写入 <code>&lt;工作区&gt;/AGENTS.md</code>，DSH 启动自动读取）。</div>
+  <div class="tabs">
+    <button id="tab-global" class="tab active" data-tab="global">🌐 全局记忆</button>
+    <button id="tab-project" class="tab" data-tab="project">📁 项目记忆</button>
+  </div>
+  <!-- Tab 1：全局记忆（原有功能原样保留，零回归） -->
+  <div id="panel-global" class="panel">
   <!-- v1.0.3（用户反馈 2）：默认角色实际在「我的设定」里选择，提示文案修正 -->
   <div class="tip-red">⚠️ 双击对话框选择角色，默认角色请在[我的设定]中选择</div>
   <div id="banner" class="banner"></div>
@@ -317,6 +376,43 @@
     <button id="tidy-yes" class="tidy-yes">立即整理</button>
     <button id="tidy-no" class="tidy-no">不用</button>
   </div>
+  </div><!-- /panel-global -->
+  <!-- Tab 2：项目记忆（v1.2.1） -->
+  <div id="panel-project" class="panel" hidden>
+    <div id="pm-banner" class="banner"></div>
+    <div class="pm-layout">
+      <div id="pm-ws-row" class="pm-ws-row"></div>
+      <div id="pm-guide" class="pm-guide" hidden></div>
+      <div id="pm-main" class="pm-main" style="display:none;">
+        <div class="pm-side">
+          <div class="pm-side-head">项目列表</div>
+          <div id="pm-list" style="display:flex;flex-direction:column;gap:6px;"></div>
+          <button id="pm-new" class="add-field">＋ 新建项目</button>
+          <div id="pm-new-row" style="display:none;flex-direction:column;gap:6px;">
+            <input id="pm-new-path" placeholder="输入已存在项目路径" style="padding:7px 9px;background:var(--bg-input);border:1px solid var(--border-standard);border-radius:8px;color:var(--text-primary);font-size:12px;outline:none;">
+            <div style="display:flex;gap:6px;">
+              <button id="pm-new-go" class="btn ghost" style="flex:1;padding:6px 10px;">打开</button>
+              <button id="pm-new-cancel" class="btn ghost" style="flex:1;padding:6px 10px;">取消</button>
+            </div>
+          </div>
+        </div>
+        <div class="pm-editor">
+          <div id="pm-editor-head" style="font-size:12.5px;color:var(--text-secondary);">正在编辑：<span id="pm-current-path"></span></div>
+          <textarea id="pm-head" class="pm-head-input" placeholder="# 项目记忆（可选头部，如 # 项目名）"></textarea>
+          <div id="pm-sections" style="display:flex;flex-direction:column;gap:8px;"></div>
+          <button id="pm-add-sec" class="pm-add">＋ 添加区块</button>
+          <div id="pm-empty" class="pm-empty" hidden>此项目还没有记忆，创建第一条吧</div>
+          <div class="pm-foot">
+            <span class="spacer"></span>
+            <button id="pm-open-folder" class="btn ghost" style="padding:6px 14px;">打开目录</button>
+            <button id="pm-delete" class="btn ghost" style="padding:6px 14px;color:#e5484d;">删除项目记忆</button>
+            <button id="pm-save" class="btn" style="padding:8px 20px;">保存</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
   <script src="global-memory.js"></script>
+  <script src="memory-project.js"></script>
 </body>
 </html>

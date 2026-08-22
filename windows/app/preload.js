@@ -120,6 +120,8 @@ contextBridge.exposeInMainWorld('dshDesktop', {
   deleteProjectMemory: (workspacePath) => ipcRenderer.invoke('project-memory:delete', workspacePath),
   /** 历史项目列表（索引） */
   listProjectMemories: () => ipcRenderer.invoke('project-memory:list'),
+  /** 读取指定项目记忆（项目列表切换 / 手动路径）→ { ok, workspace, exists, path, content, head, sections } */
+  readProjectMemory: (workspacePath) => ipcRenderer.invoke('project-memory:read', workspacePath),
   /** 打开项目记忆所在目录 */
   openProjectMemoryFolder: (workspacePath) => ipcRenderer.invoke('project-memory:open-folder', workspacePath),
   // ── v0.9.13：角色选择（新对话选角色 / 双击输入框重选）──

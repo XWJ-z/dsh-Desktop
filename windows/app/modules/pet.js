@@ -150,7 +150,8 @@ function createPet(deps) {
           + '<div class="pet-bubble"></div>'
           + '<div class="pet-menu">'
           // v0.9.12（用户指令）：全局记忆入口放提示词库前面（点击打开记忆文件，首次自动建立）
-          +   '<div class="pet-item" data-action="memory">🧠 全局记忆</div>'
+          // v1.2.1：改为「记忆管理」（全局记忆 + 项目记忆 双 Tab）
+          +   '<div class="pet-item" data-action="memory">🧠 记忆管理</div>'
           +   '<div class="pet-item" data-action="promptlib">💡 提示词库</div>'
           // v1.1.1：插件市场入口（用户指令：保留 💎 图标）
           +   '<div class="pet-item" data-action="pluginmarket">💎 插件市场</div>'

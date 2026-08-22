@@ -280,6 +280,27 @@ function registerIpc(deps) {
       return [];
     }
   });
+  // v1.2.1 T2：读取指定项目记忆（项目列表切换 / 手动输入路径）：校验目录 + 区块解析
+  ipcMain.handle('project-memory:read', async (_e, workspacePath) => {
+    try {
+      const ws = projectMemory.validateWorkspace(workspacePath);
+      if (!ws) return { ok: false, message: '项目路径无效：必须是已存在的目录' };
+      const raw = projectMemory.readRaw(ws);
+      const parsed = projectMemory.parseProjectMemory(raw === null ? '' : raw);
+      return {
+        ok: true,
+        workspace: ws,
+        exists: raw !== null,
+        path: projectMemory.getProjectMemoryPath(ws),
+        content: raw === null ? '' : raw,
+        head: parsed.head,
+        sections: parsed.sections,
+      };
+    } catch (err) {
+      appendLog('error', `读取项目记忆异常：${err.message}`);
+      return { ok: false, message: err.message };
+    }
+  });
   // v1.2.1 T1：打开某个项目记忆文件所在目录（供项目列表「打开目录」）
   ipcMain.handle('project-memory:open-folder', async (_e, workspacePath) => {
     try {
