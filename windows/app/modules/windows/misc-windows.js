@@ -202,8 +202,8 @@ function createMiscWindowsModule(deps) {
       return;
     }
     const win = new BrowserWindow({
-      width: 1000,
-      height: 720,
+      width: 860,
+      height: 640,
       resizable: true,
       minimizable: false,
       minWidth: 640,
