@@ -1,5 +1,5 @@
 'use strict';
-// 临时验证：DSH 页面注入的 pet SVG body path 是否为完整版（老大 deepseek-pet.svg）
+// 临时验证：DSH 页面注入的 pet SVG body path 是否为完整版（用户 deepseek-pet.svg）
 const http = require('http');
 const PORT = Number(process.argv[2]);
 const WEB = process.argv[3];

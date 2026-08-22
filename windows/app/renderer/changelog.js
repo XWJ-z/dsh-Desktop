@@ -4,7 +4,7 @@
  * changelog.js — 更新日志窗口脚本（v0.8.1 T3）
  * 经 preload：getChangelog() 获取本地 CHANGELOG.json 数据 + 当前版本。
  * 版本按降序渲染，最新置顶；当前运行版本卡片高亮。
- * v0.9.9（老大指令）：只显示已发布到 GitHub 的版本（released=true），内部版本不展示；
+ * v0.9.9（用户指令）：只显示已发布到 GitHub 的版本（released=true），内部版本不展示；
  *   当前运行版本若未发布 → 顶部提示「内部测试版」。
  */
 

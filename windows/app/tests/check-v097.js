@@ -3,7 +3,7 @@
 /**
  * check-v097.js — v0.9.7 功能自动验证（不启动 Electron）
  *
- * 覆盖（老大反馈三项）：
+ * 覆盖（用户反馈三项）：
  *  1. 公告条内容显示不全 → menu.js 截断收紧 30 字符 + 公告条可点击打开公告窗口
  *     + 公告窗口顶部完整 marquee 横幅（ipc notice:data 附带 marquee）
  *  2. 公告要重启才刷新 → main.js 10 分钟定时自动刷新 + notice.js 版本未变静默
@@ -19,7 +19,7 @@
  * 13. custom-prompts.js / promptlib.js 长度上限（P3-2）
  * 14. changelog.js 版本比较收敛共享模块（P3-3）
  * 15. menu.js F12 生产禁用 / installer.js 签名配置就绪（P3-4 / P2-3）
- * 16. 全局记忆（v0.9.12 老大指令）：宠物菜单入口 / preload IPC / 首次自动建立行为
+ * 16. 全局记忆（v0.9.12 用户指令）：宠物菜单入口 / preload IPC / 首次自动建立行为
  *
  * 用法：node tests/check-v097.js
  */
@@ -50,7 +50,7 @@ function testMenu() {
   ok(src.includes('label: \'📢 \' + truncateMarquee(getMarquee())'), '公告条 label 保留');
   ok(src.includes('click: () => openNoticeWindow()'), '公告条可点击 → 打开公告窗口');
   ok(!src.includes('enabled: false, // 纯文字展示'), '公告条不再禁用（纯文字态移除）');
-  // v0.9.8（老大指令）：公告菜单并入帮助菜单
+  // v0.9.8（用户指令）：公告菜单并入帮助菜单
   ok(!src.includes('label: `公告${'), '独立「公告」一级菜单已移除（并入帮助）');
   ok(src.includes('查看公告${'), '帮助菜单含「查看公告（新）」子项');
 }
@@ -110,7 +110,7 @@ function testMain() {
   ok(src.includes('.then(() => refreshMenusRef())'), '拉取后刷新菜单（公告条即时更新）');
   ok(src.includes('startNoticeAutoRefresh();'), '启动流程调用 startNoticeAutoRefresh');
   ok(src.includes('clearInterval(noticeRefreshTimer)'), '退出时清理定时器');
-  // v0.9.9（老大反馈：壳延迟大）：反向同步轮询 2.5s → 400ms
+  // v0.9.9（用户反馈：壳延迟大）：反向同步轮询 2.5s → 400ms
   ok(src.includes('}, 400);'), '外观反向同步轮询 = 400ms（壳跟随 DSH 面板延迟 ≤0.4s）');
   ok(!src.includes('}, 2500);'), '旧的 2500ms 轮询已移除');
   ok(src.includes('setTimeout(() => r(wasOpen), 400)'), '同步 DSH 面板打开等待 400ms');
@@ -144,7 +144,7 @@ function testChangelog() {
   const v097 = cl.versions.find((v) => v.version === '0.9.7');
   ok(!!v097 && Array.isArray(v097.notes) && v097.notes.length === 3, '0.9.7 条目存在（3 条）');
 
-  // v0.9.9（老大指令）：released 标记 —— 已发布 16 版（v1.0.5 发布），内部版本 false
+  // v0.9.9（用户指令）：released 标记 —— 已发布 16 版（v1.0.5 发布），内部版本 false
   const releasedCount = cl.versions.filter((v) => v.released === true).length;
   ok(releasedCount === 16, `released=true 共 16 个已发布版本（含 1.0.5，实际 ${releasedCount}）`);
   ok(cl.versions.find((v) => v.version === '0.9.6').released === true, '0.9.6 released=true');
@@ -207,12 +207,12 @@ function testPet() {
   ok(src.includes('const say = (arr, ms) =>'), 'say 支持自定义时长参数');
   ok(src.includes('ms || 2200'), 'say 默认时长 2200ms');
   ok(src.includes('把文件拖进来，我帮你放进工作区～'), '点击文案库扩充功能引导');
-  // v0.9.13（老大反馈：实机点击宠物眼睛跑到头顶眨眼）：眨眼改几何闭眼 + 时序防护
+  // v0.9.13（用户反馈：实机点击宠物眼睛跑到头顶眨眼）：眨眼改几何闭眼 + 时序防护
   ok(src.includes('const setWink = (on) =>'), '眨眼改几何闭眼（setWink，瞳孔 ry 缩小）');
   ok(src.includes('pupil.setAttribute(\'ry\''), '几何闭眼改 SVG 属性（圆心固定，无 transform 位移）');
   ok(src.includes('pet.classList.contains(\'happy\')'), 'happy（点击/彩蛋）期间不眨眼（防表情竞争）');
   ok(src.includes('pet.matches(\':hover\')'), '表情结束后鼠标悬停恢复抬头（防眼睛突兀）');
-  // v0.9.13（老大反馈：句子太长）：气泡自动换行
+  // v0.9.13（用户反馈：句子太长）：气泡自动换行
   ok(src.includes('white-space:normal') && src.includes('word-break:keep-all'), '气泡自动换行（keep-all，不字级乱断）');
   ok(src.includes('max-width:120px'), '气泡固定像素宽 120px（横排约 8 字/行，防 em 计算异常竖排）');
   ok(!src.includes('overflow-wrap:anywhere;'), '不再用 overflow-wrap:anywhere（曾致一个字就换行的竖排）');
@@ -287,7 +287,7 @@ function testThemeWatchVisible() {
   console.log('[11] main.js 外观轮询可见性（P2-1）');
   const src = read('main.js');
   ok(src.includes('!mw.isVisible()'), '轮询回调检查窗口可见（隐藏/最小化跳过）');
-  ok(src.includes('}, 400);'), '仍保留 400ms 快跟随（老大指令）');
+  ok(src.includes('}, 400);'), '仍保留 400ms 快跟随（用户指令）');
 }
 
 // ---------------------------------------------------------------------------
@@ -383,7 +383,7 @@ function testGlobalMemory() {
   ok(gms.includes('\'用户的称呼\'') && gms.includes('\'当前项目\''), '用户设定字段：用户的称呼/当前项目（DSH 视角）');
   ok(gms.includes('\'我的名字\'') && gms.includes('\'默认角色\''), '我的设定字段：我的名字/默认角色（DSH 视角）');
   ok(gms.includes('GUIDE_FIELD') && gms.includes('GUIDE_TEXT'), '未配置引导句定义（引导用户配置全局记忆）');
-  ok(gms.includes('点击宠物/工具箱图标'), '引导句文案：点击宠物/工具箱图标 进行配置（v0.9.13 老大指令）');
+  ok(gms.includes('点击宠物/工具箱图标'), '引导句文案：点击宠物/工具箱图标 进行配置（v0.9.13 用户指令）');
   ok(gms.includes('FORMAT_TIDY_PROMPT') && gms.includes('请按照以下标准格式整理你的全局记忆'), '标准格式整理提示词定义（格式不符时注入）');
   ok(gms.includes('formatMismatch'), 'ensureGuide 返回 formatMismatch（格式检测）');
   const mainSrc0 = read('main.js');
@@ -403,32 +403,32 @@ function testGlobalMemory() {
   ok(rjs0.includes('renderCats'), '窗口左侧类别列表（renderCats）');
   ok(rjs0.includes('renderRight'), '窗口右侧内容区（renderRight）');
   ok(rjs0.includes('👤 用户设定') && rjs0.includes('🤖 我的设定') && rjs0.includes('🧠 全局记忆区块') && rjs0.includes('🎭 DSH 角色'),
-    '左侧 4 个固定类别：用户设定/我的设定/全局记忆区块/DSH 角色（v1.0.2 老大指令）');
+    '左侧 4 个固定类别：用户设定/我的设定/全局记忆区块/DSH 角色（v1.0.2 用户指令）');
   ok(rjs0.includes('renderMemoList') && rjs0.includes('memo-list') && rjs0.includes('MEMO_KEY'),
-    '全局记忆区块：合并所有 ## 区块的卡片列表（v1.0.2 老大指令 2）');
+    '全局记忆区块：合并所有 ## 区块的卡片列表（v1.0.2 用户指令 2）');
   ok(rjs0.includes('默认角色') && rjs0.includes('f-select'), '默认角色字段为下拉选择（f-select）');
-  ok(rjs0.includes('isRoleSelect ? \'\' : \'<button class="del"'), '「默认角色」字段行不渲染删除按钮（v1.0.2c 老大反馈：默认角色不能删除）');
+  ok(rjs0.includes('isRoleSelect ? \'\' : \'<button class="del"'), '「默认角色」字段行不渲染删除按钮（v1.0.2c 用户反馈：默认角色不能删除）');
   ok(rjs0.includes('const delBtn = row.querySelector(\'.del\')') && rjs0.includes('if (delBtn)'), '删除按钮监听做空值保护（无删除按钮的行不报错）');
   ok(rjs0.includes('btn-add-field'), '窗口有「＋ 添加字段」按钮逻辑');
   ok(rjs0.includes('btn-add-dsh'), '窗口有「＋ 添加 DSH 设定」按钮逻辑');
   ok(rjs0.includes('btn-add-role') && rjs0.includes('role-list') && rjs0.includes('role-item') && rjs0.includes('role-editor-name') && rjs0.includes('role-field-input') && rjs0.includes('data-field'),
-    'DSH 角色页：左侧角色列表 + 点击进入编辑（定位/详细记忆固定字段，v1.0.3 老大反馈 2/4）');
+    'DSH 角色页：左侧角色列表 + 点击进入编辑（定位/详细记忆固定字段，v1.0.3 用户反馈 2/4）');
   ok(rjs0.includes('role-field-label') && rjs0.includes('## 定位') && rjs0.includes('## 详细记忆'),
     '角色字段标签：## 定位 / ## 详细记忆（v1.0.3 字段输入化）');
   ok(rjs0.includes('MAX_ROLE_NAME = 30') && rjs0.includes('maxlength="') && rjs0.includes('role-editor-count'),
-    '角色名长度限制：前端 maxlength=30 + 字数计数（v1.0.3 老大反馈 2）');
+    '角色名长度限制：前端 maxlength=30 + 字数计数（v1.0.3 用户反馈 2）');
   ok(rjs0.includes('selectedRoleIndex') && rjs0.includes('点击左侧角色进入编辑'), '点击角色进入编辑：selectedRoleIndex 选中态 + 引导文案');
   ok(!rjs0.includes('role-tabs') && !rjs0.includes('renderRoleTabs') && !rjs0.includes('activeRole'),
     '角色页不再用顶部 tab / activeRole 状态（v1.0.2 改卡片列表）');
-  ok(rjs0.includes('addEventListener(\'focus\'') && rjs0.includes('signature'), '窗口聚焦时按 变更指纹（signature：AGENTS.md+角色文件）自动刷新（v1.0.2b 老大反馈）');
-  ok(!rjs0.includes('path-memory') && !rjs0.includes('path-roles'), '去掉左下角双路径显示（v1.0.1 老大反馈）');
+  ok(rjs0.includes('addEventListener(\'focus\'') && rjs0.includes('signature'), '窗口聚焦时按 变更指纹（signature：AGENTS.md+角色文件）自动刷新（v1.0.2b 用户反馈）');
+  ok(!rjs0.includes('path-memory') && !rjs0.includes('path-roles'), '去掉左下角双路径显示（v1.0.1 用户反馈）');
   ok(rjs0.includes('btn-open-memory') && rjs0.includes('btn-open-roles') && rjs0.includes('openGlobalMemoryRoles'),
-    '两个按钮：记忆文件位置(AGENTS) / 角色文件位置（v1.0.1 老大指令）');
+    '两个按钮：记忆文件位置(AGENTS) / 角色文件位置（v1.0.1 用户指令）');
   const ghtml = read('renderer/global-memory.html');
-  ok(ghtml.includes('dsh-view') && ghtml.includes('(DSH 视角)'), '标题红色标注（DSH 视角）（v0.9.16 老大指令）');
-  ok(ghtml.includes('记忆文件位置(AGENTS)'), '按钮文案：记忆文件位置(AGENTS)（v1.0.1 老大指令）');
+  ok(ghtml.includes('dsh-view') && ghtml.includes('(DSH 视角)'), '标题红色标注（DSH 视角）（v0.9.16 用户指令）');
+  ok(ghtml.includes('记忆文件位置(AGENTS)'), '按钮文案：记忆文件位置(AGENTS)（v1.0.1 用户指令）');
   ok(ghtml.includes('tip-red') && ghtml.includes('双击对话框选择角色') && ghtml.includes('默认角色请在[我的设定]中选择'),
-    '红色提示文案：双击对话框选择角色，默认角色请在[我的设定]中选择（v1.0.3 老大反馈 2）');
+    '红色提示文案：双击对话框选择角色，默认角色请在[我的设定]中选择（v1.0.3 用户反馈 2）');
   ok(!rjs0.includes('tip-red'), 'DSH 角色页不再内嵌红色提示（已移到窗口介绍下方全局显示）');
   ok(!rjs0.includes('新对话时会弹窗选择角色'), '窗口不再说明新对话弹窗选角色（v0.9.15：新建对话不提示）');
   const rsel = read('modules/role-selector.js');
@@ -447,7 +447,7 @@ function testGlobalMemory() {
   const ipcSrc3 = read('modules/ipc.js');
   ok(ipcSrc3.includes('memory:open-roles') && ipcSrc3.includes('roles'), 'IPC：memory:open-roles 打开角色目录（v1.0.1）');
   const menuSrc = read('modules/menu.js');
-  ok(menuSrc.includes('打开记忆目录') && menuSrc.includes('app.getPath(\'home\'), \'.dsh\''), '文件菜单「打开记忆目录」→ ~/.dsh（v1.0.1 老大指令）');
+  ok(menuSrc.includes('打开记忆目录') && menuSrc.includes('app.getPath(\'home\'), \'.dsh\''), '文件菜单「打开记忆目录」→ ~/.dsh（v1.0.1 用户指令）');
   ok(rjs0.includes('guide-tip'), '窗口显示未配置引导提示条');
   ok(rjs0.includes('TIDY_PROMPT') && rjs0.includes('整理你的全局记忆，不要改变原意'), '保存后整理记忆提示词');
   ok(rjs0.includes('tidy-bar') && rjs0.includes('showTidyBar'), '保存后询问是否让 DSH 整理记忆');
@@ -468,7 +468,7 @@ function testGlobalMemory() {
   ok(mw.includes('openGlobalMemoryWindow'), 'misc-windows 有全局记忆窗口');
   ok(mw.includes('\'global-memory.html\''), '窗口加载 global-memory.html');
   ok(mw.includes('autoHideMenuBar: true'), '弹窗不显示菜单栏（autoHideMenuBar）');
-  ok(mw.includes('width: 960'), '全局记忆窗口默认加宽（960，v1.0.2b 老大反馈）');
+  ok(mw.includes('width: 960'), '全局记忆窗口默认加宽（960，v1.0.2b 用户反馈）');
   const aw = read('modules/windows/about-window.js');
   ok(aw.includes('autoHideMenuBar: true'), '更新/联系/关于窗口不显示菜单栏');
   const lw = read('modules/windows/loading-window.js');
@@ -479,7 +479,7 @@ function testGlobalMemory() {
   ok(html0.includes('全局记忆区块') && html0.includes('文件全文'), '窗口说明：全局记忆区块汇总 ## 区块、DSH 角色输入框即文件全文（v1.0.2）');
   ok(html0.includes('tidy-bar'), 'html 有整理记忆确认条容器');
   const loadHtml = read('renderer/loading.html');
-  ok(loadHtml.includes('① 检查 DSH 组件'), '启动阶段①文案：检查 DSH 组件（老大反馈：运行时表述不清）');
+  ok(loadHtml.includes('① 检查 DSH 组件'), '启动阶段①文案：检查 DSH 组件（用户反馈：运行时表述不清）');
   ok(!loadHtml.includes('检查 DSH 运行时'), '旧的"检查 DSH 运行时"文案已移除');
   const mainSrc = read('main.js');
   ok(mainSrc.includes('ensureGuide()'), '启动时调用 ensureGuide（未配置插入引导句）');
@@ -517,15 +517,15 @@ async function testGlobalMemoryBehavior() {
   ok(raw1.includes('## 用户设定') && raw1.includes('- 用户的称呼：小六'), '用户设定独立区块写入');
   ok(raw1.includes('## 其他记忆'), '模板含其他记忆区');
   ok(!raw1.includes('基础设定（DSH-Desktop 图形化编辑）'), '模板无旧「基础设定」容器');
-  // 2) 自动识别：模拟老大式多区块 AGENTS.md（含列表/代码块/空行），parse 全识别
+  // 2) 自动识别：模拟用户式多区块 AGENTS.md（含列表/代码块/空行），parse 全识别
   const rich = `# AGENTS.md（全局记忆）
 
 ## 身份与称呼
 
 - 我的姓名：**小六**
-- 对用户的称呼：**老大**
+- 对用户的称呼：**用户**
 
-## 项目通用约定（老大指令）
+## 项目通用约定（用户指令）
 
 - **开发日志必写**：每次开发后必须写开发日志。
 
@@ -543,12 +543,12 @@ $env:PATH = "..."
   ok(d2.exists === true, '识别：文件已存在');
   ok(Array.isArray(d2.sections) && d2.sections.length === 3, `自动识别 3 个 ## 区块（实际 ${d2.sections.length}）`);
   const secTitles = d2.sections.map((s) => s.title);
-  ok(secTitles.includes('身份与称呼') && secTitles.includes('项目通用约定（老大指令）') && secTitles.includes('全局记忆指令'),
+  ok(secTitles.includes('身份与称呼') && secTitles.includes('项目通用约定（用户指令）') && secTitles.includes('全局记忆指令'),
     '识别出 身份与称呼 / 项目通用约定 / 全局记忆指令');
   ok(d2.sections.every((s) => s.kind === 'long'), '非基础设定区块均为长文本模式');
   const sec1 = d2.sections.find((s) => s.title === '身份与称呼');
   ok(Array.isArray(sec1.body) && sec1.body.join('\n').includes('我的姓名：**小六**'), '区块 body 保留原内容');
-  const sec2 = d2.sections.find((s) => s.title === '项目通用约定（老大指令）');
+  const sec2 = d2.sections.find((s) => s.title === '项目通用约定（用户指令）');
   ok(sec2.body.join('\n').includes('```powershell') && sec2.body.join('\n').includes('$env:PATH'), '代码块原样识别保留');
   // 3) 保存不破坏：只改基础设定字段，其他区块原样（格式/空行/代码块不变）
   const r2 = api.save({
@@ -582,7 +582,7 @@ $env:PATH = "..."
   ok(raw3b.includes('## 身份与称呼（改）'), '新标题生效');
   ok(!raw3b.includes('## 身份与称呼\n') && !raw3b.includes('## 身份与称呼（改）\n\n## 身份与称呼（改）'), '旧标题消失且无重复副本');
   ok((raw3b.match(/## 身份与称呼/g) || []).length === 1, '身份与称呼相关区块仅 1 个');
-  // 4.6) DSH 设定独立顶层区块（v0.9.12 老大指令：删除"基础设定"容器）
+  // 4.6) DSH 设定独立顶层区块（v0.9.12 用户指令：删除"基础设定"容器）
   //      save 带 dsh → 生成独立「## 我的设定」区块；重读回填
   const r3c = api.save({
     users: [{ name: '用户的称呼', value: '小六' }],
@@ -612,7 +612,7 @@ $env:PATH = "..."
     '旧容器用户字段迁移到「用户设定」独立区块');
   ok(!!dshSec3e && dshSec3e.fields.length === 1 && dshSec3e.fields[0].value === '旧角色',
     '旧「角色设定」子组迁移为「DSH 设定」独立区块');
-  // 4.9) v0.9.14（老大反馈：旧窗口保存的文件仍是「你的称呼/DSH 的名字」旧视角）：
+  // 4.9) v0.9.14（用户反馈：旧窗口保存的文件仍是「你的称呼/DSH 的名字」旧视角）：
   //      字段名自动迁移为 DSH 视角（你的→用户 / DSH 的名字→我的名字 / 项目背景→当前项目）+ 旧模板头部说明迁移
   fs.writeFileSync(target, `# AGENTS.md（全局记忆）
 
@@ -621,7 +621,7 @@ $env:PATH = "..."
 
 ## 用户设定
 
-- 你的称呼：老大
+- 你的称呼：用户
 - 你的身份/角色：技术总监
 - 项目背景：DSH-Desktop
 - 常用约定：有改必升版本号
@@ -650,7 +650,7 @@ $env:PATH = "..."
   const r3f = api.save({ users: usersSec3f.fields, dsh: dshSec3f.fields, roles: [], sections: [] });
   ok(r3f.ok === true, '迁移后保存成功');
   const raw3f = fs.readFileSync(target, 'utf8');
-  ok(raw3f.includes('- 用户的称呼：老大') && raw3f.includes('- 我的名字：小鲸鱼') && raw3f.includes('- 当前项目：DSH-Desktop'),
+  ok(raw3f.includes('- 用户的称呼：用户') && raw3f.includes('- 我的名字：小鲸鱼') && raw3f.includes('- 当前项目：DSH-Desktop'),
     '保存后文件为 DSH 视角字段');
   ok(!raw3f.includes('你的称呼') && !raw3f.includes('DSH 的名字') && !raw3f.includes('## DSH 设定'), '保存后无旧视角残留');
   // 4.10) v0.9.16（外审 zx(9) 复核 N1/N2）：payload 上限 1MB + 字段值内换行过滤
@@ -659,13 +659,13 @@ $env:PATH = "..."
   ok(rBig.ok === false && /1MB/.test(rBig.message || ''), 'N1：超 1MB payload 拒绝（返回 message，外审 zx9）');
   fs.rmSync(target, { force: true });
   const rNl = api.save({
-    users: [{ name: '用户的称呼', value: '老大\n第二行' }],
+    users: [{ name: '用户的称呼', value: '用户\n第二行' }],
     dsh: [{ name: '我的名字', value: '小鲸鱼\r\n尾巴' }],
     sections: [],
   });
   ok(rNl.ok === true, 'N2：多行字段值保存成功');
   const rawNl = fs.readFileSync(target, 'utf8');
-  ok(rawNl.includes('- 用户的称呼：老大 第二行') && rawNl.includes('- 我的名字：小鲸鱼 尾巴'),
+  ok(rawNl.includes('- 用户的称呼：用户 第二行') && rawNl.includes('- 我的名字：小鲸鱼 尾巴'),
     'N2：字段值内换行替换为空格（不撕行，外审 zx9）');
   ok((rawNl.match(/\n- 我的名字：/g) || []).length === 1, 'N2：字段行未被多行值拆散');
   // 5) 空字段名行过滤
@@ -675,7 +675,7 @@ $env:PATH = "..."
   fs.writeFileSync(target, '只有一行没有区块标题\n', 'utf8');
   const d5 = api.data();
   ok(d5.sections.length === 0 && d5.head.includes('只有一行'), '无 ## 区块 → sections 空（内容归头部）');
-  // 7) 未配置引导（老大指令）：无文件 → ensureGuide 建模板+引导句；已配置 → 不插入；save 配置完成 → 删除引导句
+  // 7) 未配置引导（用户指令）：无文件 → ensureGuide 建模板+引导句；已配置 → 不插入；save 配置完成 → 删除引导句
   fs.rmSync(target, { force: true });
   const g1 = api.ensureGuide();
   ok(g1.ok === true && g1.guided === true, '无文件 ensureGuide 创建模板并插入引导句');
@@ -689,12 +689,12 @@ $env:PATH = "..."
   ok(!fs.readFileSync(target, 'utf8').includes('引导提示'), '配置完成后引导句被删除');
   const g3 = api.ensureGuide();
   ok(g3.guided === false && !fs.readFileSync(target, 'utf8').includes('引导提示'), '已配置后 ensureGuide 不再插入');
-  // 8) v0.9.13 格式检测（老大指令）：已存在记忆但不符标准格式（缺用户/DSH 区块）→ formatMismatch=true
+  // 8) v0.9.13 格式检测（用户指令）：已存在记忆但不符标准格式（缺用户/DSH 区块）→ formatMismatch=true
   fs.writeFileSync(target, '# AGENTS.md\n\n## 身份与称呼\n\n- 我的姓名：**小六**\n', 'utf8');
   const g4 = api.ensureGuide();
   ok(g4.formatMismatch === true, '旧格式记忆（无用户/DSH 设定区块）→ formatMismatch=true（待整理）');
   ok(!fs.readFileSync(target, 'utf8').includes('引导提示'), '无用户设定区块 → 不插引导句（由注入整理提示接管）');
-  // 9) v0.9.13 角色设定（老大方案）+ v1.0.2 全文语义：角色 value = 角色 .md 全文
+  // 9) v0.9.13 角色设定（方案）+ v1.0.2 全文语义：角色 value = 角色 .md 全文
   fs.rmSync(target, { force: true });
   const full1 = '# 角色：角色 1\n\n## 定位\n\n工作编程助手（文件：~/.dsh/roles/角色 1.md）\n\n## 详细记忆\n\n详细记忆内容A';
   const full2 = '# 角色：角色 2\n\n## 定位\n\n闲聊伙伴（文件：~/.dsh/roles/角色 2.md）\n\n## 详细记忆\n\n详细记忆内容B';
@@ -720,10 +720,10 @@ $env:PATH = "..."
   const rolesSec9 = d9.sections.find((s) => s.kind === 'roles');
   ok(!!rolesSec9 && rolesSec9.fields.length === 2 && rolesSec9.fields[1].name === '角色 2', 'DSH 角色解析回填（重开窗口仍在）');
   ok(!!rolesSec9 && rolesSec9.fields[0].value === '## 详细记忆\n\n详细记忆内容A' && rolesSec9.fields[0].desc === '工作编程助手（文件：~/.dsh/roles/角色 1.md）',
-    'v1.0.3：data() 角色拆字段 —— value = 详细记忆及剩余内容、desc = ## 定位 全文（字段输入化，老大反馈 4）');
+    'v1.0.3：data() 角色拆字段 —— value = 详细记忆及剩余内容、desc = ## 定位 全文（字段输入化，用户反馈 4）');
   ok(typeof d9.mtime === 'number' && d9.mtime > 0, 'v1.0.2：data() 返回 mtime（AGENTS.md 修改时间）');
   ok(typeof d9.signature === 'string' && d9.signature.length > 0 && d9.signature.includes('角色'), 'v1.0.2b：data() 返回 signature（AGENTS.md+角色文件 变更指纹）');
-  // 10) v1.0.2（老大反馈 5①）：角色改名 → 旧文件删除 + 新文件建立（内容保留、标题更新）；删除角色 → 文件同步删除
+  // 10) v1.0.2（用户反馈 5①）：角色改名 → 旧文件删除 + 新文件建立（内容保留、标题更新）；删除角色 → 文件同步删除
   const r10a = api.save({
     users: [{ name: '用户的称呼', value: '小六' }], dsh: [],
     roles: [{ name: '学习导师', value: full1 }, { name: '角色 2', value: full2 }], // 角色 1 → 学习导师（UI 内存携带旧全文）
@@ -745,7 +745,7 @@ $env:PATH = "..."
   // 角色文件安全名：非法字符（空格/斜杠）替换为 -（防路径穿越）
   const r10 = api.save({ users: [{ name: '用户的称呼', value: '小六' }], dsh: [], roles: [{ name: '角色 A/B', value: '测试' }], sections: [] });
   ok(r10.ok === true && fs.existsSync(path.join(tmp, '.dsh', 'roles', '角色-A-B.md')), '角色文件名非法字符安全化（空格/斜杠 → -）');
-  // 11) v1.0.2b（老大反馈：改角色 .md 后需重开窗口才刷新）：角色文件外部修改 → signature 变化
+  // 11) v1.0.2b（用户反馈：改角色 .md 后需重开窗口才刷新）：角色文件外部修改 → signature 变化
   const sig1 = api.data().signature;
   fs.writeFileSync(path.join(tmp, '.dsh', 'roles', '角色-A-B.md'), '# 角色：角色 A/B\n\n## 定位\n\n测试\n\n## 详细记忆\n\n外部修改内容', 'utf8');
   const sig2 = api.data().signature;
@@ -764,7 +764,7 @@ function testVersion() {
 }
 
 // ---------------------------------------------------------------------------
-// 8. v1.0.3（老大反馈 1-6）：设置联动 / 角色字段输入 / 竖排选择 / 二级分类 / DSH 版本持久化
+// 8. v1.0.3（用户反馈 1-6）：设置联动 / 角色字段输入 / 竖排选择 / 二级分类 / DSH 版本持久化
 // ---------------------------------------------------------------------------
 function testV103() {
   console.log('[8] v1.0.3 修复验证');
@@ -800,9 +800,9 @@ function testV103() {
   ok(prompts.version === 6, `prompts.json：version 6（实际 ${prompts.version}）`);
   const plib = read('renderer/promptlib.js');
   ok(plib.includes('expandedCats') && plib.includes('cat-head') && plib.includes('selectSub') && plib.includes('currentSub'),
-    'promptlib：一级分类可折叠 + 二级子分类选中（老大反馈 5 修正）');
+    'promptlib：一级分类可折叠 + 二级子分类选中（用户反馈 5 修正）');
   ok(plib.includes('promptlibBound') && plib.includes('dataset.promptlibBound'),
-    'promptlib：分类头事件委托只绑定一次（防监听器累积导致展开/收起失效，老大反馈）');
+    'promptlib：分类头事件委托只绑定一次（防监听器累积导致展开/收起失效，用户反馈）');
   ok(plib.includes('customGroups') && plib.includes('filteredCustom'), 'promptlib：我的提示词分组逻辑保留（不受影响）');
   // 问题⑥：DSH 版本选择持久化到 userData（升级壳不回退）
   const rt = read('modules/dsh-runtime.js');
@@ -822,7 +822,7 @@ function testV103() {
 }
 
 // ---------------------------------------------------------------------------
-// 9. v1.0.5（老大反馈 1-4）：提示词 +100 / 区块删除生效 / 角色记忆说明 / 备份恢复
+// 9. v1.0.5（用户反馈 1-4）：提示词 +100 / 区块删除生效 / 角色记忆说明 / 备份恢复
 // ---------------------------------------------------------------------------
 function testV105() {
   console.log('[9] v1.0.5 修复验证');

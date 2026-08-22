@@ -94,7 +94,7 @@ nsis:
   installerLanguages:
     - zh_CN
     - en_US
-  # v0.9.6（老大指令）：安装时显示日志 —— 自定义 NSIS 脚本默认展开安装详情
+  # v0.9.6（用户指令）：安装时显示日志 —— 自定义 NSIS 脚本默认展开安装详情
   # （ShowInstDetails show），安装过程实时显示解压/复制/快捷方式等日志，
   # 不再只有单调的进度条。
   include: build/installer.nsh

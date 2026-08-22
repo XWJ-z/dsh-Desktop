@@ -3,7 +3,7 @@
 /**
  * cdp-drag-sim-check.js — v0.9 拖动文件 CDP 仿真真实验证（本机可跑）
  *
- * 背景：老大提问「CDP 仿真了吗」—— e2e T5 用例采用 CDP `Input.dispatchDragEvent`
+ * 背景：用户提问「CDP 仿真了吗」—— e2e T5 用例采用 CDP `Input.dispatchDragEvent`
  * （带 files）仿真 OS 文件拖拽，但从未真正跑过。本脚本实测验证这条关键链路：
  *
  *   CDP files → 渲染进程真实 File → preload webUtils.getPathForFile 取到绝对路径

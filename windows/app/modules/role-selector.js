@@ -1,14 +1,14 @@
 'use strict';
 
 /**
- * DSH-Desktop — 角色选择模块（v0.9.15 老大指令）
+ * DSH-Desktop — 角色选择模块（v0.9.15 用户指令）
  *
- * v0.9.15（老大：全局记忆加提示「双击对话框选择角色，默认角色 1」+ 新建对话不再提示）：
+ * v0.9.15（用户：全局记忆加提示「双击对话框选择角色，默认角色 1」+ 新建对话不再提示）：
  *  - **移除新对话弹窗**：不再轮询 DSH 会话切换、不再在新建对话时弹角色选择
- *    （老大：新建对话就不提示了）—— 角色切换改由**双击 DSH 输入框**随时触发；
+ *    （用户：新建对话就不提示了）—— 角色切换改由**双击 DSH 输入框**随时触发；
  *  - **双击重选**：DSH 主页面双击聊天输入框 → 主进程弹角色选择 →
  *    注入「本次对话角色为 xxxx，角色定义文件为 xxxx」（选错角色不用重开新对话）；
- *  - 未配置任何角色 → 不弹窗（老大方案 3）。
+ *  - 未配置任何角色 → 不弹窗（方案 3）。
  *
  * 依赖注入（deps）：
  *  - dialog / appName          Electron 对话框
@@ -25,7 +25,7 @@ function createRoleSelector(deps) {
   const {
     dialog, appName, appendLog,
     getMainWindow, getRoles, roleFilePath, injectText,
-    openRolePicker, // v1.0.3（老大反馈 3）：竖排列表选择
+    openRolePicker, // v1.0.3（用户反馈 3）：竖排列表选择
   } = deps;
 
   /** 当前是否有已配置角色（角色名非空） */
@@ -36,7 +36,7 @@ function createRoleSelector(deps) {
 
   /** 弹窗选择角色；返回选中的 { name, value } 或 null（取消/无角色） */
   async function pickRole(roles) {
-    // v1.0.3（老大反馈 3）：原生 MessageBox 按钮横排，角色名过长不美观 →
+    // v1.0.3（用户反馈 3）：原生 MessageBox 按钮横排，角色名过长不美观 →
     // 改自定义竖排列表窗口（名称 + 定位摘要），取消/关闭返回 null
     if (openRolePicker) {
       const chosen = await openRolePicker(roles);
@@ -60,7 +60,7 @@ function createRoleSelector(deps) {
   }
 
   /**
-   * 弹窗选角色 + 注入（双击 DSH 输入框触发；v0.9.13 老大反馈：选错角色不用重开新对话）。
+   * 弹窗选角色 + 注入（双击 DSH 输入框触发；v0.9.13 用户反馈：选错角色不用重开新对话）。
    * @returns {{ ok: boolean, name?: string, reason?: string }}
    */
   async function pickAndInject() {
@@ -80,7 +80,7 @@ function createRoleSelector(deps) {
   }
 
   /**
-   * 注入「双击输入框重选角色」监听（v0.9.13 老大反馈；v0.9.15 起为唯一入口）：
+   * 注入「双击输入框重选角色」监听（v0.9.13 用户反馈；v0.9.15 起为唯一入口）：
    * DSH 主页面双击聊天输入框 → 通知主进程弹角色选择（选错角色不用重开新对话）。
    * 幂等：同一页面生命周期只注入一次。
    */

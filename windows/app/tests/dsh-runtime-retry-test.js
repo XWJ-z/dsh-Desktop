@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * dsh-runtime-retry-test.js — v1.1.1 三轮（老大指令）：安装失败自动重试 + 多源切换 行为单测
+ * dsh-runtime-retry-test.js — v1.1.1 三轮（用户指令）：安装失败自动重试 + 多源切换 行为单测
  *
  * 验证 ensureDshRuntime 的多源 + 重试循环（mock spawn，不真实联网）：
  *  1. 首次尝试失败（npm 退出码 1）→ 自动切换源（npmmirror → npmjs）重试 → 成功

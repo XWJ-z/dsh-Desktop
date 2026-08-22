@@ -67,7 +67,7 @@ function createMiscWindowsModule(deps) {
       parent: getMainWindow(),
       modal: true,
       title: '更新日志',
-      autoHideMenuBar: true, // v0.9.12（老大反馈）：弹窗不显示菜单栏
+      autoHideMenuBar: true, // v0.9.12（用户反馈）：弹窗不显示菜单栏
       backgroundColor: nativeTheme.shouldUseDarkColors ? '#0f1115' : '#eef0f4', // v0.9.9：跟随外观
       webPreferences: secureWebPreferences(),
     });
@@ -92,7 +92,7 @@ function createMiscWindowsModule(deps) {
       parent: getMainWindow(),
       modal: true,
       title: '公告',
-      autoHideMenuBar: true, // v0.9.12（老大反馈）：弹窗不显示菜单栏
+      autoHideMenuBar: true, // v0.9.12（用户反馈）：弹窗不显示菜单栏
       backgroundColor: nativeTheme.shouldUseDarkColors ? '#0f1115' : '#eef0f4', // v0.9.9：跟随外观
       webPreferences: secureWebPreferences(),
     });
@@ -119,13 +119,13 @@ function createMiscWindowsModule(deps) {
       width: 720,
       height: 560,
       resizable: true,
-      minimizable: true, // v1.1.5（老大指令）：体验优化，可最小化
+      minimizable: true, // v1.1.5（用户指令）：体验优化，可最小化
       minWidth: 560,
-      minHeight: 420, // v1.0.2（老大反馈）：可自由拖动但加最小尺寸约束
+      minHeight: 420, // v1.0.2（用户反馈）：可自由拖动但加最小尺寸约束
       parent: getMainWindow(),
       modal: false,
       title: '提示词库', // modal:false —— 面板随时可点主窗口连续注入
-      autoHideMenuBar: true, // v0.9.12（老大反馈）：弹窗不显示菜单栏
+      autoHideMenuBar: true, // v0.9.12（用户反馈）：弹窗不显示菜单栏
       backgroundColor: nativeTheme.shouldUseDarkColors ? '#0f1115' : '#eef0f4', // v0.9.9：跟随外观
       webPreferences: secureWebPreferences(),
     });
@@ -147,13 +147,13 @@ function createMiscWindowsModule(deps) {
       width: 960,
       height: 660,
       resizable: true,
-      minimizable: true, // v1.1.5（老大指令）：体验优化，可最小化
+      minimizable: true, // v1.1.5（用户指令）：体验优化，可最小化
       minWidth: 640,
-      minHeight: 480, // v1.0.2（老大反馈）：可自由拖动但加最小尺寸约束
+      minHeight: 480, // v1.0.2（用户反馈）：可自由拖动但加最小尺寸约束
       parent: getMainWindow(),
       modal: false,
       title: '全局记忆',
-      autoHideMenuBar: true, // v0.9.12（老大反馈）：弹窗不显示菜单栏
+      autoHideMenuBar: true, // v0.9.12（用户反馈）：弹窗不显示菜单栏
       backgroundColor: nativeTheme.shouldUseDarkColors ? '#0f1115' : '#eef0f4', // v0.9.9：跟随外观
       webPreferences: secureWebPreferences(),
     });
@@ -174,12 +174,12 @@ function createMiscWindowsModule(deps) {
       width: 900,
       height: 600,
       resizable: true,
-      minimizable: true, // v1.1.5（老大指令）：体验优化，可最小化
+      minimizable: true, // v1.1.5（用户指令）：体验优化，可最小化
       minWidth: 700,
       minHeight: 500,
       parent: getMainWindow(),
       modal: false,
-      title: '插件市场', // v1.1.1：去掉 💎（老大指令：插件市场不显示表情）
+      title: '插件市场', // v1.1.1：去掉 💎（用户指令：插件市场不显示表情）
       autoHideMenuBar: true,
       backgroundColor: nativeTheme.shouldUseDarkColors ? '#0f1115' : '#eef0f4',
       webPreferences: secureWebPreferences(),
@@ -191,7 +191,7 @@ function createMiscWindowsModule(deps) {
     setPluginMarketWin(win);
   }
 
-  /** v1.1.1 二轮（老大反馈）：帮助文档窗口 —— 应用内打开本地 help.html
+  /** v1.1.1 二轮（用户反馈）：帮助文档窗口 —— 应用内打开本地 help.html
    *  （本地优先 + 后台静默远程同步，见 help-doc.js）；与提示词库同款弹窗外观 */
   function openHelpDocWindow(htmlPath) {
     if (getHelpDocWin() && !getHelpDocWin().isDestroyed()) {
@@ -208,7 +208,7 @@ function createMiscWindowsModule(deps) {
       parent: getMainWindow(),
       modal: false,
       title: '帮助文档',
-      autoHideMenuBar: true, // v0.9.12（老大反馈）：弹窗不显示菜单栏
+      autoHideMenuBar: true, // v0.9.12（用户反馈）：弹窗不显示菜单栏
       backgroundColor: nativeTheme.shouldUseDarkColors ? '#0f1115' : '#eef0f4', // v0.9.9：跟随外观
       webPreferences: secureWebPreferences(),
     });
@@ -220,7 +220,7 @@ function createMiscWindowsModule(deps) {
   }
 
   /** 关闭行为询问弹窗（v0.6.1 T-027 → v0.7.10 改原生）：退出 / 关闭到托盘 + 记住我的选择。
-   *  老大要求：和恢复数据弹窗一样用 Windows 原生对话框，不做深色美化。 */
+   *  用户要求：和恢复数据弹窗一样用 Windows 原生对话框，不做深色美化。 */
   function openCloseChoiceWindow(parentWin) {    dialog
       .showMessageBox(parentWin, {
         type: 'question',
@@ -254,7 +254,7 @@ function createMiscWindowsModule(deps) {
       });
   }
 
-  // ── 备份进度窗口（v0.7.10 老大反馈：极简原生风格；v0.8.23 老大要求弹窗统一外观，
+  // ── 备份进度窗口（v0.7.10 用户反馈：极简原生风格；v0.8.23 用户要求弹窗统一外观，
   //    接入 shared.css 深色主题 + backgroundColor 与其他弹窗一致）──
   let backupProgressWin = null;
 
@@ -273,7 +273,7 @@ function createMiscWindowsModule(deps) {
       parent: getMainWindow(),
       modal: false,
       title: '备份数据',
-      autoHideMenuBar: true, // v0.9.12（老大反馈）：弹窗不显示菜单栏
+      autoHideMenuBar: true, // v0.9.12（用户反馈）：弹窗不显示菜单栏
       backgroundColor: nativeTheme.shouldUseDarkColors ? '#0f1115' : '#eef0f4', // v0.9.9：跟随外观
       webPreferences: secureWebPreferences(),
     });

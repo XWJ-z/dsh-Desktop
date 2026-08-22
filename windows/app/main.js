@@ -57,7 +57,7 @@ const { createDropFiles } = require('./modules/drop-files'); // v0.9（T4/T5）�
 const { createCustomPrompts } = require('./modules/custom-prompts'); // v0.9.5（T2）：自定义提示词
 const { createGlobalMemory } = require('./modules/global-memory'); // v0.9.12：全局记忆（宠物菜单）
 const { createRoleSelector } = require('./modules/role-selector'); // v0.9.13：新对话选择角色
-const { createRolePicker } = require('./modules/role-picker'); // v1.0.3（老大反馈 3）：角色选择竖排窗口
+const { createRolePicker } = require('./modules/role-picker'); // v1.0.3（用户反馈 3）：角色选择竖排窗口
 const { createNoticeModule } = require('./modules/notice'); // v0.9.5（T3）：公告条/公告源
 const { createHelpDoc } = require('./modules/help-doc'); // v1.1.1：帮助文档远程下发
 const { createPromptsUpdater } = require('./modules/prompts-updater'); // v1.1.1：提示词库远程更新
@@ -78,7 +78,7 @@ const SERVER_READY_TIMEOUT_MS = 240_000; // 等待 dsh web 就绪的上限（含
 const CHILD_GRACE_MS = 5_000; // 关闭子进程的宽限期
 const NPM_INSTALL_TIMEOUT_MS = 2_400_000; // 下载/安装 DSH 运行时的上限（v1.1.1：10→40 分钟；
 // 实测：npm 12 全量安装 @deepseek-ai/dsh（449 包）本机需 18~23 分钟、内存峰值 3.4GB，
-// 慢机器/虚拟机更久 —— 旧壳 10 分钟会被误杀（用户 jiu / 老大 VM 均复现"装不上"）；
+// 慢机器/虚拟机更久 —— 旧壳 10 分钟会被误杀（用户 jiu / 用户 VM 均复现"装不上"）；
 // 慢机器上 V8 堆还会顶爆 2GB（OOM），配合 dsh-runtime.js 的 4GB 堆上限一起解决）
 
 // 未捕获异常/拒绝：记录后继续（避免窗口服务抖动导致整体退出）；
@@ -253,7 +253,7 @@ function webUrl() {
 // v0.8.18 + v0.8.19 + v0.8.21：外观（nativeTheme.themeSource：'system' | 'light' | 'dark'）
 // v0.8.19：DSH 硬编码 color-scheme 不响应 prefers-color-scheme，需额外
 // syncDshAppearance 程序化点击 DSH 设置面板主题按钮同步。
-// v0.8.21（老大反馈）：① applyAppearance 不再隐式打开 DSH 设置面板 ——
+// v0.8.21（用户反馈）：① applyAppearance 不再隐式打开 DSH 设置面板 ——
 // 启动/恢复布局时只设壳外观，绝不自动打开 DSH 面板（v0.8.19 每次启动都弹面板）；
 // DSH 同步仅发生在用户主动通过「外观…」弹窗选择时。
 // ② 新增反向监听 startDshThemeWatch：用户直接在 DSH 设置面板改外观时，
@@ -309,7 +309,7 @@ function openAppearanceDialog() {
  * prefers-color-scheme，必须程序化点击对应按钮。
  * 探测实证（CDP）：点击「浅色」后 body 背景 rgb(21,21,23) → rgb(255,255,255)。
  * v0.8.21：仅用户主动选择时调用；面板原本关闭则同步完成后自动关闭（不残留）。
- * v0.8.24（老大反馈：切换外观后 DSH 设置面板被打开）：探测实证 DSH 面板关闭
+ * v0.8.24（用户反馈：切换外观后 DSH 设置面板被打开）：探测实证 DSH 面板关闭
  * 方式是 ESC / 点面板外空白（「设置」按钮非 toggle，再点不会关）——
  * 关闭前先查面板是否仍打开，仍开则点面板外空白关闭，避免残留。
  */
@@ -385,13 +385,13 @@ function syncDshAppearance(mode) {
     });
 }
 
-// v0.8.21（老大反馈）：DSH 设置面板改外观 → 壳外观反向同步。
+// v0.8.21（用户反馈）：DSH 设置面板改外观 → 壳外观反向同步。
 // 轮询读取 DSH 面板当前选中的主题按钮（.themeCube._selected 文本），
 // 与壳设置不一致时更新壳外观（nativeTheme + 持久化 + 菜单）。
 // 仅面板打开时能读到选中态，面板关闭时轮询自动空转，开销可忽略。
-// v0.9.9（老大反馈：壳延迟大）：轮询 2500ms → 400ms —— 用户在 DSH 面板直接切外观时，
+// v0.9.9（用户反馈：壳延迟大）：轮询 2500ms → 400ms —— 用户在 DSH 面板直接切外观时，
 // 壳（nativeTheme/菜单）最多 0.4s 内跟上（此前最长等 2.5s）。
-// v0.9.11（外审 zx(9) P2-1）：保留 400ms 快跟随（老大指令），但主窗口隐藏/
+// v0.9.11（外审 zx(9) P2-1）：保留 400ms 快跟随（用户指令），但主窗口隐藏/
 // 最小化/销毁时跳过本轮（不执行 executeJavaScript，省 IPC/CPU）；恢复可见立即恢复。
 let dshThemeWatchTimer = null;
 function startDshThemeWatch() {
@@ -482,12 +482,12 @@ const { handleDropFiles } = dropFilesApi;
 // v0.9.5（T2.1）：自定义提示词存储（userData/custom-prompts.json）
 const customPromptsApi = createCustomPrompts({ fs, path, app, appendLog });
 
-// v0.9.12（老大指令）：全局记忆 —— 读写 DSH 原生 ~/.dsh/AGENTS.md（DSH 自动读取，
+// v0.9.12（用户指令）：全局记忆 —— 读写 DSH 原生 ~/.dsh/AGENTS.md（DSH 自动读取，
 // 无需手动发送）；图形化表单编辑基础设定（区块级写回，不破坏其他内容）
 const globalMemoryApi = createGlobalMemory({ app, fs, os, path, appendLog });
 
-// v0.9.15（老大指令）：新建对话不再弹窗提示角色 —— 角色切换改为双击 DSH 输入框随时重选
-// v1.0.3（老大反馈 3）：选择弹窗从原生横排按钮改为竖排列表窗口（rolePickerApi 晚绑定组装）
+// v0.9.15（用户指令）：新建对话不再弹窗提示角色 —— 角色切换改为双击 DSH 输入框随时重选
+// v1.0.3（用户反馈 3）：选择弹窗从原生横排按钮改为竖排列表窗口（rolePickerApi 晚绑定组装）
 const roleSelectorApi = createRoleSelector({
   dialog,
   appName: APP_NAME,
@@ -642,7 +642,7 @@ const {
 } = miscWindowsModule;
 openHelpDocWindowRef = openHelpDocWindow; // 晚绑定（helpDocApi 组装于 misc-windows 之前）
 
-// v1.0.3（老大反馈 3）：角色选择竖排窗口 —— 依赖 secureWebPreferences（组装于其后）
+// v1.0.3（用户反馈 3）：角色选择竖排窗口 —— 依赖 secureWebPreferences（组装于其后）
 const rolePickerApi = createRolePicker({
   BrowserWindow,
   app,
@@ -812,9 +812,9 @@ const { backupUserData, restoreUserData } = createBackup({
   settingsFile: settingsApi.settingsFile,
   getOwnerWindow: () => (mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined),
   isServerRunning: () => !!(serverChild && serverChild.exitCode === null),
-  // v0.7.10（老大反馈）：恢复数据前可只停 DSH 服务（不退出应用），而非要求整体退出
+  // v0.7.10（用户反馈）：恢复数据前可只停 DSH 服务（不退出应用），而非要求整体退出
   stopServerOnly,
-  // v0.7.10（老大反馈）：备份进度条 —— 进度窗口 + 主窗口任务栏进度
+  // v0.7.10（用户反馈）：备份进度条 —— 进度窗口 + 主窗口任务栏进度
   openBackupProgress,
   updateBackupProgress,
   closeBackupProgress,
@@ -899,7 +899,7 @@ refreshMenusRef = menuApi.refreshMenus;
 saveSettingsRef = settingsApi.saveSettings;
 // v0.8.13（T2 补充修复）：解构 buildMenu —— whenReady / checkUpdatesOnStart 直接调用
 // buildMenu()，缺解构会抛 ReferenceError: buildMenu is not defined → 进程活着但
-// 无窗口、无托盘（老大全新系统实测；0.8.12 覆盖安装"双击无反应"同因）。
+// 无窗口、无托盘（全新系统实测；0.8.12 覆盖安装"双击无反应"同因）。
 const { buildMenu } = menuApi;
 
 // v0.8.1（T5）：createTray/updateTrayMenu 已移至 modules/tray.js（trayApi）
@@ -970,7 +970,7 @@ async function checkUpdatesOnStart() {
     });
   const [dshLatest, shellInfo] = await Promise.all([fetchLatestDshVersion(), fetchLatestShellVersion()]);
 
-  // DSH 侧：v1.1.5（老大指令）—— 启动检查到 DSH 新版同样弹窗提示（对齐壳更新体验）。
+  // DSH 侧：v1.1.5（用户指令）—— 启动检查到 DSH 新版同样弹窗提示（对齐壳更新体验）。
   // 升级入口保留在更新窗口（一键升级改 config 重启）；「立即升级」走同一链路。
   if (dshLatest) {
     const dshCurrent = installedDshVersion() ?? cfg.dshVersion;
@@ -1006,7 +1006,7 @@ async function checkUpdatesOnStart() {
 }
 
 /**
- * v0.9.7（老大反馈：公告要重启应用才刷新）：运行中定时自动拉取公告源。
+ * v0.9.7（用户反馈：公告要重启应用才刷新）：运行中定时自动拉取公告源。
  * 每 NOTICE_REFRESH_MS 拉一次 notice.json，拉到新内容 → 刷新菜单（公告条 + 「公告（新）」标记）；
  * 版本未变时 notice.js 静默（不刷日志）；拉取失败沿用缓存（公告条不闪没）。
  */
@@ -1091,7 +1091,7 @@ function promptShellUpdate(info) {
 }
 
 /**
- * v1.1.5（老大指令）：启动检查到 DSH 新版 → 弹窗询问（对齐壳更新体验）。
+ * v1.1.5（用户指令）：启动检查到 DSH 新版 → 弹窗询问（对齐壳更新体验）。
  * 「立即升级」走 upgradeDshVersion（改写 config.json + userData 记录 → relaunch，
  * 重启后 ensureDshRuntime 按目标版本安装）。当前版本优先取实际安装版本，
  * 未安装时取配置版本兜底。
@@ -1154,7 +1154,7 @@ function promptDshUpdate(latestVersion) {
 // ---------------------------------------------------------------------------
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
-  // v0.9.13（老大反馈：关闭到托盘后双击桌面图标弹"已在运行中"）：去掉该弹框 ——
+  // v0.9.13（用户反馈：关闭到托盘后双击桌面图标弹"已在运行中"）：去掉该弹框 ——
   // 第二实例静默退出，第一实例的 second-instance 事件负责恢复显示主窗口
   //（双击桌面图标 = 直接显示界面，与托盘模式体验一致）
   app.quit();
@@ -1272,8 +1272,8 @@ if (!gotLock) {
     }
     pushStage('check');
 
-    // v0.9.12（老大指令）：未配置全局记忆 → 插入引导句（DSH 第一次对话引导用户配置）
-    // v0.9.13（老大指令）：已存在记忆但不符标准格式 → 记录，主窗口就绪后注入整理提示
+    // v0.9.12（用户指令）：未配置全局记忆 → 插入引导句（DSH 第一次对话引导用户配置）
+    // v0.9.13（用户指令）：已存在记忆但不符标准格式 → 记录，主窗口就绪后注入整理提示
     let memoryFormatMismatch = false;
     const guideRes = globalMemoryApi.ensureGuide();
     if (guideRes && guideRes.formatMismatch) memoryFormatMismatch = true;
@@ -1289,10 +1289,10 @@ if (!gotLock) {
         if (loadingWindow && !loadingWindow.isDestroyed()) loadingWindow.close();
         loadingWindow = null;
         createMainWindow();
-        // v0.9.15（老大指令：新建对话不提示）：不再轮询/弹窗选角色；
-        // 双击 DSH 输入框 → 随时重选角色（v0.9.13 老大反馈：选错角色不用重开新对话）
+        // v0.9.15（用户指令：新建对话不提示）：不再轮询/弹窗选角色；
+        // 双击 DSH 输入框 → 随时重选角色（v0.9.13 用户反馈：选错角色不用重开新对话）
         roleSelectorApi.injectDblclick(mainWindow);
-        // v0.9.13（老大指令）：记忆格式不符标准 → 主窗口加载完成后注入整理提示词
+        // v0.9.13（用户指令）：记忆格式不符标准 → 主窗口加载完成后注入整理提示词
         // （让 DSH 按标准格式整理现有记忆，不改变原意）
         // v0.9.16（外审 zx(9) 复核 N3）：仅首次启动注入 —— 标记文件防每次启动重复覆盖输入框
         const tidyMarker = path.join(os.homedir(), '.dsh', '.format-tidy-injected');
@@ -1315,7 +1315,7 @@ if (!gotLock) {
             }
           }, 3500);
         }
-        // v0.8.21（老大反馈）：不再启动时自动同步 DSH 外观 ——
+        // v0.8.21（用户反馈）：不再启动时自动同步 DSH 外观 ——
         // v0.8.19 的 setTimeout(syncDshAppearance, 4000) 每次启动都会打开
         // DSH 设置面板；改为仅用户主动选择外观时同步（openAppearanceDialog）。
         // 启动时仅设置壳外观（applyAppearance 已去掉 DSH 同步），

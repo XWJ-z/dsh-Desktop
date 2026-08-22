@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * check-v103-behavior.js — v1.0.3 修复行为级测试（老大反馈 1/4/6）
+ * check-v103-behavior.js — v1.0.3 修复行为级测试（用户反馈 1/4/6）
  *
  * 1. 问题① 设置联动：最小化到托盘 / 关闭时总是询问 / 记住选择 三向联动；
  * 2. 问题④ 角色字段输入化：parseRoleContent / renderRoleContent 往返、
@@ -197,7 +197,7 @@ function testRoleFields() {
   const target = path.join(tmp, '.dsh', 'AGENTS.md');
   fs.mkdirSync(path.dirname(target), { recursive: true });
   const r = api.save({
-    users: [{ name: '用户的称呼', value: '老大' }],
+    users: [{ name: '用户的称呼', value: '用户' }],
     dsh: [],
     roles: [{ name: '学习导师', value: full }],
     sections: [],
@@ -217,7 +217,7 @@ function testRoleFields() {
 
   // 新 payload（desc/memory 字段）→ 组装正确
   const r2 = api.save({
-    users: [{ name: '用户的称呼', value: '老大' }], dsh: [],
+    users: [{ name: '用户的称呼', value: '用户' }], dsh: [],
     roles: [{ name: '测试角色', desc: '测试定位', memory: '测试详细记忆\n第二行' }],
     sections: [],
   });
@@ -226,12 +226,12 @@ function testRoleFields() {
   ok(written2.includes('# 角色：测试角色') && written2.includes('## 定位\n\n测试定位') && written2.includes('## 详细记忆\n\n测试详细记忆\n第二行'),
     'save：新 payload 组装为标准结构（字段输入化）');
 
-  // v1.0.3（老大反馈 2）：角色名 ≤30 字符校验（前端 maxlength + 主进程保存校验）
+  // v1.0.3（用户反馈 2）：角色名 ≤30 字符校验（前端 maxlength + 主进程保存校验）
   ok(api.MAX_ROLE_NAME === 30, 'MAX_ROLE_NAME = 30（导出常量）');
   const longName = '这是一个非常非常长的角色名称用来测试长度限制是否生效的角色名字';
   ok(longName.length > 30, `构造超长角色名（${longName.length} 字符）`);
   const rLen = api.save({
-    users: [{ name: '用户的称呼', value: '老大' }], dsh: [],
+    users: [{ name: '用户的称呼', value: '用户' }], dsh: [],
     roles: [{ name: longName, desc: 'x', memory: 'y' }],
     sections: [],
   });
@@ -239,7 +239,7 @@ function testRoleFields() {
   ok(!fs.existsSync(path.join(tmp, '.dsh', 'roles', '这是一个非常非常长的角色名称用来测试长度限制是否生效的角色名字.md')),
     'save：超长角色名未写入角色文件');
   const rOk = api.save({
-    users: [{ name: '用户的称呼', value: '老大' }], dsh: [],
+    users: [{ name: '用户的称呼', value: '用户' }], dsh: [],
     roles: [{ name: '三十个字符以内的角色名称测试', desc: 'x', memory: 'y' }],
     sections: [],
   });
@@ -317,7 +317,7 @@ async function testDshVersionPersist() {
   const rt4 = mkRuntime();
   ok(rt4.readShellConfig().dshVersion === 'latest', '无 userData 记录 + config=latest → 保持 latest 语义');
 
-  // ⑥ 升级壳兼容迁移（老大反馈 6 完整覆盖）：v1.0.2 时代用户曾把 config.json 升级 DSH 到
+  // ⑥ 升级壳兼容迁移（用户反馈 6 完整覆盖）：v1.0.2 时代用户曾把 config.json 升级 DSH 到
   // rc.7（当时无 userData 记录）→ 升级壳 v1.0.3 后 config 被重置为内置 rc.6 →
   // ensureDshRuntime 检测到已装版本与内置不一致 → 持久化已装版本，不再回退重装
   {

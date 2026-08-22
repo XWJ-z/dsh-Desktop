@@ -4,7 +4,7 @@ windows/app/node_modules/
 dist/
 windows/app/dist/
 
-# 临时文件总目录（老大指令 2026-08-20：npm 缓存 / CDP 仿真残留统一放 temp/，勿放根目录）
+# 临时文件总目录（用户指令 2026-08-20：npm 缓存 / CDP 仿真残留统一放 temp/，勿放根目录）
 /temp/
 # CDP 仿真临时目录兜底（任意层级，如 windows/app/.sim-tmp-*；2026-08-20 曾因删除该规则导致 .sim-tmp-oom 未忽略）
 .sim-tmp*/

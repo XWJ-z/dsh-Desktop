@@ -12,7 +12,7 @@
  *   node scripts/release.js <新版本> [--hash <sha256>] [--notes <一句话更新说明>]
  *   例：node scripts/release.js 0.8.12 --hash abc123... --notes "修复 xxx"
  *
- * 流程（仅文件操作，不自动 push/tag —— 网络动作由老大执行）：
+ * 流程（仅文件操作，不自动 push/tag —— 网络动作由人工执行）：
  *   1. 校验版本格式（x.y.z，z≠0 且 z≠4 预留）
  *   2. package.json version → 新版本
  *   3. version.json：version → 新版本；hash → --hash（缺省保持原值并告警）；
@@ -118,7 +118,7 @@ function main() {
 
   // 4. 后续发布清单
   console.log('');
-  console.log('[release] ✓ 文件更新完成。后续发布动作（老大执行）：');
+  console.log('[release] ✓ 文件更新完成。后续发布动作（人工执行）：');
   console.log(`  1. 上传 dist/installer/DSH-Desktop-Setup-${v}.exe 到 GitHub Releases v${v} 资产`);
   console.log(`  2. ★ 验证资产：curl -sI https://github.com/XWJ-z/dsh-Desktop/releases/download/v${v}/DSH-Desktop-Setup-${v}.exe | head -1`);
   console.log('     （必须 200/302 非 404 —— 0.8.9 教训：资产没上传 → 老用户下载 404 → 校验失败）');

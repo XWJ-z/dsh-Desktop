@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * DSH-Desktop — 角色选择窗口模块（v1.0.3，老大反馈 3）
+ * DSH-Desktop — 角色选择窗口模块（v1.0.3，用户反馈 3）
  *
  * 背景：v0.9.15 起双击 DSH 输入框重选角色，原实现用 dialog.showMessageBox 的
  * 按钮列表 —— Windows 原生按钮**横排**，角色名称过长时选项被拉得很长不美观。

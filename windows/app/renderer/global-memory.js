@@ -2,12 +2,12 @@
 
 /**
  * global-memory.js — 全局记忆窗口脚本（v1.0.2 四区块版）
- * 布局：左侧固定 4 个类别（老大指令 2026-08-18）——
+ * 布局：左侧固定 4 个类别（用户指令 2026-08-18）——
  *  👤 用户设定 / 🤖 我的设定 / 🧠 全局记忆区块 / 🎭 DSH 角色
  *  - 用户设定 / 我的设定：字段列表可增删（默认角色为下拉选择）；
  *  - 全局记忆区块：合并展示所有 `## xxxx` 其他区块（卡片列表，标题可改 + 长文本可折叠）；
  *  - DSH 角色：卡片列表式 —— 每个角色一张卡（角色名 + 角色 .md 文件全文大输入框），
- *    与 ~/.dsh/roles/ 文件双向同步（v1.0.2 老大反馈 5②）；
+ *    与 ~/.dsh/roles/ 文件双向同步（v1.0.2 用户反馈 5②）；
  *  - 窗口聚焦时对比 AGENTS.md + 角色文件 变更指纹（signature）→ 自动重新加载（外部修改立即同步，v1.0.2b）；
  *  - 覆盖确认在前端（二次确认）+ 8s 超时兜底；保存后可选让 DSH 整理记忆。
  */
@@ -17,13 +17,13 @@ const dsh = window.dshDesktop;
 
 const USERS_KEY = '__users__';
 const DSH_KEY = '__dsh__';
-const MEMO_KEY = '__memo__';    // v1.0.2（老大指令 2）：全局记忆区块（合并所有 ## 区块）
+const MEMO_KEY = '__memo__';    // v1.0.2（用户指令 2）：全局记忆区块（合并所有 ## 区块）
 const ROLES_KEY = '__roles__';
 const DEFAULT_FIELDS = ['用户的称呼', '用户的身份/角色', '当前项目', '常用约定'];
 const DEFAULT_DSH_FIELDS = ['我的名字', '语气风格', '输出习惯', '默认角色'];
 const DEFAULT_ROLES = ['角色 1', '角色 2', '角色 3'];
 const VALUE_HINTS = {
-  用户的称呼: '例：老大 / 张三',
+  用户的称呼: '例：用户 / 张三',
   用户的身份角色: '例：技术总监 / 项目负责人',
   当前项目: '例：DSH-Desktop（Electron 套壳）',
   常用约定: '例：有改必升版本号；开发日志必写',
@@ -47,7 +47,7 @@ let activeKey = USERS_KEY;
 let fileExists = false;
 let filePath = '';
 let fileSignature = ''; // v1.0.2b：AGENTS.md + 角色文件 变更指纹（聚焦自动刷新依据）
-let fileCorrupt = false; // v1.0.5（老大反馈 4）：记忆文件解析异常 → 显示一键恢复条
+let fileCorrupt = false; // v1.0.5（用户反馈 4）：记忆文件解析异常 → 显示一键恢复条
 let guidePending = false; // 未配置引导标记（文件用户设定区有引导句）
 let bannerTimer = null;
 let confirmTimer = null; // 保存二次确认计时
@@ -60,7 +60,7 @@ function showBanner(text, ok) {
   bannerTimer = setTimeout(() => { b.className = 'banner'; }, 3000);
 }
 
-/** v1.0.5（老大反馈 4）：解析异常恢复条显隐 */
+/** v1.0.5（用户反馈 4）：解析异常恢复条显隐 */
 function updateCorruptBar() {
   const bar = el('corrupt-bar');
   if (bar) bar.classList.toggle('show', !!fileCorrupt);
@@ -79,7 +79,7 @@ function valueHint(name) {
   return VALUE_HINTS[n] || VALUE_HINTS[n.replace(/\//g, '')] || VALUE_HINT_FALLBACK;
 }
 
-// ── 左侧类别列表（v1.0.2 老大指令：4 个固定类别，全局记忆区块/DSH 角色不再各自展开）──
+// ── 左侧类别列表（v1.0.2 用户指令：4 个固定类别，全局记忆区块/DSH 角色不再各自展开）──
 function renderCats() {
   const cats = el('cats');
   let html = `<div class="cat ${activeKey === USERS_KEY ? 'active' : ''}" data-key="${USERS_KEY}">👤 用户设定<span class="tag">字段</span></div>`;
@@ -116,7 +116,7 @@ function renderRight() {
     return;
   }
   if (activeKey === MEMO_KEY) {
-    // v1.0.2（老大指令 2）：所有 ## 区块合并到一个「全局记忆区块」类别，内部卡片列表
+    // v1.0.2（用户指令 2）：所有 ## 区块合并到一个「全局记忆区块」类别，内部卡片列表
     head.innerHTML = '全局记忆区块 <span class="tag">## 标题可改 · 长文本 · 可折叠</span>';
     body.innerHTML = `
       <div class="guide-tip">💡 这里汇总 AGENTS.md 里除 用户设定 / 我的设定 / DSH 角色 外的全部 ## 区块，各自独立保存，内容格式原样保留。</div>
@@ -128,8 +128,8 @@ function renderRight() {
     return;
   }
   if (activeKey === ROLES_KEY) {
-    // v1.0.2（老大指令 3）：DSH 角色 = 卡片列表式
-    // v1.0.3（老大反馈 2）：改为「左侧角色列表 + 右侧点击进入编辑」—— 角色名 ≤30 字符
+    // v1.0.2（用户指令 3）：DSH 角色 = 卡片列表式
+    // v1.0.3（用户反馈 2）：改为「左侧角色列表 + 右侧点击进入编辑」—— 角色名 ≤30 字符
     head.innerHTML = 'DSH 角色 <span class="tag">点击角色进入编辑 · 可增删</span>';
     body.innerHTML = `
       <div class="guide-tip">💡 点击左侧角色进入编辑；「我的设定 → 默认角色」选默认角色；双击 DSH 输入框可随时切换角色。</div>
@@ -156,7 +156,7 @@ function renderAll() {
 
 /** 通用字段行渲染（listElId：容器 id；arr：数据数组）。
  *  v0.9.13：「默认角色」字段渲染为下拉选择（选项 = DSH 角色区块的角色名）。
- *  v1.0.2c（老大反馈）：「默认角色」字段**不可删除**（下拉是功能入口，误删后 DSH 没默认角色）。 */
+ *  v1.0.2c（用户反馈）：「默认角色」字段**不可删除**（下拉是功能入口，误删后 DSH 没默认角色）。 */
 function renderRows(listElId, arr) {
   const wrap = el(listElId);
   const roleNames = roleFields.map((r) => String(r.name || '').trim()).filter(Boolean);
@@ -200,7 +200,7 @@ function renderRows(listElId, arr) {
 function renderFields() { renderRows('fields', userFields); }
 function renderDshFields() { renderRows('dsh-fields', dshFields); }
 
-// ── v1.0.2（老大指令 2）：全局记忆区块 —— 所有 ## 区块的卡片列表（可折叠）──
+// ── v1.0.2（用户指令 2）：全局记忆区块 —— 所有 ## 区块的卡片列表（可折叠）──
 function renderMemoList() {
   const list = el('memo-list');
   if (!list) return;
@@ -250,7 +250,7 @@ function addSection() {
   if (t) { t.focus(); t.select(); }
 }
 
-// ── v1.0.2（老大指令 3）/ v1.0.3（老大反馈 2）：DSH 角色 —— 左侧列表 + 右侧点击进入编辑
+// ── v1.0.2（用户指令 3）/ v1.0.3（用户反馈 2）：DSH 角色 —— 左侧列表 + 右侧点击进入编辑
 // 角色名 ≤30 字符（前端 maxlength + 主进程保存校验双保险）；结构字段（# 角色：/ ## 定位 /
 // ## 详细记忆）由程序组装，用户不直接编辑全文，防误删。
 const MAX_ROLE_NAME = 30; // v1.0.3：角色名长度上限
@@ -386,7 +386,7 @@ async function doSave() {
   if (res && res.ok) {
     try { await loadData(); renderAll(); } catch { /* ignore */ }
     showBanner('✅ 已保存（DSH 新会话自动生效）', true);
-    // v0.9.12（老大指令）：保存后询问是否让 DSH 整理记忆
+    // v0.9.12（用户指令）：保存后询问是否让 DSH 整理记忆
     showTidyBar();
   } else if (res && res.reason === 'cancelled') {
     showBanner('已取消保存（未改动文件）', false);
@@ -448,7 +448,7 @@ async function loadData() {
   filePath = (data && data.file) || '';
   fileExists = !!(data && data.exists);
   fileSignature = (data && data.signature) || ''; // v1.0.2b：AGENTS.md + 角色文件 变更指纹
-  fileCorrupt = !!(data && data.corrupt); // v1.0.5（老大反馈 4）：解析异常 → 显示一键恢复条
+  fileCorrupt = !!(data && data.corrupt); // v1.0.5（用户反馈 4）：解析异常 → 显示一键恢复条
   updateCorruptBar();
   const list = (data && Array.isArray(data.sections)) ? data.sections : [];
   // 用户设定 / DSH 设定 / DSH 角色 三个独立顶层区块
@@ -480,7 +480,7 @@ async function loadData() {
   sections = list
     .filter((s) => s.kind === 'long')
     .map((s) => ({ title: s.title, body: (s.body || []).join('\n'), collapsed: false }));
-  // v1.0.1（老大指令）：左下角不再显示双路径（按钮直达目录即可）
+  // v1.0.1（用户指令）：左下角不再显示双路径（按钮直达目录即可）
   el('path').textContent = filePath;
 }
 
@@ -496,14 +496,14 @@ async function init() {
   }
   renderAll();
   el('btn-save').addEventListener('click', onSaveClick);
-  // v1.0.1（老大指令）：两个按钮 —— 记忆文件位置 / 角色文件位置
+  // v1.0.1（用户指令）：两个按钮 —— 记忆文件位置 / 角色文件位置
   el('btn-open-memory').addEventListener('click', () => {
     if (dsh && dsh.openGlobalMemoryFolder) dsh.openGlobalMemoryFolder();
   });
   el('btn-open-roles').addEventListener('click', () => {
     if (dsh && dsh.openGlobalMemoryRoles) dsh.openGlobalMemoryRoles();
   });
-  // v1.0.5（老大反馈 4）：解析异常 → 从备份一键恢复（AGENTS.md.bak）
+  // v1.0.5（用户反馈 4）：解析异常 → 从备份一键恢复（AGENTS.md.bak）
   const restoreBtn = el('btn-restore-bak');
   if (restoreBtn) restoreBtn.addEventListener('click', async () => {
     if (!dsh || !dsh.restoreGlobalMemoryBackup) return;
@@ -524,7 +524,7 @@ async function init() {
       restoreBtn.disabled = false;
     }
   });
-  // v1.0.2b（老大反馈 2026-08-18：改角色 .md 后需重开窗口才刷新）：聚焦时对比
+  // v1.0.2b（用户反馈 2026-08-18：改角色 .md 后需重开窗口才刷新）：聚焦时对比
   // AGENTS.md + 角色文件 变更指纹（signature），任何一处被外部修改都自动同步最新内容
   window.addEventListener('focus', async () => {
     try {

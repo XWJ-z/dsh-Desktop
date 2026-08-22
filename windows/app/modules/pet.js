@@ -53,10 +53,10 @@ function createPet(deps) {
   /**
    * v0.8.11（T2）+ v0.8.15：注入鲸鱼桌面宠物 或 工具箱图标（主窗口 did-finish-load /
    * 宠物开关 / 恢复默认布局时调用）。
-   * 双形态设计（老大反馈 v0.8.15）：隐藏宠物后自动变回工具箱图标 ——
+   * 双形态设计（用户反馈 v0.8.15）：隐藏宠物后自动变回工具箱图标 ——
    * 网页打开/提示词库入口不丢失；工具箱菜单含「显示宠物」可切回鲸鱼。
    *
-   * v0.8.23（老大反馈：仍要点恢复默认布局才出现）：
+   * v0.8.23（用户反馈：仍要点恢复默认布局才出现）：
    *  注入脚本改为「页面内自愈」—— 首次注入时注册 window.__dshEnsurePet 创建函数
    *  + MutationObserver 监视 DOM：SPA 清除宠物/把它藏到视口外时，页面内立即重建，
    *  不再依赖主进程 3s 轮询（v0.8.22 只查存在性，节点残留不可见时误判"存在"）。
@@ -110,7 +110,7 @@ function createPet(deps) {
             exist.remove();       // 残留不可见节点：移除重建
           }
 
-        // v0.8.19（老大反馈）：校验记忆位置是否在当前可视区内 ——
+        // v0.8.19（用户反馈）：校验记忆位置是否在当前可视区内 ——
         // 窗口尺寸变化/分辨率调整后旧坐标可能跑到屏幕外（重开宠物"消失"），
         // 不可见则回退默认（底部居中）。
         const savedValid = saved && typeof saved.x === 'number' && typeof saved.y === 'number'
@@ -149,10 +149,10 @@ function createPet(deps) {
         pet.innerHTML = (petHidden ? toolboxSvg : petSvg)
           + '<div class="pet-bubble"></div>'
           + '<div class="pet-menu">'
-          // v0.9.12（老大指令）：全局记忆入口放提示词库前面（点击打开记忆文件，首次自动建立）
+          // v0.9.12（用户指令）：全局记忆入口放提示词库前面（点击打开记忆文件，首次自动建立）
           +   '<div class="pet-item" data-action="memory">🧠 全局记忆</div>'
           +   '<div class="pet-item" data-action="promptlib">💡 提示词库</div>'
-          // v1.1.1：插件市场入口（老大指令：保留 💎 图标）
+          // v1.1.1：插件市场入口（用户指令：保留 💎 图标）
           +   '<div class="pet-item" data-action="pluginmarket">💎 插件市场</div>'
           +   '<div class="pet-item" data-action="webopen">🌐 网页打开</div>'
           +   (petHidden
@@ -161,19 +161,19 @@ function createPet(deps) {
           + '</div>';
         pet.style.cssText = 'position:fixed;z-index:2147483646;width:64px;height:64px;'
           + (savedValid
-            // v0.8.24（老大反馈：移动位置后重开消失）：原写法 top:Ypx 后又被
+            // v0.8.24（用户反馈：移动位置后重开消失）：原写法 top:Ypx 后又被
             // top:auto 覆盖（同一行重复 top），fixed 元素 top:auto 时垂直位置
             // 不可控（跑到视口外）→ 重开不可见；恢复默认布局走 bottom 分支才正常。
             ? 'left:' + saved.x + 'px;top:' + saved.y + 'px;right:auto;'
-            // v0.8.17（老大指令）：默认位置底部居中（像素计算，不用 transform 避免与拖拽冲突）
+            // v0.8.17（用户指令）：默认位置底部居中（像素计算，不用 transform 避免与拖拽冲突）
             : 'left:' + Math.round((window.innerWidth - 64) / 2) + 'px;bottom:24px;right:auto;top:auto;')
           + 'cursor:grab;user-select:none;filter:drop-shadow(0 4px 12px rgba(77,107,254,.35));';
         const svgEl = pet.querySelector('svg');
         if (svgEl) svgEl.style.cssText = 'width:100%;height:100%;pointer-events:none;display:block;';
         // 气泡 / 菜单容器样式（全部内联，兼容 DSH 页面 CSP）
-        // v0.8.18（老大指令）：气泡移到宠物下方（top:100%）—— 上方会遮挡 DSH 选项/输入框
+        // v0.8.18（用户指令）：气泡移到宠物下方（top:100%）—— 上方会遮挡 DSH 选项/输入框
         const bubble = pet.querySelector('.pet-bubble');
-        // v0.9.13（老大反馈：气泡竖排/字级乱断）：改为横排每行约 8 字 ——
+        // v0.9.13（用户反馈：气泡竖排/字级乱断）：改为横排每行约 8 字 ——
         // 不用 em/overflow-wrap:anywhere（曾致一个字就换行的竖排），
         // 用固定像素 max-width:120px（内容 100px ≈ 8 个 12.5px 中文字）+ keep-all
         bubble.style.cssText = 'position:absolute;top:100%;left:50%;transform:translateX(-50%);'
@@ -197,7 +197,7 @@ function createPet(deps) {
         const prep = (el) => { if (el) { el.style.transformBox = 'fill-box'; el.style.transformOrigin = 'center'; el.style.transition = 'transform .2s ease'; } };
         eyes().forEach(prep); prep(mouth()); prep(tail());
 
-        // v0.9.13（老大反馈：实机点击宠物眼睛跑到头顶眨眼）：眨眼改为**几何闭眼** ——
+        // v0.9.13（用户反馈：实机点击宠物眼睛跑到头顶眨眼）：眨眼改为**几何闭眼** ——
         // 直接改右眼瞳孔 ellipse 的 ry（半径），圆心/位置固定，不依赖 transform-box
         // origin 计算（实机 GPU 合成下 fill-box scaleY 可能以错误原点收缩 → 眼睛位移；
         // 虚拟机软件渲染不触发，故无法复现）。几何属性在任何渲染环境都不会位移。
@@ -218,7 +218,7 @@ function createPet(deps) {
           if (tail()) tail().style.transform = '';
           setWink(false); // v0.9.13：眨眼几何恢复（瞳孔 ry 还原）
           if (!cls) {
-            // v0.9.13（老大反馈：点击宠物眼睛乱跑）：表情结束后鼠标仍悬停 → 恢复抬头，
+            // v0.9.13（用户反馈：点击宠物眼睛乱跑）：表情结束后鼠标仍悬停 → 恢复抬头，
             // 避免"点击→弯眼→复位"瞬间眼睛位置突兀
             if (pet.matches(':hover') && !isToolbox) { setCls('hover'); }
             return;
@@ -272,7 +272,7 @@ function createPet(deps) {
           // v1.1.1（26 方案七 ③）：加群引导气泡 —— 点击时约 5% 概率混入
           // （每 20 次点击一次），低频不烦人
           group: ['有问题？Q 群 916607090 找我呀～', '想要更多提示词？进群 916607090 领～'],
-          // v0.9.10（老大反馈：交互词少，间歇性提示功能）：
+          // v0.9.10（用户反馈：交互词少，间歇性提示功能）：
           // 功能引导词库 —— 间歇定时器随机弹出，覆盖主要功能入口
           tips: [
             '把文件直接拖进窗口，发送消息我就能帮你分析～',
@@ -359,7 +359,7 @@ function createPet(deps) {
             e.stopPropagation();
             showMenu(false);
             if (it.dataset.action === 'memory') {
-              // v0.9.12（老大指令）：打开全局记忆文件（首次自动建立）
+              // v0.9.12（用户指令）：打开全局记忆文件（首次自动建立）
               if (window.dshDesktop && window.dshDesktop.openGlobalMemory) window.dshDesktop.openGlobalMemory();
             } else if (it.dataset.action === 'promptlib') {
               if (window.dshDesktop && window.dshDesktop.openPromptLib) window.dshDesktop.openPromptLib();
@@ -438,7 +438,7 @@ function createPet(deps) {
         // v0.8.16：仅宠物形态弹欢迎气泡（工具箱形态静默）
         if (!isToolbox) setTimeout(() => say(LINES.welcome), 2500); // 启动欢迎气泡（不抢注意力）
 
-        // ── v0.9.10（老大反馈：交互词少，间歇性提示功能）──
+        // ── v0.9.10（用户反馈：交互词少，间歇性提示功能）──
         // 功能引导间歇提示：启动 30s 后第一条，之后每 5 分钟随机一条；
         // 洗牌队列保证一轮（10 条）内不重复；工具箱形态/页面不可见/气泡显示中跳过。
         if (!isToolbox) {

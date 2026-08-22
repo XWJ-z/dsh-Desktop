@@ -16,6 +16,6 @@ fs.writeFileSync(out, JSON.stringify(body, null, 2) + '\n', 'utf8');
 const b = fs.readFileSync(out);
 const noBom = !(b[0] === 0xEF && b[1] === 0xBB && b[2] === 0xBF);
 const text = b.toString('utf8');
-const bad = ['老大', 'zx(9)', 'zx(29)', 'zx(6)'].filter((w) => text.includes(w));
+const bad = ['zx(9)', 'zx(29)', 'zx(6)'].filter((w) => text.includes(w));
 console.log(`body.json 生成：tag=v${vj.version}，无BOM=${noBom}，内部代号=${bad.length === 0 ? '无 ✓' : bad.join(',')}`);
 if (!noBom || bad.length > 0) process.exit(1);

@@ -107,14 +107,14 @@ contextBridge.exposeInMainWorld('dshDesktop', {
   saveGlobalMemory: (form) => ipcRenderer.invoke('memory:save', form),
   /** 打开全局记忆文件所在目录（~/.dsh） */
   openGlobalMemoryFolder: () => ipcRenderer.invoke('memory:open-folder'),
-  /** v1.0.1（老大指令）：打开角色文件目录（~/.dsh/roles） */
+  /** v1.0.1（用户指令）：打开角色文件目录（~/.dsh/roles） */
   openGlobalMemoryRoles: () => ipcRenderer.invoke('memory:open-roles'),
-  /** v1.0.5（老大反馈 4）：解析异常时从备份（AGENTS.md.bak）一键恢复全局记忆 */
+  /** v1.0.5（用户反馈 4）：解析异常时从备份（AGENTS.md.bak）一键恢复全局记忆 */
   restoreGlobalMemoryBackup: () => ipcRenderer.invoke('memory:restore-backup'),
   // ── v0.9.13：角色选择（新对话选角色 / 双击输入框重选）──
   /** 弹窗选择角色并注入提示（无角色配置时不弹） */
   chooseRole: () => ipcRenderer.invoke('role:choose'),
-  // v1.0.3（老大反馈 3）：角色选择窗口（竖排列表）结果上报 —— index 为角色列表下标，-1 = 不选择
+  // v1.0.3（用户反馈 3）：角色选择窗口（竖排列表）结果上报 —— index 为角色列表下标，-1 = 不选择
   rolePickerResult: (index) => ipcRenderer.send('role-picker:select', index),
   // ── v1.1.1：插件市场 ──
   /** 打开插件市场窗口 */
@@ -125,7 +125,7 @@ contextBridge.exposeInMainWorld('dshDesktop', {
   getPluginCategories: () => ipcRenderer.invoke('plugin-market:categories'),
   /** 获取全部插件（缓存优先，过期自动刷新） */
   getPlugins: () => ipcRenderer.invoke('plugin-market:get-plugins'),
-  /** v1.1.1 二轮（老大确认）：立即刷新插件列表（绕过 7 天缓存，三源实时拉取） */
+  /** v1.1.1 二轮（用户确认）：立即刷新插件列表（绕过 7 天缓存，三源实时拉取） */
   refreshPlugins: () => ipcRenderer.invoke('plugin-market:refresh'),
   /** 搜索插件（按名称/描述模糊匹配） */
   searchPlugins: (query) => ipcRenderer.invoke('plugin-market:search', query),

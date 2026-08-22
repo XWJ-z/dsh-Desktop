@@ -186,7 +186,7 @@
         border: 1px solid var(--border-standard);
       }
       .btn-secondary:hover { color: var(--text-primary); border-color: var(--border-strong); }
-      /* v1.1.1：红色醒目 + 置顶 + 单行（老大指令，⚠️ 保留）—— theme-aware token 化 */
+      /* v1.1.1：红色醒目 + 置顶 + 单行（用户指令，⚠️ 保留）—— theme-aware token 化 */
       .security-warning {
         background: rgba(242,85,90,0.10);
         border: 1px solid rgba(242,85,90,0.42);
@@ -271,7 +271,7 @@
         line-height: 1.8;
       }
       .modal-notices li::before { content: '▸ '; color: var(--brand); }
-      /* v1.1.1 二轮（老大反馈）：免责声明红色加粗 */
+      /* v1.1.1 二轮（用户反馈）：免责声明红色加粗 */
       .modal-box .modal-disclaimer {
         color: var(--danger);
         font-size: 13.5px;
@@ -300,14 +300,14 @@
       <div class="search-box">
         <input type="text" id="searchInput" placeholder="搜索插件..." />
         <button id="searchBtn">搜索</button>
-        <!-- v1.1.1 二轮（老大确认）：手动刷新 —— 列表 7 天缓存自动刷新，想立刻看最新点一下 -->
+        <!-- v1.1.1 二轮（用户确认）：手动刷新 —— 列表 7 天缓存自动刷新，想立刻看最新点一下 -->
         <button id="refreshBtn" title="立即刷新插件列表（绕过 7 天缓存）">刷新</button>
       </div>
     </div>
 
     <div id="banner" class="banner"></div>
 
-    <!-- v1.1.1（老大指令）：安全提示置顶 + 红色醒目 + 单行 + 保留 ⚠️ -->
+    <!-- v1.1.1（用户指令）：安全提示置顶 + 红色醒目 + 单行 + 保留 ⚠️ -->
     <div class="security-warning" id="securityWarning">⚠️ 安全提示：插件来自第三方社区，安装前请查看源码，了解其功能和权限</div>
 
     <div class="main-container">

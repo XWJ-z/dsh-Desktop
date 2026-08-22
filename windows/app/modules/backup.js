@@ -53,7 +53,7 @@ function createBackup(deps) {
   }
 
   /** T2（v0.7.0）：备份 DSH 用户数据 + 设置 → 用户选路径的 tar.gz
-   *  v0.7.10（老大反馈）：加进度条 —— 进度窗口 + 主窗口任务栏；复制按字节、打包按文件数推进 */
+   *  v0.7.10（用户反馈）：加进度条 —— 进度窗口 + 主窗口任务栏；复制按字节、打包按文件数推进 */
   async function backupUserData() {
     const owner = getOwnerWindow();
     const { canceled, filePath } = await dialog.showSaveDialog(owner, {
@@ -100,7 +100,7 @@ function createBackup(deps) {
       const COPY_SHARE = 0.7; // 复制阶段占进度 0~70%，打包阶段 70~100%
 
       if (hasDsh) {
-        // v0.7.10（老大反馈）：
+        // v0.7.10（用户反馈）：
         // ① fs.cpSync 同步复制大目录会阻塞主进程事件循环 → 窗口卡死未响应；
         //    改用异步 fs.promises.cp，复制期间 UI 保持响应；
         // ② ~/.dsh/profiles/node_modules 下是 Junction（目录联接，指向 dshenv
@@ -177,7 +177,7 @@ function createBackup(deps) {
       appendLog('error', `备份失败：${err.message}`);
       dialog.showErrorBox(appName, `备份失败：${err.message}`);
     } finally {
-      // v0.7.10（老大反馈）：同步删除大暂存目录同样会阻塞主进程，改异步
+      // v0.7.10（用户反馈）：同步删除大暂存目录同样会阻塞主进程，改异步
       try { await fs.promises.rm(staging, { recursive: true, force: true }); } catch { /* ignore */ }
       // v0.7.10：关闭进度窗口，清除任务栏进度
       closeBackupProgress();
@@ -188,7 +188,7 @@ function createBackup(deps) {
   async function restoreUserData() {
     const owner = getOwnerWindow();
 
-    // v0.7.1（T-032）/ v0.7.10（老大反馈）：恢复前服务占用检查。
+    // v0.7.1（T-032）/ v0.7.10（用户反馈）：恢复前服务占用检查。
     // 原先要求「先退出应用再恢复」——但壳重启会自动拉起 DSH 服务，形成死循环，
     // 永远无法恢复。v0.7.10 改为提供「停止服务并恢复」：只停 DSH 服务子进程
     // （应用保持运行），恢复完成后用户重启应用即重新拉起服务。
@@ -319,7 +319,7 @@ function createBackup(deps) {
       }
       dialog.showErrorBox(appName, detail);
     } finally {
-      // v0.7.10（老大反馈）：同步删除大解压目录会阻塞主进程，改异步
+      // v0.7.10（用户反馈）：同步删除大解压目录会阻塞主进程，改异步
       try { await fs.promises.rm(tmp, { recursive: true, force: true }); } catch { /* ignore */ }
     }
   }

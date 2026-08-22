@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   el('searchBtn').addEventListener('click', () => searchPlugins());
 
-  // v1.1.1 二轮（老大确认）：手动刷新 —— 绕过 7 天缓存，三源实时拉取并重载列表
+  // v1.1.1 二轮（用户确认）：手动刷新 —— 绕过 7 天缓存，三源实时拉取并重载列表
   el('refreshBtn').addEventListener('click', async () => {
     const btn = el('refreshBtn');
     btn.disabled = true;
@@ -116,7 +116,7 @@ function renderPlugins(plugins) {
       const btn2 = document.createElement('button');
       btn2.className = 'btn btn-secondary';
       btn2.textContent = '复制安装命令';
-      // v1.1.1（老大指令）：先弹免责声明确认，确认后才复制
+      // v1.1.1（用户指令）：先弹免责声明确认，确认后才复制
       btn2.addEventListener('click', () => showConfirmModal(installTarget));
       actions.appendChild(btn2);
     }

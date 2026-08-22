@@ -313,7 +313,7 @@ async function main() {
     });
     ok(ver.result && ver.result.value === '1.1.3', `壳版本 = 1.1.3（实际 ${ver.result && ver.result.value}）`);
 
-    // ② 宠物注入 + 菜单含「💎 插件市场」（老大指令保留 💎；顺序：记忆 < 提示词库 < 插件市场 < 网页打开）
+    // ② 宠物注入 + 菜单含「💎 插件市场」（用户指令保留 💎；顺序：记忆 < 提示词库 < 插件市场 < 网页打开）
     let pv = null;
     const pt0 = Date.now();
     while (Date.now() - pt0 < 30_000) {
@@ -343,7 +343,7 @@ async function main() {
       await sleep(700);
     }
     ok(!!pv && pv.hasPet && pv.hasMenu, '桌面宠物已注入（#dsh-pet + 菜单）');
-    ok(!!pv && pv.hasPluginMarket, '宠物菜单含「💎 插件市场」（老大指令保留 💎）');
+    ok(!!pv && pv.hasPluginMarket, '宠物菜单含「💎 插件市场」（用户指令保留 💎）');
     ok(
       !!pv && pv.idxPlugin > pv.idxPrompt && pv.idxPlugin < pv.idxWeb,
       `「💎 插件市场」位置在提示词库与网页打开之间（idx: 记忆=${pv && pv.idxMemory} 提示词库=${pv && pv.idxPrompt} 插件=${pv && pv.idxPlugin} 网页=${pv && pv.idxWeb}）`,
@@ -446,7 +446,7 @@ async function main() {
         );
         ok(
           !!mv && mv.securityTop === true,
-          '安全提示置顶显示（位于主容器之前，v1.1.1 老大指令）',
+          '安全提示置顶显示（位于主容器之前，v1.1.1 用户指令）',
         );
         ok(
           !!mv && mv.descTexts.some((t) => /[\u4e00-\u9fff]/.test(t)),
@@ -610,7 +610,7 @@ async function main() {
           !!modalV && modalV.text.includes('916607090') && modalV.text.includes('安装前须知'),
           `模态含 QQ 群兜底（916607090）与「安装前须知」标题`,
         );
-        // v1.1.1 三轮（老大反馈）：免责声明红色加粗；去掉「像装手机App一样想清楚」
+        // v1.1.1 三轮（用户反馈）：免责声明红色加粗；去掉「像装手机App一样想清楚」
         ok(
           !!modalV && (modalV.disWeight === '700' || modalV.disWeight === 'bold'),
           `免责声明加粗（font-weight=${modalV && modalV.disWeight}）`,
@@ -644,7 +644,7 @@ async function main() {
         }
         ok(modalClosed, '确认后模态关闭（复制已执行）');
 
-        // ⑦.3 v1.1.1（老大反馈）：插件市场适配深色模式 —— shared.css 主题 token
+        // ⑦.3 v1.1.1（用户反馈）：插件市场适配深色模式 —— shared.css 主题 token
         // 生效：body 背景 = 主题 token（深色 #08090a / 浅色 #eef0f4），卡片/侧边栏
         // 随主题（深色 #191a1b / 浅色 #fff），不再是硬编码 #f5f5f5 浅色
         const dm = await mktCdp.send('Runtime.evaluate', {
@@ -674,7 +674,7 @@ async function main() {
           `插件卡片/侧边栏背景随主题（实际 卡片=${dmv && dmv.cardBg} 侧边栏=${dmv && dmv.sidebarBg}，预期 ${dmv && dmv.expectedSurface}）`,
         );
 
-        // ⑦.4 v1.1.1 三轮（老大确认）：手动「刷新」按钮 —— 绕过 7 天缓存实时拉取
+        // ⑦.4 v1.1.1 三轮（用户确认）：手动「刷新」按钮 —— 绕过 7 天缓存实时拉取
         const hasRefresh = await mktCdp.send('Runtime.evaluate', {
           expression: `!!document.getElementById('refreshBtn')`,
           returnByValue: true,
@@ -805,7 +805,7 @@ async function main() {
       }
     }
 
-    // ⑩.6 v1.1.1 三轮（老大反馈）：帮助文档 = 应用内窗口（本地优先 + 后台静默同步）
+    // ⑩.6 v1.1.1 三轮（用户反馈）：帮助文档 = 应用内窗口（本地优先 + 后台静默同步）
     await cdp.send('Runtime.evaluate', {
       expression: 'window.dshDesktop.openHelpDoc()',
       returnByValue: true,

@@ -32,15 +32,15 @@ function createDshRuntime(deps) {
     fetchLatestDshInfo, // P1-2：晚绑定（main.js 组装，updaterApi 就绪后可调用）
   } = deps;
 
-  // v1.1.1 三轮（老大指令）：安装失败自动重试 —— 重试尝试的超时上限（20 分钟；
+  // v1.1.1 三轮（用户指令）：安装失败自动重试 —— 重试尝试的超时上限（20 分钟；
   // 失败后 npm 缓存（元数据+tarball）已命中大半，重试通常几分钟完成）
   const NPM_RETRY_TIMEOUT_MS = 20 * 60 * 1000;
-  // v1.1.1 三轮（老大指令）：多源切换 —— 主源（config.registry，默认 npmmirror）
+  // v1.1.1 三轮（用户指令）：多源切换 —— 主源（config.registry，默认 npmmirror）
   // 失败后自动切 npmjs 官方源重试
   const REGISTRY_FALLBACKS = ['https://registry.npmjs.org'];
 
   /** 读取壳配置（app/config.json）：DSH 包名 + 版本号，用户改版本号即升级 DSH。
-   *  v1.0.3（老大反馈 6）：config.json 位于**安装目录**，升级壳覆盖安装会被重置为
+   *  v1.0.3（用户反馈 6）：config.json 位于**安装目录**，升级壳覆盖安装会被重置为
    *  内置版本 → 重启后按旧版本重装，表现为「更新壳后 DSH 版本回退」。
    *  修复：用户升级/安装 DSH 的选择持久化到 userData（dsh-version.json，升级壳不覆盖），
    *  此处优先取 userData 记录，config.json 仅作默认值兜底。 */
@@ -65,7 +65,7 @@ function createDshRuntime(deps) {
   }
 
   /** 用户选择的 DSH 版本记录（userData/dsh-version.json）——
-   *  v1.0.3（老大反馈 6）：升级壳覆盖安装不碰 userData，用户选择的 DSH 版本不丢 */
+   *  v1.0.3（用户反馈 6）：升级壳覆盖安装不碰 userData，用户选择的 DSH 版本不丢 */
   function userDshVersionFile() {
     return path.join(app.getPath('userData'), 'dsh-version.json');
   }
@@ -179,7 +179,7 @@ function createDshRuntime(deps) {
    */
   async function ensureDshRuntime() {
     let cfg = readShellConfig();
-    // v1.0.3（老大反馈 6 完整修复）：升级壳兼容迁移 —— 旧版（v1.0.2 及以前）用户升级
+    // v1.0.3（用户反馈 6 完整修复）：升级壳兼容迁移 —— 旧版（v1.0.2 及以前）用户升级
     // DSH 时只写了 config.json（无 userData 记录），升级壳覆盖安装后 config 被重置为内置
     // 版本，若此时已安装版本与内置不同，则视为「用户此前选择过该版本」并持久化到
     // userData，避免启动时按内置旧版本重装导致「升级壳后 DSH 版本回退」。
@@ -217,7 +217,7 @@ function createDshRuntime(deps) {
     }
     appendLog('info', `DSH 运行时未满足要求（配置 ${spec}，实际 ${installedDshVersion() ?? '未安装'}）`);
     appendLog('info', '首次运行需要联网下载 DSH 运行时，请稍候…');
-    // v1.1.1（老大指令）：多源切换 + 失败自动重试 —— 主源（config.registry，
+    // v1.1.1（用户指令）：多源切换 + 失败自动重试 —— 主源（config.registry，
     // 默认 npmmirror）失败自动切 npmjs 重试；重试吃 npm 缓存（元数据+tarball
     // 已命中大半），通常几分钟完成（实测首装 18~23 分钟）
     const primaryRegistry = cfg.registry || 'https://registry.npmmirror.com';
@@ -272,7 +272,7 @@ function createDshRuntime(deps) {
           '--no-fund',
           '--no-progress',
           '--loglevel', 'warn',
-          // v1.1.1（老大反馈：首次安装卡在 MB 不动）：并发下载默认 15 → 32，
+          // v1.1.1（用户反馈：首次安装卡在 MB 不动）：并发下载默认 15 → 32，
           // 加快 tarball/元数据拉取（网络带宽充足时提速明显）
           '--maxsockets=32',
           spec,
@@ -285,7 +285,7 @@ function createDshRuntime(deps) {
           // v0.7.3（T-034）：内置 Node 目录加入 PATH —— 无系统 Node 的机器上，
           // koffi 等依赖的 install 脚本（cmd /c node ./cnoke.cjs）才能找到 node 命令
           PATH: `${path.dirname(runner.execPath)}${path.delimiter}${process.env.PATH || ''}`,
-          // v1.0.2（老大反馈 1）：npm 缓存隔离到 <dshenv>/npm-cache —— 原用用户级
+          // v1.0.2（用户反馈 1）：npm 缓存隔离到 <dshenv>/npm-cache —— 原用用户级
           // AppData/Local/npm-cache（全局共享），进度统计会把用户其他项目的历史缓存
           // 也算进去（显示 700+MB 虚高）；隔离后进度 = 本次安装真实占用。
           npm_config_cache: path.join(dshRuntimeDir(), 'npm-cache'),
@@ -309,7 +309,7 @@ function createDshRuntime(deps) {
         }
 
         // 任务D2：安装期间每 3 秒统计"dshenv（含隔离 npm 缓存）"总量并推送到加载页。
-        // v1.0.2（老大反馈 1）：
+        // v1.0.2（用户反馈 1）：
         //  - 缓存已隔离在 <dshenv>/npm-cache，只统计运行时目录，不再混入用户历史 npm 缓存
         //    （旧版显示 700+MB 虚高、与"首次约 200MB"文案矛盾）；
         //  - 目录统计改异步（dirSizeMBAsync），不再每 2 秒同步遍历几万个小文件阻塞主进程（卡顿）。
@@ -374,7 +374,7 @@ function createDshRuntime(deps) {
             appendLog('warn', `写入安装记录失败（不影响运行）：${err.message}`);
           }
           appendLog('info', `DSH 运行时安装完成：${cfg.dshPackage}@${installedDshVersion()}`);
-          // v1.0.3（老大反馈 6）：安装的是精确版本（非 latest 语义）→ 持久化到 userData，
+          // v1.0.3（用户反馈 6）：安装的是精确版本（非 latest 语义）→ 持久化到 userData，
           // 升级壳覆盖安装 config.json 被重置后仍按用户选择的版本（不回退）
           if (cfg.dshVersion !== 'latest') {
             saveUserDshVersion(installedDshVersion(), targetIntegrity);
@@ -410,7 +410,7 @@ function createDshRuntime(deps) {
   }
 
   /** 备份并改写 config.json 的 dshVersion；成功返回 true。P1-2：一并落盘目标版本 + integrity。
-   *  v1.0.3（老大反馈 6）：主存储 = userData/dsh-version.json（升级壳不覆盖），
+   *  v1.0.3（用户反馈 6）：主存储 = userData/dsh-version.json（升级壳不覆盖），
    *  config.json 尽力写（安装目录可能只读）；两者都失败才返回 false。 */
   function updateDshVersion(newVersion, integrity) {
     const file = path.join(app.getAppPath(), 'config.json');

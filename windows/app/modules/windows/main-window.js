@@ -110,7 +110,7 @@ function createMainWindowModule(deps) {
         contextIsolation: true,
         nodeIntegration: false,
         sandbox: true,
-        // v0.7.10（老大反馈）：托盘隐藏期间不禁用渲染节流 —— 隐藏时 WebContents
+        // v0.7.10（用户反馈）：托盘隐藏期间不禁用渲染节流 —— 隐藏时 WebContents
         // 被冻结，托盘恢复需重新绘制导致黑屏等待；关闭节流后恢复即时显示
         backgroundThrottling: false,
       },
@@ -122,7 +122,7 @@ function createMainWindowModule(deps) {
     setMainWindow(win);
 
     // GUI 加载过渡覆盖层：DSH 页面加载期间显示"正在加载界面…"，did-finish-load 后移除。
-    // v0.7.10（老大反馈）：原 did-start-loading 注入时文档可能未就绪（executeJavaScript
+    // v0.7.10（用户反馈）：原 did-start-loading 注入时文档可能未就绪（executeJavaScript
     // 失败被吞 → 无提示黑屏）；改在 dom-ready（body 就绪）注入，成功率高。
     win.webContents.on('dom-ready', () => {
       win.webContents.executeJavaScript(`
@@ -137,11 +137,11 @@ function createMainWindowModule(deps) {
     });
     win.webContents.on('did-finish-load', () => {
       appendLog('info', `[gui] 加载完成：${win.webContents.getURL()}`);
-      // v0.8.19（老大反馈）：DSH 是 SPA，did-finish-load 时 React 可能尚未挂载，
+      // v0.8.19（用户反馈）：DSH 是 SPA，did-finish-load 时 React 可能尚未挂载，
       // 立即注入会被随后的 SPA 渲染清除（重开软件宠物/工具箱不出现）。
       // → 延迟 1s 首次注入。
       // v0.8.22：主进程 watchdog 每 3s 检查一次（兜底）。
-      // v0.8.23（老大反馈：仍要点恢复默认布局才出现）：主注入改**页面内自愈**
+      // v0.8.23（用户反馈：仍要点恢复默认布局才出现）：主注入改**页面内自愈**
       // （pet.js MutationObserver，SPA 清除/隐藏宠物立即重建）；watchdog 升级为
       // **可见性检查**（存在但不可见 = 残留节点，触发重注入），并保留为兜底。
       let petGuardTimer = null;
@@ -180,7 +180,7 @@ function createMainWindowModule(deps) {
 
     // P2-2（外审 zx(9)）：新窗口一律 deny；外部链接仅白名单域名可打开
     // （DSH 页面 window.open / target=_blank 均经此，防注入恶意链接钓鱼）
-    // v1.1.2（老大反馈：启动后系统浏览器自动打开 127.0.0.1:3080）：
+    // v1.1.2（用户反馈：启动后系统浏览器自动打开 127.0.0.1:3080）：
     // 页面自动触发的链接**不**放行本地回环 —— DSH 页面内任何指向
     // http://127.0.0.1:<port> 的链接（欢迎页/引导/公告内容）被点击或自动触发
     // 时一律 deny，不再弹系统默认浏览器；「网页打开」等显式用户操作走
@@ -206,7 +206,7 @@ function createMainWindowModule(deps) {
         if (settings.closeChoice === 'quit') { setQuitting(true); return; } // 记忆=退出：放行
         if (settings.closeChoice === 'tray') { event.preventDefault(); win.hide(); return; } // 记忆=托盘
       }
-      // v1.0.3（老大反馈 1）：勾选「关闭时总是询问」才每次弹窗；
+      // v1.0.3（用户反馈 1）：勾选「关闭时总是询问」才每次弹窗；
       // 未勾选且未记住选择 → 直接驻留托盘（不再每次询问）
       if (settings.closeAsk) {
         event.preventDefault();

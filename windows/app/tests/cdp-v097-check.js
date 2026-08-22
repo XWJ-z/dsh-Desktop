@@ -146,7 +146,7 @@ async function main() {
 
   // 启动
   // v0.9.12：设置 USERPROFILE/HOME → 仿真目录，隔离 ~/.dsh —— 否则启动时
-  // ensureGuide 会读写真实用户的 ~/.dsh/AGENTS.md（污染老大真实全局记忆）
+  // ensureGuide 会读写真实用户的 ~/.dsh/AGENTS.md（污染用户全局记忆）
   console.log('[1] 启动打包应用（--port=' + SIM_PORT + ' --remote-debugging-port=' + SIM_DEBUG_PORT + '）');
   const child = spawn(PACKED_EXE, [
     `--user-data-dir=${userData}`,
@@ -206,7 +206,7 @@ async function main() {
     ok(!!pv && pv.hasBubble, '宠物气泡元素存在');
     ok(!!pv && pv.hasMenu, '宠物菜单元素存在');
 
-    // ①.6 v0.9.13（老大反馈：眼睛跑到头顶眨眼）：眨眼改几何闭眼 ——
+    // ①.6 v0.9.13（用户反馈：眼睛跑到头顶眨眼）：眨眼改几何闭眼 ——
     // 右眼瞳孔 ellipse（第 2 个）存在且初始 ry=24（几何属性，无 transform 位移风险）
     const wink = await cdp.send('Runtime.evaluate', {
       expression: `(() => {
@@ -220,7 +220,7 @@ async function main() {
     ok(!!wv && wv.hasPupil, '眨眼几何目标（右眼瞳孔 ellipse）存在');
     ok(!!wv && wv.ry === '24', `瞳孔初始 ry=24（实际 ${wv && wv.ry}）`);
 
-    // ①.65 v0.9.13（老大反馈：选错角色只能重开新对话）：双击输入框重选角色
+    // ①.65 v0.9.13（用户反馈：选错角色只能重开新对话）：双击输入框重选角色
     const roleDbl = await cdp.send('Runtime.evaluate', {
       expression: `(() => ({
         hasChooseRole: typeof window.dshDesktop.chooseRole === 'function',
@@ -296,7 +296,7 @@ async function main() {
         ok(!!fv && fv.catCount >= 4, `左侧类别列表（${fv && fv.catCount} 项：用户/我的/区块/角色）`);
         ok(!!fv && fv.catTexts.some((t) => t.includes('用户设定')) && fv.catTexts.some((t) => t.includes('我的设定'))
           && fv.catTexts.some((t) => t.includes('全局记忆区块')) && fv.catTexts.some((t) => t.includes('DSH 角色')),
-          `左侧 4 个固定类别：用户设定/我的设定/全局记忆区块/DSH 角色（v1.0.2 老大指令，实际 ${fv && fv.catTexts.join(' | ')}）`);
+          `左侧 4 个固定类别：用户设定/我的设定/全局记忆区块/DSH 角色（v1.0.2 用户指令，实际 ${fv && fv.catTexts.join(' | ')}）`);
         ok(!!fv && !fv.catTexts.some((t) => t.includes('其他记忆')), '其他 ## 区块不再各自显示为左侧类别（合并进「全局记忆区块」，v1.0.2）');
         ok(!!fv && fv.rowCount >= 4 && fv.names.includes('用户的称呼'),
           `用户设定字段列表默认显示（含用户的称呼，实际 rowCount=${fv && fv.rowCount} names=[${fv && fv.names.join(',')}]）`);
@@ -341,9 +341,9 @@ async function main() {
         ok(!!dv && dv.hasDshFields && dv.dshCount >= 1, `我的设定独立区块视图（${dv && dv.dshCount} 个字段）`);
         ok(!!dv && dv.dshNames.includes('我的名字') && dv.dshNames.includes('默认角色'), '我的设定默认字段（我的名字/默认角色）');
         ok(!!dv && dv.hasDefaultRoleSelect, '默认角色为下拉选择（select）');
-        ok(!!dv && dv.roleRowHasNoDel === true && dv.otherRowsHaveDel === true, '「默认角色」行无删除按钮、其他字段行有（v1.0.2c 老大反馈）');
+        ok(!!dv && dv.roleRowHasNoDel === true && dv.otherRowsHaveDel === true, '「默认角色」行无删除按钮、其他字段行有（v1.0.2c 用户反馈）');
         ok(!!dv && dv.hasAddDsh, '有「＋ 添加 DSH 设定」按钮');
-        // 点击「DSH 角色」类别 → 卡片列表式（每角色 = 角色名 + 文件全文大输入框，v1.0.2 老大指令 3）
+        // 点击「DSH 角色」类别 → 卡片列表式（每角色 = 角色名 + 文件全文大输入框，v1.0.2 用户指令 3）
         const roleCat = await memCdp.send('Runtime.evaluate', {
           expression: `(() => {
             const cat = Array.from(document.querySelectorAll('#cats .cat[data-key]'))
@@ -386,9 +386,9 @@ async function main() {
         ok(!!rv && rv.roleNames.includes('角色 1') && rv.roleNames.includes('角色 3'), '默认角色列表：角色 1/2/3');
         ok(!!rv && rv.hasAddRole, '有「＋ 添加角色」按钮');
         ok(!!rv && rv.hasRoleEditor && rv.hasEditorName && rv.hasRoleFields && rv.hasRoleLabels,
-          '点击角色进入编辑：编辑面板含角色名 + 定位/详细记忆固定字段（v1.0.3 老大反馈 2/4）');
-        ok(!!rv && rv.editorNameMax === 30, `角色名输入 maxlength=30（v1.0.3 老大反馈 2，实际 ${rv && rv.editorNameMax}）`);
-        // v0.9.16（老大指令）：标题红色标注（DSH 视角）+ 红色提示移到窗口介绍下方、文案更新
+          '点击角色进入编辑：编辑面板含角色名 + 定位/详细记忆固定字段（v1.0.3 用户反馈 2/4）');
+        ok(!!rv && rv.editorNameMax === 30, `角色名输入 maxlength=30（v1.0.3 用户反馈 2，实际 ${rv && rv.editorNameMax}）`);
+        // v0.9.16（用户指令）：标题红色标注（DSH 视角）+ 红色提示移到窗口介绍下方、文案更新
         const tip = await memCdp.send('Runtime.evaluate', {
           expression: `(() => {
             const h1 = document.querySelector('h1');
@@ -407,7 +407,7 @@ async function main() {
           `全局红色提示（介绍下方）：双击对话框选择角色，默认角色请在[我的设定]中选择（v1.0.3，实际 ${tipV && tipV.tipText}）`);
         ok(!!tipV && tipV.title.includes('(DSH 视角)'), `标题红色标注（DSH 视角）（v0.9.16，实际 ${tipV && tipV.title}）`);
         ok(!!tipV && !tipV.bodyHasTip, 'DSH 角色页不再内嵌红色提示（已移到窗口介绍下方全局显示）');
-        // v1.0.2（老大指令 2）：点击「全局记忆区块」→ 内部列出所有 ## 区块卡片（可折叠）
+        // v1.0.2（用户指令 2）：点击「全局记忆区块」→ 内部列出所有 ## 区块卡片（可折叠）
         const sec = await memCdp.send('Runtime.evaluate', {
           expression: `(() => {
             const cat = Array.from(document.querySelectorAll('#cats .cat[data-key]'))
@@ -444,7 +444,7 @@ async function main() {
         ok(!!sv && sv.hasMemoList && sv.hasAddSec, '全局记忆区块：区块卡片列表 + 「＋ 添加区块」按钮（v1.0.2）');
         ok(!!sv && sv.cardCount >= 1 && sv.hasBody && sv.hasFold, `全局记忆区块列出全部 ## 区块卡片（可折叠，${sv && sv.cardCount} 个）`);
         ok(!!sv && sv.title === '其他记忆', `其他记忆 区块已回填到卡片（标题可编辑，实际 ${sv && sv.title}）`);
-        ok(!!fv && !fv.hasPathMem, '左下角不再显示双路径（v1.0.1 老大反馈）');
+        ok(!!fv && !fv.hasPathMem, '左下角不再显示双路径（v1.0.1 用户反馈）');
         ok(!!fv && fv.hasBtnMem && fv.hasBtnRoles, '两个按钮：记忆文件位置(AGENTS) / 角色文件位置（v1.0.1）');
         ok(!!fv && (fv.btnMemText || '').includes('记忆文件位置(AGENTS)'), `按钮文案：记忆文件位置(AGENTS)（实际 ${fv && fv.btnMemText}）`);
       } catch (err) {
@@ -500,7 +500,7 @@ async function main() {
     ok(!!cv && cv.releasedCount === 16, `released=true 共 16 个（含 1.0.5，实际 ${cv && cv.releasedCount}）`);
     ok(!!cv && cv.sortedFirst === '1.0.5', `changelog:data 降序首条 = 1.0.5（P3-3 共享比较，实际 ${cv && cv.sortedFirst}）`);
 
-    // ③b v1.0.3（老大反馈：展开一次后不能再点开收起）：提示词库分类头可反复展开/收起
+    // ③b v1.0.3（用户反馈：展开一次后不能再点开收起）：提示词库分类头可反复展开/收起
     // （修复：事件委托只绑定一次，防监听器累积导致多次 toggle 抵消）
     await cdp.send('Runtime.evaluate', {
       expression: 'window.dshDesktop.openPromptLib()', returnByValue: true, awaitPromise: true,
@@ -549,7 +549,7 @@ async function main() {
           await sleep(150); // 等 renderCats 重建落定
           return subCountAt();
         };
-        // v1.0.5（老大反馈 1）：内置库总条数 201（窗口 data 直接统计）
+        // v1.0.5（用户反馈 1）：内置库总条数 201（窗口 data 直接统计）
         const totalExpr = `(() => {
           if (typeof data === 'undefined' || !data || !data.categories) return -1;
           return data.categories.reduce((n, c) => n + (c.subs || []).reduce((m, s) => m + (s.items || []).length, 0), 0);
@@ -566,7 +566,7 @@ async function main() {
         const e3 = await clickAndRead();
         const e4 = await clickAndRead();
         ok(typeof s0.n === 'number', `内置库初始渲染（默认展开第一个分类，子分类 ${s0.n} 个）`);
-        // 点击序列：每次点击都应翻转展开/收起（老大反馈：展开一次后不能再点开收起 → 已修复）
+        // 点击序列：每次点击都应翻转展开/收起（用户反馈：展开一次后不能再点开收起 → 已修复）
         ok(e1.n !== s0.n, `第一次点击状态翻转（${s0.n} → ${e1.n}，箭头 ${e1.arrow}）`);
         ok(e2.n !== e1.n, `第二次点击状态翻转（${e1.n} → ${e2.n}，箭头 ${e2.arrow}）`);
         ok(e3.n !== e2.n, `第三次点击状态翻转（${e2.n} → ${e3.n}，箭头 ${e3.arrow}）`);

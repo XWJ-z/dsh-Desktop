@@ -1,6 +1,6 @@
 'use strict';
-// v0.8.27 代码级验证：宠物图标 = 老大手绘 DeepSeek 官方 logo 鲸鱼轮廓 + 表情 class
-// （老大指令：太难看了，就用 DeepSeek 的图标轮廓；不改版本，仍在 0.8.27）
+// v0.8.27 代码级验证：宠物图标 = 手绘 DeepSeek 官方 logo 鲸鱼轮廓 + 表情 class
+// （用户指令：太难看了，就用 DeepSeek 的图标轮廓；不改版本，仍在 0.8.27）
 const fs = require('fs');
 const path = require('path');
 const svg = fs.readFileSync('assets/pet-whale.svg', 'utf8');
@@ -15,7 +15,7 @@ const checks = [
   ['filter shadow', svg.includes('id="shadow"')],
   ['g transform translate/scale', svg.includes('translate(0, 85) scale(0.68)')],
   ['viewBox 680x680', svg.includes('viewBox="0 0 680 680"')],
-  // ── 表情 class（老大图 + injectPet 兼容） ──
+  // ── 表情 class（用户图 + injectPet 兼容） ──
   ['class="eye eye-r"', svg.includes('class="eye eye-r"')],
   ['眼睛深色 #181A35', svg.includes('#181A35')],
   ['class="mouth"', svg.includes('class="mouth"')],

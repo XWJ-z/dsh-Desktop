@@ -67,7 +67,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   log('T1 宠物注入且可见', !!(rect && rect.visible && rect.hasSvg), rect ? JSON.stringify(rect) : 'none');
   log('T1 宠物 64x64', !!(rect && rect.w === 64 && rect.h === 64), rect ? 'w=' + rect.w + ' h=' + rect.h : '');
 
-  // ── T2: SVG DeepSeek logo 鲸鱼特征（老大手绘 + 表情 class） ──
+  // ── T2: SVG DeepSeek logo 鲸鱼特征（手绘 + 表情 class） ──
   const svgR = await evalIn(ws, `(() => {
     const p = document.getElementById('dsh-pet');
     if (!p) return null;

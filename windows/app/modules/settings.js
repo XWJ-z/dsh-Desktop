@@ -58,7 +58,7 @@ function createSettings(deps) {
   function setMinimizeToTray(enabled) {
     const s = getSettings();
     s.minimizeToTray = !!enabled;
-    // v1.0.3（老大反馈 1）：记忆=退出 与 托盘常驻 语义矛盾 ——
+    // v1.0.3（用户反馈 1）：记忆=退出 与 托盘常驻 语义矛盾 ——
     // 开启托盘时清除「记住退出」，避免「勾着最小化到托盘，关闭却直接退出」
     if (enabled && s.rememberCloseChoice && s.closeChoice === 'quit') {
       s.closeChoice = null;
@@ -93,7 +93,7 @@ function createSettings(deps) {
     if (remember) {
       s.closeAsk = false; // 已记住选择：不再总是询问
       if (action === 'quit') {
-        // v1.0.3（老大反馈 1）：记住退出 = 关闭即退出 → 托盘常驻失去意义，
+        // v1.0.3（用户反馈 1）：记住退出 = 关闭即退出 → 托盘常驻失去意义，
         // 取消勾选「最小化到托盘」（避免「勾着托盘却关闭即退出」的矛盾显示）
         s.minimizeToTray = false;
       } else if (action === 'tray') {

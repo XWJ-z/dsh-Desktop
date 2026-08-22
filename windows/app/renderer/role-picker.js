@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * role-picker.js — 角色选择窗口脚本（v1.0.3，老大反馈 3）
+ * role-picker.js — 角色选择窗口脚本（v1.0.3，用户反馈 3）
  * 主进程 did-finish-load 后注入 window.__rolePickerInit(list)；
  * 竖排列表展示每个角色（名称 + 定位摘要），点击 → window.dshDesktop.rolePickerResult(index)。
  */

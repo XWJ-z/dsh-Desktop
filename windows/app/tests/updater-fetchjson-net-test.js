@@ -5,7 +5,7 @@
  *
  * 背景：真机 Node https.get 访问 api.github.com / raw.githubusercontent TLS 验证失败
  * （"unable to verify the first certificate"），三源只剩 jsDelivr → sourcesAgree=false
- * → 防投毒拒绝自动下载（老大反馈：下载更新失败）。
+ * → 防投毒拒绝自动下载（用户反馈：下载更新失败）。
  * 修复：fetchJson 改用 Electron net.request（Chromium 网络栈 + 系统 CA），与 help-doc 同款。
  *
  * 本测试用 mock net 验证：

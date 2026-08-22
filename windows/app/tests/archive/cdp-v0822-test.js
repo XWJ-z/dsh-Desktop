@@ -54,7 +54,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const pet0 = await evalIn(ws, `(() => !!document.getElementById('dsh-pet'))()`);
   log('回归 宠物已注入', !!(pet0 && pet0.result && pet0.result.value));
 
-  // T1: 模拟 SPA 清除宠物（老大实机场景：注入成功后被重渲染清掉）
+  // T1: 模拟 SPA 清除宠物（用户实机场景：注入成功后被重渲染清掉）
   await evalIn(ws, `(() => { const p = document.getElementById('dsh-pet'); if (p) p.remove(); return true; })()`);
   const gone = await evalIn(ws, `(() => !document.getElementById('dsh-pet'))()`);
   log('T1 模拟清除后宠物不存在', !!(gone && gone.result && gone.result.value));

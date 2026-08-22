@@ -45,7 +45,7 @@ const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 天缓存
 const { PLUGIN_DESC_URLS } = require('./remote-sources');
 
 // 官方分类（README「## Plugin Categories」18 类 + 兜底其他）；match 用于标题匹配
-// v1.1.1：去掉 icon 表情符号（老大指令：插件市场不显示表情）
+// v1.1.1：去掉 icon 表情符号（用户指令：插件市场不显示表情）
 const PLUGIN_CATEGORIES = [
   { id: 'ui-enhance', name: 'UI增强', match: 'ui enhancements' },
   { id: 'usage-billing', name: '用量与计费', match: 'usage & billing' },

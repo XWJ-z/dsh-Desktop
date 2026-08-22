@@ -4,7 +4,7 @@
  * test-v0912-memory-ipc.js — 全局记忆保存链路端到端测试（v0.9.12）
  *
  * 真实驱动 modules/ipc.js 的 registerIpc + memory:save handler（mock ipcMain），
- * 验证（针对老大反馈「点保存一直保存中」的回归防护）：
+ * 验证（针对用户反馈「点保存一直保存中」的回归防护）：
  *  1. 主进程 memory:save 不再 await dialog（v0.9.12：确认移前端，主进程 dialog
  *     在 modal:false 子窗口上可能不弹/挂起 → 卡死"保存中"）；
  *  2. 文件存在 + 保存 → 直接写盘（前端已二次确认）；
@@ -71,14 +71,14 @@ async function main() {
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, '# AGENTS.md\n\n## 身份与称呼\n\n- 我的姓名：**小六**\n', 'utf8');
     const r = await handlers['memory:save'](null, {
-      users: [{ name: '用户的称呼', value: '老大' }],
+      users: [{ name: '用户的称呼', value: '用户' }],
       dsh: [{ name: '我的名字', value: '小鲸鱼' }, { name: '角色 1', value: '资深 C++ 工程师' }],
       sections: [{ title: '身份与称呼', body: '- 我的姓名：**小六**' }],
     });
     ok(r && r.ok === true, 'memory:save 返回 ok（不 reject、不卡死）');
     ok(calls.dialogs === 0, '主进程不再弹 dialog（确认在前端）');
     const raw = fs.readFileSync(target, 'utf8');
-    ok(raw.includes('## 用户设定') && raw.includes('- 用户的称呼：老大'), '用户设定独立区块写入文件');
+    ok(raw.includes('## 用户设定') && raw.includes('- 用户的称呼：用户'), '用户设定独立区块写入文件');
     ok(raw.includes('## 我的设定') && raw.includes('- 我的名字：小鲸鱼') && raw.includes('- 角色 1：资深 C++ 工程师'), '我的设定独立区块写入文件');
     ok(raw.includes('## 身份与称呼'), '其他区块保留');
     fs.rmSync(tmp, { recursive: true, force: true });
@@ -109,7 +109,7 @@ async function main() {
   }
 }
 
-// ── 附加段：role-selector 行为（v0.9.15 老大指令：新建对话不弹窗，双击输入框随时重选）──
+// ── 附加段：role-selector 行为（v0.9.15 用户指令：新建对话不弹窗，双击输入框随时重选）──
 async function testRoleSelector() {
   console.log('[4] role-selector：双击输入框重选角色 → 弹窗 → 注入（v0.9.15）');
   const mkRole = (opts = {}) => {
@@ -141,7 +141,7 @@ async function testRoleSelector() {
     const r = await api.pickAndInject();
     ok(r.ok === false && r.reason === 'cancelled' && calls.dialogs === 1 && calls.injects.length === 0, '选「不选择」→ 弹窗但不注入');
   }
-  // ③ 未配置角色 → 不弹窗（老大方案 3）
+  // ③ 未配置角色 → 不弹窗（方案 3）
   {
     const { api, calls } = mkRole({ rolesFn: () => [] });
     const r = await api.pickAndInject();

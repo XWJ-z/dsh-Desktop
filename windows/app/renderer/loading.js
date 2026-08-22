@@ -22,7 +22,7 @@ const helpBtn = document.getElementById('help-btn'); // v1.1.2：启动界面打
 const params = new URLSearchParams(location.search);
 if (params.get('port')) portEl.textContent = params.get('port');
 
-// v1.1.2（老大反馈）：启动界面「打开帮助文档」按钮 —— 等待安装/启动时可直接查看
+// v1.1.2（用户反馈）：启动界面「打开帮助文档」按钮 —— 等待安装/启动时可直接查看
 // 使用说明（帮助文档窗口为应用内窗口，本地优先 + 后台静默同步远程）
 if (helpBtn) {
   helpBtn.addEventListener('click', () => {
@@ -44,7 +44,7 @@ function setLogExpanded(expanded) {
 logToggle.addEventListener('click', () => setLogExpanded(!logExpanded));
 
 // 阶段指示器：点亮当前阶段，其余保持灰（L6：默认高亮①，避免监听注册前阶段已推送）
-// v1.1.1（老大反馈：首次安装 30 分钟进度像卡死）：安装阶段显示等待计时，
+// v1.1.1（用户反馈：首次安装 30 分钟进度像卡死）：安装阶段显示等待计时，
 // 即使 MB 数暂时不动（npm 拉元数据/建依赖树阶段不写盘）也能看出程序在正常工作
 let installWaitTimer = null;
 let installWaitStart = 0;

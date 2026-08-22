@@ -31,7 +31,7 @@ function createDialogWindowsModule(deps) {
     const win = new BrowserWindow({
       width: 560, height: 640, resizable: false, minimizable: false,
       parent: deps.getMainWindow(), modal: true, title: '检查更新',
-      autoHideMenuBar: true, // v0.9.12（老大反馈）：弹窗不显示菜单栏
+      autoHideMenuBar: true, // v0.9.12（用户反馈）：弹窗不显示菜单栏
       backgroundColor: nativeTheme.shouldUseDarkColors ? '#0f1115' : '#eef0f4', // v0.9.9：跟随外观
       webPreferences: secureWebPreferences(),
     });
@@ -46,7 +46,7 @@ function createDialogWindowsModule(deps) {
     const win = new BrowserWindow({
       width: 400, height: 560, resizable: false, minimizable: false,
       parent: deps.getMainWindow(), modal: true, title: '联系我们',
-      autoHideMenuBar: true, // v0.9.12（老大反馈）：弹窗不显示菜单栏
+      autoHideMenuBar: true, // v0.9.12（用户反馈）：弹窗不显示菜单栏
       backgroundColor: nativeTheme.shouldUseDarkColors ? '#0f1115' : '#eef0f4', // v0.9.9：跟随外观
       webPreferences: secureWebPreferences(),
     });
@@ -61,7 +61,7 @@ function createDialogWindowsModule(deps) {
     const win = new BrowserWindow({
       width: 420, height: 560, resizable: false, minimizable: false,
       parent: deps.getMainWindow(), modal: true, title: '关于 DSH-Desktop',
-      autoHideMenuBar: true, // v0.9.12（老大反馈）：弹窗不显示菜单栏
+      autoHideMenuBar: true, // v0.9.12（用户反馈）：弹窗不显示菜单栏
       backgroundColor: nativeTheme.shouldUseDarkColors ? '#0f1115' : '#eef0f4', // v0.9.9：跟随外观
       webPreferences: secureWebPreferences(),
     });

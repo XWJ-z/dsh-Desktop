@@ -10,7 +10,7 @@ const noticeSection = menu.slice(menu.indexOf('label: `公告'), menu.indexOf("l
 const helpSection = menu.slice(menu.indexOf("label: '帮助'"));
 
 const checks = [
-  // T1: 气泡在下方（菜单 .pet-menu 保留上方 —— 悬停才出，不遮挡；老大指对话词气泡）
+  // T1: 气泡在下方（菜单 .pet-menu 保留上方 —— 悬停才出，不遮挡；用户指对话词气泡）
   ['bubble top:100%', pet.includes("'position:absolute;top:100%;left:50%;transform:translateX(-50%);'")],
   ['bubble margin-top', pet.includes("margin-top:8px")],
   ['menu still bottom:100%', pet.includes("menu.style.cssText = 'position:absolute;bottom:100%;left:50%;transform:translateX(-50%);'")],

@@ -26,7 +26,7 @@ const ALLOWED_EXTERNAL_HOSTS = Object.freeze([
  * 判断 URL 是否可安全打开（https/http + 域名在白名单内）。
  * 非字符串 / 非 http(s) / 域名不在白名单 → false。
  * v1.1.1：raw.githubusercontent.com 和 cdn.jsdelivr.net 仅允许 help.html 路径。
- * v1.1.2（老大反馈：启动后自动打开系统浏览器）：新增 allowLoopback 参数 ——
+ * v1.1.2（用户反馈：启动后自动打开系统浏览器）：新增 allowLoopback 参数 ——
  * 本地回环（127.0.0.1/localhost，宠物「网页打开」用）只在**显式用户操作**
  * （app:open-external IPC）时放行；setWindowOpenHandler（页面 window.open /
  * target=_blank 链接，可能被 DSH 页面内容自动触发）一律拒绝本地回环，

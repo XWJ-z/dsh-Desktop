@@ -33,7 +33,7 @@ const { verifyKnownHash } = require('./shell-hashes');
 function createUpdater(deps) {
   const {
     app, shell, https, crypto, fs, path, rmQuiet,
-    net, // v1.1.3（老大反馈：下载更新失败）：版本检查改用 Electron net
+    net, // v1.1.3（用户反馈：下载更新失败）：版本检查改用 Electron net
     appendLog,
     readShellConfig, installedDshVersion, updateDshVersion,
     shellUpdateUrls,
@@ -41,7 +41,7 @@ function createUpdater(deps) {
 
   /**
    * GET 并解析 JSON；失败/超时返回 null（静默）。响应体超 maxBytes（默认 5MB）放弃。
-   * v1.1.3（老大反馈：下载更新失败，日志「版本检查：1/3 源可达…拒绝自动下载」）：
+   * v1.1.3（用户反馈：下载更新失败，日志「版本检查：1/3 源可达…拒绝自动下载」）：
    * 改用 Electron net.request（Chromium 网络栈 + 系统 CA + 自动跟随重定向）——
    * Node https.get 在真机 TLS 验证失败（api.github.com / raw.githubusercontent
    * "unable to verify the first certificate"），三源只有 jsDelivr 可达 →

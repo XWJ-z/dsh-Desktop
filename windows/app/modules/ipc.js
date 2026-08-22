@@ -49,7 +49,7 @@ function registerIpc(deps) {
     pluginMarket,
     // v1.1.1 三轮：帮助文档窗口（应用内打开本地 + 后台静默同步）
     helpDocApi,
-    // v0.9.12（老大指令）：全局记忆（读写 ~/.dsh/AGENTS.md + 打开编辑窗口）
+    // v0.9.12（用户指令）：全局记忆（读写 ~/.dsh/AGENTS.md + 打开编辑窗口）
     globalMemory,
     openGlobalMemoryWindow,
     // v0.9.13：角色选择（新对话选角色 / 双击输入框重选）
@@ -199,9 +199,9 @@ function registerIpc(deps) {
     clipboard.writeText(String(text ?? ''));
     return true;
   });
-  // v0.9.12（老大指令）：全局记忆 —— 读写 ~/.dsh/AGENTS.md（DSH 自动读取），
+  // v0.9.12（用户指令）：全局记忆 —— 读写 ~/.dsh/AGENTS.md（DSH 自动读取），
   // 图形化编辑：基础设定字段列表 + 自动识别所有 ## 区块长文本编辑
-  // v0.9.12（老大指令）：全局记忆 —— 读写 ~/.dsh/AGENTS.md（DSH 自动读取）
+  // v0.9.12（用户指令）：全局记忆 —— 读写 ~/.dsh/AGENTS.md（DSH 自动读取）
   // 覆盖确认由前端按钮二次确认（v0.9.12 修复：主进程 dialog 在 modal:false 子窗口
   // 上可能不弹/挂起导致"保存中"卡死 → 确认移前端，本 handler 只保存，绝不挂起）
   ipcMain.handle('memory:open-window', () => {
@@ -222,7 +222,7 @@ function registerIpc(deps) {
     shell.openPath(path.dirname(globalMemory.file()));
     return true;
   });
-  // v1.0.1（老大指令）：全局记忆窗口底部「角色文件位置」—— 打开 ~/.dsh/roles（不存在则先创建）
+  // v1.0.1（用户指令）：全局记忆窗口底部「角色文件位置」—— 打开 ~/.dsh/roles（不存在则先创建）
   ipcMain.handle('memory:open-roles', () => {
     const dir = path.join(path.dirname(globalMemory.file()), 'roles');
     try {
@@ -233,7 +233,7 @@ function registerIpc(deps) {
     shell.openPath(dir);
     return true;
   });
-  // v1.0.5（老大反馈 4）：解析异常时从 .bak 一键恢复全局记忆
+  // v1.0.5（用户反馈 4）：解析异常时从 .bak 一键恢复全局记忆
   ipcMain.handle('memory:restore-backup', () => {
     try {
       return globalMemory.restoreBackup();
@@ -242,7 +242,7 @@ function registerIpc(deps) {
       return { ok: false, message: err.message };
     }
   });
-  // v0.9.13（老大反馈）：双击 DSH 输入框重选角色 —— 弹窗选角色并注入
+  // v0.9.13（用户反馈）：双击 DSH 输入框重选角色 —— 弹窗选角色并注入
   ipcMain.handle('role:choose', () => pickAndInjectRole());
   // 联系我们窗口：向渲染进程提供二维码路径与群号（文件路径经 IPC 传递最稳）
   ipcMain.handle('contact:info', () => {
@@ -296,7 +296,7 @@ function registerIpc(deps) {
   ipcMain.handle('plugin-market:get-plugins', async () => {
     return await pluginMarket.getPlugins();
   });
-  // v1.1.1 二轮（老大确认）：手动刷新 —— 绕过 7 天缓存，三源实时拉取并落盘
+  // v1.1.1 二轮（用户确认）：手动刷新 —— 绕过 7 天缓存，三源实时拉取并落盘
   ipcMain.handle('plugin-market:refresh', async () => {
     return await pluginMarket.refreshPlugins();
   });

@@ -17,11 +17,11 @@ const el = (id) => document.getElementById(id);
 const dsh = window.dshDesktop;
 
 let data = null;
-let currentSub = null;   // v1.0.3（老大反馈 5 修正）：当前选中的二级子分类 id
+let currentSub = null;   // v1.0.3（用户反馈 5 修正）：当前选中的二级子分类 id
 let keyword = '';
 let bannerTimer = null;
 let bannerTimer2 = null;
-// v1.0.3（老大反馈 5 修正）：展开的一级分类（默认展开第一个），点击分类头折叠/展开
+// v1.0.3（用户反馈 5 修正）：展开的一级分类（默认展开第一个），点击分类头折叠/展开
 let expandedCats = new Set();
 
 // v0.9.5：自定义提示词状态
@@ -136,7 +136,7 @@ function renderItems() {
 }
 
 /**
- * v1.0.3（老大反馈 5 修正）：内置库二级分类 —— 左侧 = 一级分类（可折叠），
+ * v1.0.3（用户反馈 5 修正）：内置库二级分类 —— 左侧 = 一级分类（可折叠），
  * 每个分类下缩进显示其**二级子分类**（点击子分类选中显示条目）。
  * 数据结构：categories[].subs[]（无 subs 的旧数据兜底为单子类）。
  */
@@ -164,7 +164,7 @@ function renderCats() {
   cats.querySelectorAll('.cat.sub').forEach((c) => {
     c.classList.toggle('active', c.dataset.sub === currentSub);
   });
-  // v1.0.3（老大反馈：展开一次后不能再点开收起）：事件委托**只绑定一次** ——
+  // v1.0.3（用户反馈：展开一次后不能再点开收起）：事件委托**只绑定一次** ——
   // 此前每次 renderCats 重建都往 #cats 追加监听器，点击被多个监听器多次 toggle 抵消
   if (!cats.dataset.promptlibBound) {
     cats.dataset.promptlibBound = '1';
@@ -414,7 +414,7 @@ async function init() {
     el('items').innerHTML = '<div class="empty">暂无提示词</div>';
     return;
   }
-  // v1.0.3（老大反馈 5 修正）：默认展开第一个分类 + 选中其第一个二级子分类
+  // v1.0.3（用户反馈 5 修正）：默认展开第一个分类 + 选中其第一个二级子分类
   const firstCat = data.categories[0];
   const firstSub = (Array.isArray(firstCat.subs) && firstCat.subs.length > 0)
     ? firstCat.subs[0]

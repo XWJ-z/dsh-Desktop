@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * test-v105-behavior.js — v1.0.5 修复行为级测试（老大反馈 1/2/3/4 中 2/3/4 三项）
+ * test-v105-behavior.js — v1.0.5 修复行为级测试（用户反馈 1/2/3/4 中 2/3/4 三项）
  *
  * 2. 问题② 全局记忆区块无法删除：save() 提交的区块集合 = 最终状态，
  *    删除后保存不再刷新出来（标题匹配原位覆盖 / 删除生效 / 新增追加末尾）；
@@ -54,7 +54,7 @@ function run() {
     const e = makeEnv();
     const { gm } = e;
     // 首次保存：2 个长区块 A、B + 基础字段
-    let r = gm.save({ users: [{ name: '用户的称呼', value: '老大' }], sections: [
+    let r = gm.save({ users: [{ name: '用户的称呼', value: '用户' }], sections: [
       { title: '区块A', body: '内容A' },
       { title: '区块B', body: '内容B' },
     ] });
@@ -63,7 +63,7 @@ function run() {
     ok(raw.includes('## 区块A') && raw.includes('## 区块B'), '首次保存后文件含 区块A/区块B');
     ok(!fs.existsSync(e.bak()), '首次保存（无旧文件）不生成 .bak');
     // 第二次保存：只提交 A（用户删除了 B）→ B 必须消失
-    r = gm.save({ users: [{ name: '用户的称呼', value: '老大' }], sections: [
+    r = gm.save({ users: [{ name: '用户的称呼', value: '用户' }], sections: [
       { title: '区块A', body: '内容A改' },
     ] });
     ok(r.ok === true, '第二次保存成功（只提交 A）');
@@ -73,7 +73,7 @@ function run() {
     ok(fs.existsSync(e.bak()), '第二次保存（有旧文件）自动生成 .bak');
     ok(fs.readFileSync(e.bak(), 'utf8').includes('## 区块B'), '.bak = 上一次版本（含 区块B）');
     // 第三次：提交 A + 新 C → C 追加末尾
-    r = gm.save({ users: [{ name: '用户的称呼', value: '老大' }], sections: [
+    r = gm.save({ users: [{ name: '用户的称呼', value: '用户' }], sections: [
       { title: '区块A', body: '内容A改' },
       { title: '区块C', body: '内容C' },
     ] });
@@ -81,7 +81,7 @@ function run() {
     ok(raw.includes('## 区块C'), '新增 区块C 保存成功');
     ok(raw.indexOf('## 区块C') > raw.indexOf('## 区块A'), '新增区块追加在末尾');
     // 第四次：改标题（A → D）→ 旧标题删除、新标题出现
-    r = gm.save({ users: [{ name: '用户的称呼', value: '老大' }], sections: [
+    r = gm.save({ users: [{ name: '用户的称呼', value: '用户' }], sections: [
       { title: '区块D', body: '内容D' },
       { title: '区块C', body: '内容C' },
     ] });
@@ -98,7 +98,7 @@ function run() {
     const { TEMPLATE } = require('../modules/global-memory');
     ok(TEMPLATE.includes('**角色记忆**') && TEMPLATE.includes('`~/.dsh/roles/`'), 'TEMPLATE 含「角色记忆」说明句');
     // 首次保存 → 文件必含说明句
-    gm.save({ users: [{ name: '用户的称呼', value: '老大' }] });
+    gm.save({ users: [{ name: '用户的称呼', value: '用户' }] });
     let raw = fs.readFileSync(e.file(), 'utf8');
     const noteLine = '- **角色记忆**：各角色的详细记忆写入 `~/.dsh/roles/` 下对应角色文件。';
     ok(raw.includes(noteLine), '保存后 AGENTS.md 含「角色记忆」说明句');
@@ -108,13 +108,13 @@ function run() {
     ok(!!rolesSec && rolesSec.roleNote === true, 'parse 识别 roleNote=true');
     ok(!rolesSec.fields.some((f) => f.name === '**角色记忆**'), '说明句不算角色字段（不进 fields）');
     // 连续保存两次 → 说明句不重复累积（只一行）
-    gm.save({ users: [{ name: '用户的称呼', value: '老大' }] });
-    gm.save({ users: [{ name: '用户的称呼', value: '老大' }] });
+    gm.save({ users: [{ name: '用户的称呼', value: '用户' }] });
+    gm.save({ users: [{ name: '用户的称呼', value: '用户' }] });
     raw = fs.readFileSync(e.file(), 'utf8');
     const count = raw.split(noteLine).length - 1;
     ok(count === 1, `说明句不重复累积（连续保存后仍只有 1 行，实际 ${count}）`);
     // 带角色保存也正常
-    const r2 = gm.save({ users: [{ name: '用户的称呼', value: '老大' }], roles: [{ name: '测试角色', desc: '定位', memory: '记忆内容' }] });
+    const r2 = gm.save({ users: [{ name: '用户的称呼', value: '用户' }], roles: [{ name: '测试角色', desc: '定位', memory: '记忆内容' }] });
     ok(r2.ok === true, '带角色保存正常');
     raw = fs.readFileSync(e.file(), 'utf8');
     ok(raw.includes('- 测试角色：定位'), '角色行输出为「角色名：定位」');
@@ -134,8 +134,8 @@ function run() {
     fs.writeFileSync(e.file(), '');
     ok(gm.isCorrupt() === false, '空文件 → 不算损坏');
     // 正常保存两次 → 生成 .bak，恢复可用
-    gm.save({ users: [{ name: '用户的称呼', value: '老大' }], sections: [{ title: '区块A', body: 'AAA' }] });
-    gm.save({ users: [{ name: '用户的称呼', value: '老大' }], sections: [{ title: '区块A', body: 'BBB' }] });
+    gm.save({ users: [{ name: '用户的称呼', value: '用户' }], sections: [{ title: '区块A', body: 'AAA' }] });
+    gm.save({ users: [{ name: '用户的称呼', value: '用户' }], sections: [{ title: '区块A', body: 'BBB' }] });
     ok(fs.readFileSync(e.bak(), 'utf8').includes('AAA'), '.bak = 上一次保存内容（AAA）');
     // 损坏当前文件 → isCorrupt true → restoreBackup 恢复
     fs.writeFileSync(e.file(), '损坏的内容没有区块结构');

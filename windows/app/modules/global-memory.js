@@ -13,7 +13,7 @@
  *  - 区块级替换：文件头部（# 标题 + 说明）与各区块原样保留，只替换用户编辑过的内容；
  *  - 原子写盘（.tmp → rename）；覆盖已有内容由主进程弹窗确认（见 ipc.js）。
  *
- * v1.0.2（老大反馈 2026-08-18）角色文件全文同步：
+ * v1.0.2（用户反馈 2026-08-18）角色文件全文同步：
  *  - **UI 编辑框 = 角色 .md 文件全文**（含 # 角色 / ## 定位 / ## 详细记忆），
  *    保存时全文写回 ~/.dsh/roles/<名>.md；AGENTS.md 的 DSH 角色区块行只存
  *    「角色名：定位」（定位 = 全文 ## 定位 节第一行，extractRoleDesc）；
@@ -28,7 +28,7 @@
 
 const FILE_NAME = 'AGENTS.md';
 
-/** 三个独立顶层区块（v0.9.13 老大方案：全局记忆是 DSH 的视角 —— 用户设定/我的设定/DSH 角色） */
+/** 三个独立顶层区块（v0.9.13 方案：全局记忆是 DSH 的视角 —— 用户设定/我的设定/DSH 角色） */
 const USER_SECTION = '用户设定';
 const DSH_SECTION = '我的设定';          // v0.9.13：原「DSH 设定」改「我的设定」（DSH 视角）
 const ROLES_SECTION = 'DSH 角色';
@@ -43,7 +43,7 @@ const LEGACY_SECTION = '基础设定（DSH-Desktop 图形化编辑）';
 const LEGACY_ROLE_TITLE = '角色设定（DSH 扮演）';
 
 /**
- * 旧版字段名 → DSH 视角新字段名（v0.9.14 老大反馈：旧窗口保存的 AGENTS.md 仍是
+ * 旧版字段名 → DSH 视角新字段名（v0.9.14 用户反馈：旧窗口保存的 AGENTS.md 仍是
  * 「你的称呼 / DSH 的名字」等旧视角字段，解析时自动迁移，窗口与保存均显示新名）。
  */
 const FIELD_MIGRATE = {
@@ -59,22 +59,22 @@ const LEGACY_HEAD_MARK = '此文件由 DSH-Desktop「全局记忆」窗口维护
 /** 角色文件目录（~/.dsh/roles/，每个角色一个 md；AGENTS.md 只记录定位+文件名，避免文档过大） */
 const ROLES_DIR = 'roles';
 
-/** 角色名长度上限（v1.0.3 老大反馈 2：不超过 30 字符） */
+/** 角色名长度上限（v1.0.3 用户反馈 2：不超过 30 字符） */
 const MAX_ROLE_NAME = 30;
 
-/** v1.0.5（老大反馈 3）：DSH 角色区块的「角色记忆」说明句 —— 对话时 DSH 能知道各角色记忆文件的地址 */
+/** v1.0.5（用户反馈 3）：DSH 角色区块的「角色记忆」说明句 —— 对话时 DSH 能知道各角色记忆文件的地址 */
 const ROLE_NOTE_FIELD = '**角色记忆**';
 const ROLE_NOTE_TEXT = '各角色的详细记忆写入 `~/.dsh/roles/` 下对应角色文件。';
 
-/** v1.0.5（老大反馈 4）：全局记忆备份文件名（保存前自动备份上一次版本，解析异常时可一键恢复） */
+/** v1.0.5（用户反馈 4）：全局记忆备份文件名（保存前自动备份上一次版本，解析异常时可一键恢复） */
 const BACKUP_NAME = 'AGENTS.md.bak';
 
-/** 未配置引导句的字段名与内容（老大指令 2026-08-17：第一次对话引导用户配置全局记忆） */
+/** 未配置引导句的字段名与内容（用户指令 2026-08-17：第一次对话引导用户配置全局记忆） */
 const GUIDE_FIELD = '引导提示';
 const GUIDE_TEXT = '【请在对话中引导用户点击宠物/工具箱图标 进行配置全局记忆，或者发送给我进行配置。配置完成后删除此句】';
 
 /**
- * 标准格式整理提示词（v0.9.13 老大指令）：检测到已存在记忆但不符合标准格式
+ * 标准格式整理提示词（v0.9.13 用户指令）：检测到已存在记忆但不符合标准格式
  * （缺 用户设定 / DSH 设定 区块）→ 注入到聊天窗口，让 DSH 按此格式整理。
  */
 const FORMAT_TIDY_PROMPT = `请按照以下标准格式整理你的全局记忆（~/.dsh/AGENTS.md），不要改变原意，把现有内容归类到对应区块（注意：这是 DSH 的视角，「用户设定」记录用户，「我的设定」记录 DSH 自己）：
@@ -106,7 +106,7 @@ const FORMAT_TIDY_PROMPT = `请按照以下标准格式整理你的全局记忆�
 
 （其他原有内容放在这里；各角色的详细记忆写入 ~/.dsh/roles/ 下对应角色文件）`;
 
-/** 内置默认用户设定字段（v0.9.13 老大方案：DSH 视角 —— "用户的…"） */
+/** 内置默认用户设定字段（v0.9.13 方案：DSH 视角 —— "用户的…"） */
 const DEFAULT_FIELDS = ['用户的称呼', '用户的身份/角色', '当前项目', '常用约定'];
 
 /** 内置默认 DSH（我的）设定字段（DSH 视角；默认角色为下拉选择） */
@@ -177,7 +177,7 @@ function createGlobalMemory(deps) {
     let legacy = null; // 旧容器缓冲区 { u, d, group }
     let seenSection = false;
     const lines = String(content || '').split(/\r?\n/);
-    /** v0.9.14：旧字段名 → DSH 视角新字段名（老大反馈：旧文件仍是「你的称呼/DSH 的名字」） */
+    /** v0.9.14：旧字段名 → DSH 视角新字段名（用户反馈：旧文件仍是「你的称呼/DSH 的名字」） */
     const migrateName = (name) => (Object.prototype.hasOwnProperty.call(FIELD_MIGRATE, name) ? FIELD_MIGRATE[name] : name);
     const flushLegacy = () => {
       if (legacy) {
@@ -242,7 +242,7 @@ function createGlobalMemory(deps) {
           if (m) {
             const name = m[1].trim();
             if (name === GUIDE_FIELD) { cur.guide = true; continue; }
-            // v1.0.5（老大反馈 3）：「角色记忆」说明句是固定引导行，不算字段（防保存时重复累积）
+            // v1.0.5（用户反馈 3）：「角色记忆」说明句是固定引导行，不算字段（防保存时重复累积）
             if (cur.kind === 'roles' && name === ROLE_NOTE_FIELD) { cur.roleNote = true; continue; }
             cur.fields.push({ name: migrateName(name), value: m[2].trim() });
           }
@@ -284,7 +284,7 @@ function createGlobalMemory(deps) {
   }
 
   /** 渲染 DSH 角色区块（字段行；始终输出区块标题，保证标准格式完整）
-   *  v1.0.5（老大反馈 3）：roleNote=true 时固定输出「角色记忆」说明句（DSH 对话时知道角色记忆文件地址） */
+   *  v1.0.5（用户反馈 3）：roleNote=true 时固定输出「角色记忆」说明句（DSH 对话时知道角色记忆文件地址） */
   function renderRoles(fields, roleNote) {
     const lines = [`## ${ROLES_SECTION}`, ''];
     if (roleNote) lines.push(`- ${ROLE_NOTE_FIELD}：${ROLE_NOTE_TEXT}`);
@@ -346,7 +346,7 @@ function createGlobalMemory(deps) {
   }
 
   /**
-   * 解析角色文件全文为「定位 + 其余内容」（v1.0.3 老大反馈 4：字段输入化）：
+   * 解析角色文件全文为「定位 + 其余内容」（v1.0.3 用户反馈 4：字段输入化）：
    *  - desc：`## 定位` 节全文（trim，多行保留）；无该节返回 ''；
    *  - rest：其余全部内容（含 `## 详细记忆` 节与用户其他自定义 ## 区块，原样保留不丢数据）；
    *  - 首行 `# 角色：xxx` 标题剥离（renderRoleContent 会按角色名重新生成）。
@@ -380,7 +380,7 @@ function createGlobalMemory(deps) {
   }
 
   /**
-   * 角色文件同步（v1.0.2 老大反馈：改名残留旧文件 / 文件全文不同步）：
+   * 角色文件同步（v1.0.2 用户反馈：改名残留旧文件 / 文件全文不同步）：
    * 保存后角色文件目录状态 = UI 角色列表状态：
    *  - 消失的角色（旧名不在新集合）→ 删除其 .md（改名场景内容由窗口内存携带，
    *    写回新文件时 ensureRoleTitle 保持标题一致，无需真 rename）；
@@ -420,7 +420,7 @@ function createGlobalMemory(deps) {
     });
   }
 
-  /** 确保每个角色的角色文件存在（v0.9.13 老大方案 2；v1.0.2 起 = 仅创建不删除的兼容封装） */
+  /** 确保每个角色的角色文件存在（v0.9.13 方案 2；v1.0.2 起 = 仅创建不删除的兼容封装） */
   function ensureRoleFiles(roles) {
     syncRoleFiles([], roles);
   }
@@ -482,10 +482,10 @@ function createGlobalMemory(deps) {
     // 兼容旧 payload 字段名（fields/roles → users/dsh）
     const users = clean(p.users !== undefined ? p.users : p.fields);
     const dsh = clean(p.dsh !== undefined ? p.dsh : p.roles);
-    // v1.0.2（老大反馈）：角色 value = 角色 .md 全文 —— 不能过 clean（换行→空格会毁全文），单独处理
-    // v1.0.3（老大反馈 4）：窗口按「定位 / 详细记忆」固定字段提交，此处组装标准结构全文；
+    // v1.0.2（用户反馈）：角色 value = 角色 .md 全文 —— 不能过 clean（换行→空格会毁全文），单独处理
+    // v1.0.3（用户反馈 4）：窗口按「定位 / 详细记忆」固定字段提交，此处组装标准结构全文；
     // 兼容旧 payload（value = 全文，无 desc/memory 字段）→ 解析拆分再组装（不丢数据）；
-    // v1.0.3（老大反馈 2）：角色名长度限制 ≤30 字符（前端 maxlength + 主进程校验双保险）
+    // v1.0.3（用户反馈 2）：角色名长度限制 ≤30 字符（前端 maxlength + 主进程校验双保险）
     const roles = (Array.isArray(p.roles) ? p.roles : [])
       .map((it) => {
         const name = String((it && it.name) || '').trim();
@@ -514,16 +514,16 @@ function createGlobalMemory(deps) {
       .map((s) => ({ title: String((s && s.title) || '').trim(), body: String((s && s.body) || '') }))
       .filter((s) => s.title !== '');
     const raw = readRaw();
-    // v1.0.5（老大反馈 4）：保存前自动备份上一次版本（.bak；有旧内容才备份，首次保存无需）
+    // v1.0.5（用户反馈 4）：保存前自动备份上一次版本（.bak；有旧内容才备份，首次保存无需）
     if (raw !== null) writeBackup();
-    // v1.0.2（老大反馈 5①）：改名/删除 → 角色 .md 文件同步（旧文件不再残留堆积）
+    // v1.0.2（用户反馈 5①）：改名/删除 → 角色 .md 文件同步（旧文件不再残留堆积）
     const prevParsed = raw === null ? parse(TEMPLATE) : parse(raw);
     const prevRolesSec = prevParsed.sections.find((s) => s.kind === 'roles');
     const prevRoles = prevRolesSec ? (prevRolesSec.fields || []).map((f) => ({ name: f.name })) : [];
     syncRoleFiles(prevRoles, roleContents);
     // 重组：首次用完整模板解析，已有文件保留原头部与区块（旧「基础设定」容器自动迁移）
     const { head, sections } = raw === null ? parse(TEMPLATE) : parse(raw);
-    // v0.9.12（老大反馈：保存没写入）：按序覆盖 —— 窗口区块顺序 = 原文件区块顺序，
+    // v0.9.12（用户反馈：保存没写入）：按序覆盖 —— 窗口区块顺序 = 原文件区块顺序，
     // 第 i 个长区块用窗口第 i 个提交值（标题与内容都可修改生效），原文件没有的新区块追加末尾。
     const merged = [];
     // v1.0.2：AGENTS.md 角色行只存短定位（desc），全文在 ~/.dsh/roles/ 文件
@@ -531,7 +531,7 @@ function createGlobalMemory(deps) {
     let usersPlaced = false;
     let dshPlaced = false;
     let rolesPlaced = false;
-    // v1.0.5（老大反馈 1）：修复「删除 ## 区块后保存又刷新出来」——
+    // v1.0.5（用户反馈 1）：修复「删除 ## 区块后保存又刷新出来」——
     // 长区块以窗口提交集合为最终状态：原文件有、窗口未提交的区块 = 已删除（不保留）；
     // 同标题匹配原位覆盖（标题/内容以窗口为准）；窗口新增标题追加末尾。
     const submittedLongs = longSections.slice();
@@ -578,7 +578,7 @@ function createGlobalMemory(deps) {
   }
 
   /**
-   * 未配置引导 + 格式检测（老大指令）：
+   * 未配置引导 + 格式检测（用户指令）：
    *  - 用户还没配置过全局记忆 → 在「用户设定」区块加引导句（DSH 第一次对话引导配置）；
    *  - 已存在记忆但**不符合标准格式**（缺 用户设定/DSH 设定 区块）→ 返回 formatMismatch，
    *    main.js 据此向聊天窗口注入 FORMAT_TIDY_PROMPT 让 DSH 按格式整理。
@@ -626,7 +626,7 @@ function createGlobalMemory(deps) {
 
   /**
    * 保存前自动备份：把当前 AGENTS.md 复制为 AGENTS.md.bak（每次保存覆盖为"上一次版本"）。
-   * v1.0.5（老大反馈 4）：怕手改/程序写坏文件 → 备份 + 解析异常一键恢复。
+   * v1.0.5（用户反馈 4）：怕手改/程序写坏文件 → 备份 + 解析异常一键恢复。
    * @returns {boolean} 是否成功备份（无旧文件返回 true，无需备份）
    */
   function writeBackup() {
@@ -673,7 +673,7 @@ function createGlobalMemory(deps) {
   /**
    * 解析异常检测：文件存在、内容非空、但解析不出任何区块 → 视为损坏
    * （正常 AGENTS.md 必有 ## 区块；空文件/全空白不算损坏）。
-   * v1.0.5（老大反馈 4）：窗口据此提示「从备份一键恢复」。
+   * v1.0.5（用户反馈 4）：窗口据此提示「从备份一键恢复」。
    * @returns {boolean}
    */
   function isCorrupt() {
@@ -689,10 +689,10 @@ function createGlobalMemory(deps) {
 
   /**
    * 读取窗口数据：头部 + 全部区块 + 默认字段 + 文件路径 + 角色目录。
-   * v1.0.2（老大反馈 5②）：DSH 角色 fields 的 value = 角色 .md 文件全文，desc = 定位。
-   * v1.0.2b（老大反馈 2026-08-18：外部改角色 .md 后需重开窗口才刷新）：返回 signature =
+   * v1.0.2（用户反馈 5②）：DSH 角色 fields 的 value = 角色 .md 文件全文，desc = 定位。
+   * v1.0.2b（用户反馈 2026-08-18：外部改角色 .md 后需重开窗口才刷新）：返回 signature =
    * AGENTS.md mtime + 各角色文件 mtime/size —— 聚焦刷新对比 signature，角色文件变更也能检测到。
-   * v1.0.5（老大反馈 4）：返回 corrupt —— 解析异常标记，窗口提示一键恢复。
+   * v1.0.5（用户反馈 4）：返回 corrupt —— 解析异常标记，窗口提示一键恢复。
    */
   function data() {
     const raw = readRaw();
@@ -708,7 +708,7 @@ function createGlobalMemory(deps) {
       .filter(Boolean)
       .map((name) => {
         const content = readRoleFile(name);
-        // v1.0.3（老大反馈 4）：拆成「定位 + 详细记忆」字段 —— value = 详细记忆及其他内容，
+        // v1.0.3（用户反馈 4）：拆成「定位 + 详细记忆」字段 —— value = 详细记忆及其他内容，
         // desc = ## 定位 节全文（窗口以固定字段输入展示，结构字段不再裸露给用户手改）
         const { desc, rest } = parseRoleContent(content);
         return { name, value: rest, desc };
@@ -730,10 +730,10 @@ function createGlobalMemory(deps) {
       defaultDshFields: DEFAULT_DSH_FIELDS.slice(),
       defaultRoles: DEFAULT_ROLES.slice(),
       file: file(),
-      rolesDir: path.join(os.homedir(), '.dsh', ROLES_DIR), // v1.0.1（老大指令）：窗口左下角显示角色文件目录
+      rolesDir: path.join(os.homedir(), '.dsh', ROLES_DIR), // v1.0.1（用户指令）：窗口左下角显示角色文件目录
       mtime,
       signature: `${String(mtime)}|${rolesStamp}`, // v1.0.2b：AGENTS.md + 角色文件 变更指纹
-      corrupt: isCorrupt(), // v1.0.5（老大反馈 4）：解析异常标记 → 窗口提示一键恢复
+      corrupt: isCorrupt(), // v1.0.5（用户反馈 4）：解析异常标记 → 窗口提示一键恢复
     };
   }
 
