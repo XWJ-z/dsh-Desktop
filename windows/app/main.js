@@ -30,6 +30,7 @@ const {
   ipcMain,
   Tray,
   globalShortcut,
+  Notification, // v1.2.1 T8：任务完成通知（系统通知）
   net: electronNet, // v1.1.1：Electron net（Chromium 网络栈 + 系统 CA）；与 node:net 区分
 } = require('electron');
 const { spawn, execFileSync } = require('node:child_process');
@@ -59,6 +60,7 @@ const { createGlobalMemory } = require('./modules/global-memory'); // v0.9.12：
 const { createProjectMemory } = require('./modules/project-memory'); // v1.2.1 T1：项目记忆（工作区级）
 const { createSkillLibrary } = require('./modules/skill-library'); // v1.2.1 T4：技能库（扫描/读写/市场）
 const { createLanAccess } = require('./modules/lan-access'); // v1.2.1 T7：局域网扫码访问
+const { createTaskNotify } = require('./modules/task-notify'); // v1.2.1 T8：任务完成通知
 const { createRoleSelector } = require('./modules/role-selector'); // v0.9.13：新对话选择角色
 const { createRolePicker } = require('./modules/role-picker'); // v1.0.3（用户反馈 3）：角色选择竖排窗口
 const { createNoticeModule } = require('./modules/notice'); // v0.9.5（T3）：公告条/公告源
@@ -803,6 +805,44 @@ const lanApi = createLanAccess({
   closeQrWindow: () => closeLanQrWindow(),
 });
 
+// v1.2.1 T8：任务完成通知 —— 监听 DSH 输出空闲 N 分钟 → 弹系统通知（点击回主窗口）
+const taskNotifyApi = createTaskNotify({
+  appendLog,
+  getSettings: () => settings,
+  getServerChild: () => serverChild,
+  showMainWindow,
+  notify: () => {
+    if (!Notification.isSupported()) {
+      appendLog('warn', '系统通知不被支持，跳过任务完成通知');
+      return;
+    }
+    const n = new Notification({
+      title: 'DSH 任务完成',
+      body: 'DSH 已有一段时间无输出，任务可能已完成。点击回到 DSH 界面。',
+      silent: false,
+    });
+    n.on('click', () => showMainWindow());
+    n.show();
+    appendLog('info', '已弹出任务完成系统通知');
+  },
+});
+
+/** v1.2.1 T8：任务完成通知开关（设置菜单；默认开） */
+function setTaskNotify(enabled) {
+  settings.taskNotify = !!enabled;
+  settingsApi.saveSettings();
+  appendLog('info', `任务完成通知已${enabled ? '开启' : '关闭'}`);
+  refreshMenusRef();
+}
+
+// v1.2.1 T8：周期性监听 DSH 服务子进程（子进程变化（LAN 重启/意外重启）自动重挂监听）
+let taskNotifyWatchTimer = null;
+function startTaskNotifyWatch() {
+  if (taskNotifyWatchTimer) return;
+  taskNotifyWatchTimer = setInterval(() => taskNotifyApi.watchServer(), 10000);
+  appendLog('info', '任务完成通知监听已启动（每 10s 检查 DSH 服务输出）');
+}
+
 // v0.8.1（T5）：托盘模块 —— tray / trayExitConfirmed 状态收敛到模块内部
 const trayApi = createTrayModule({
   app,
@@ -916,6 +956,7 @@ const menuApi = createMenu({
   setCloseAsk: settingsApi.setCloseAsk, // v1.0.3：关闭时总是询问开关
   setCheckUpdateOnStart: settingsApi.setCheckUpdateOnStart,
   setLanAccess: (enabled) => lanApi.setLanMode(enabled), // v1.2.1 T7：局域网访问开关
+  setTaskNotify, // v1.2.1 T8：任务完成通知开关
   clearCloseChoice: settingsApi.clearCloseChoice,
   saveSettings: settingsApi.saveSettings,
   setHotkey: hotkeyApi.setHotkey,
@@ -1337,6 +1378,8 @@ if (!gotLock) {
       await waitForServer(DEFAULT_HOST, resolvedPort, SERVER_READY_TIMEOUT_MS);
       appendLog('info', `DSH 服务就绪：${webUrl()}`);
       pushStage('ready');
+      // v1.2.1 T8：任务完成通知监听（服务就绪后启动）
+      startTaskNotifyWatch();
 
       // 审查 H2：服务就绪后关闭 loading 窗口，新建 1440×900 主窗口承载 GUI
       if (!silentStart) {
@@ -1451,6 +1494,11 @@ if (!gotLock) {
     if (noticeRefreshTimer) {
       clearInterval(noticeRefreshTimer);
       noticeRefreshTimer = null;
+    }
+    // v1.2.1 T8：退出清理任务完成通知监听定时器
+    if (taskNotifyWatchTimer) {
+      clearInterval(taskNotifyWatchTimer);
+      taskNotifyWatchTimer = null;
     }
     // v0.8.1（T4）：退出释放全局快捷键（防残留占用）
     hotkeyApi.unregisterAll();

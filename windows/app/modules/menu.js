@@ -37,6 +37,7 @@ function createMenu(deps) {
     setCloseAsk,
     setCheckUpdateOnStart,
     setLanAccess, // v1.2.1 T7：局域网访问开关（重启服务 + 弹二维码）
+    setTaskNotify, // v1.2.1 T8：任务完成通知开关
     clearCloseChoice,
     saveSettings,
     setHotkey,
@@ -187,6 +188,13 @@ function createMenu(deps) {
             type: 'checkbox',
             checked: !!settings.lanAccess,
             click: (item) => setLanAccess(item.checked),
+          },
+          {
+            // v1.2.1 T8：任务完成通知（默认开）—— DSH 空闲判定完成后弹系统通知
+            label: '任务完成通知',
+            type: 'checkbox',
+            checked: !!settings.taskNotify,
+            click: (item) => setTaskNotify(item.checked),
           },
           { type: 'separator' },
           // ── 外观 / 快捷键 ──
