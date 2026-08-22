@@ -1,7 +1,7 @@
 {
   "name": "dsh-desktop",
   "productName": "DSH-Desktop",
-  "version": "1.1.6",
+  "version": "1.2.1",
   "description": "DeepSeek Harness Web GUI 的桌面套壳（Electron）—— 自带 npx 环境，按配置版本运行 @deepseek-ai/dsh web 并在原生窗口中承载界面",
   "main": "main.js",
   "license": "MIT",
