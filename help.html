@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DSH-Desktop 帮助文档</title>
     <style>
-        /* finesse · register=product · 帮助文档阅读页 · 深/浅双主题 + 侧栏目录 + 滚动渐显 + 微交互 */
+        /* finesse · register=product · 帮助文档阅读页 · 深/浅双主题 + 左侧目录 + 滚动渐显 + 微交互 */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
             --ink: #1f2330;
@@ -26,6 +26,9 @@
             --amber-ink: #7a5d0f;
             --baidu: #c0392b;
             --baidu-deep: #a93226;
+            --green: #0d9f6e;
+            --green-bg: rgba(13, 159, 110, .10);
+            --green-border: rgba(13, 159, 110, .32);
             --code-bg: #eef1f6;
             --code-ink: #3f4ac4;
             --shadow-1: 0 1px 2px rgba(20, 24, 40, .04), 0 4px 16px rgba(28, 33, 56, .05);
@@ -54,6 +57,9 @@
                 --amber-ink: #e6c27a;
                 --baidu: #e2604f;
                 --baidu-deep: #ef7362;
+                --green: #34d399;
+                --green-bg: rgba(52, 211, 153, .10);
+                --green-border: rgba(52, 211, 153, .32);
                 --code-bg: #1d212b;
                 --code-ink: #a0aaf2;
                 --shadow-1: 0 1px 2px rgba(0, 0, 0, .3), 0 4px 16px rgba(0, 0, 0, .2);
@@ -92,119 +98,86 @@
             color: var(--brand); background: var(--brand-soft);
             padding: 5px 14px; border-radius: 999px; margin-bottom: 22px;
         }
-        .hero h1 {
-            font-size: 40px; font-weight: 730; letter-spacing: -1px; color: var(--ink); line-height: 1.15;
-            margin-bottom: 14px;
-        }
-        .hero p.sub {
-            font-size: 16px; color: var(--ink-3); max-width: 560px; margin: 0 auto;
-        }
-        .hero .meta {
-            margin-top: 22px; display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;
-        }
-        .hero .meta span {
-            font-size: 13px; color: var(--ink-3); background: var(--surface-2);
-            border: 1px solid var(--line); padding: 5px 14px; border-radius: 999px;
-        }
+        .hero h1 { font-size: 40px; font-weight: 730; letter-spacing: -1px; color: var(--ink); line-height: 1.15; margin-bottom: 14px; }
+        .hero p.sub { font-size: 16px; color: var(--ink-3); max-width: 580px; margin: 0 auto; }
+        .hero .meta { margin-top: 22px; display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+        .hero .meta span { font-size: 13px; color: var(--ink-3); background: var(--surface-2); border: 1px solid var(--line); padding: 5px 14px; border-radius: 999px; }
 
         /* —— 布局 —— */
         .wrap { max-width: 1080px; margin: 0 auto; padding: 40px 24px 72px; display: grid; grid-template-columns: 220px 1fr; gap: 36px; align-items: start; }
 
         /* —— 侧栏目录 —— */
-        .toc {
-            position: sticky; top: 28px;
-            background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
-            padding: 18px 16px; box-shadow: var(--shadow-1);
-        }
+        .toc { position: sticky; top: 28px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 16px; box-shadow: var(--shadow-1); }
         .toc .toc-title { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); margin: 4px 10px 12px; }
-        .toc a {
-            display: block; padding: 9px 12px; margin-bottom: 2px; border-radius: var(--radius-sm);
-            color: var(--ink-2); text-decoration: none; font-size: 14px; font-weight: 540;
-            transition: background .16s ease, color .16s ease, transform .16s var(--spring);
-        }
+        .toc a { display: block; padding: 9px 12px; margin-bottom: 2px; border-radius: var(--radius-sm); color: var(--ink-2); text-decoration: none; font-size: 14px; font-weight: 540; transition: background .16s ease, color .16s ease, transform .16s var(--spring); }
         .toc a:hover { background: var(--brand-soft); color: var(--brand); transform: translateX(3px); }
         .toc a.active { background: var(--brand-glow); color: var(--brand); font-weight: 650; }
 
-        /* —— 正文卡片 —— */
+        /* —— 正文 —— */
         .content { min-width: 0; display: flex; flex-direction: column; gap: 24px; }
-        .section {
-            background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
-            padding: 32px 34px; box-shadow: var(--shadow-1);
-            transition: transform .2s var(--spring), box-shadow .2s ease, border-color .2s ease;
-        }
+        .section { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 32px 34px; box-shadow: var(--shadow-1); transition: transform .2s var(--spring), box-shadow .2s ease, border-color .2s ease; }
         .section:hover { transform: translateY(-2px); box-shadow: var(--shadow-2); border-color: var(--line-strong); }
-        .section h2 {
-            font-size: 20px; font-weight: 680; color: var(--ink); letter-spacing: -.3px;
-            display: flex; align-items: center; gap: 12px; margin-bottom: 6px;
-        }
-        .section h2 .num {
-            flex: none; width: 30px; height: 30px; border-radius: 9px;
-            display: grid; place-items: center; font-size: 13px; font-weight: 760; color: var(--brand);
-            background: var(--brand-soft); border: 1px solid var(--brand-glow);
-        }
+        .section h2 { font-size: 20px; font-weight: 680; color: var(--ink); letter-spacing: -.3px; display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+        .section h2 .num { flex: none; width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; font-size: 13px; font-weight: 760; color: var(--brand); background: var(--brand-soft); border: 1px solid var(--brand-glow); }
         .section h2 .emoji { font-size: 19px; }
         .section > p { margin-top: 16px; }
         .lead { font-size: 15px; color: var(--ink-3); margin-bottom: 6px !important; }
 
         p { font-size: 15px; margin-bottom: 14px; }
         strong { color: var(--ink); font-weight: 650; }
-        code {
-            background: var(--code-bg); padding: 2px 7px; border-radius: 6px;
-            font-family: 'JetBrains Mono', Consolas, monospace; font-size: .86em; color: var(--code-ink);
-            border: 1px solid var(--line);
-        }
+        code { background: var(--code-bg); padding: 2px 7px; border-radius: 6px; font-family: 'JetBrains Mono', Consolas, monospace; font-size: .86em; color: var(--code-ink); border: 1px solid var(--line); }
 
         ul { margin: 14px 0 6px 8px; list-style: none; }
-        ul li {
-            padding-left: 26px; position: relative; margin-bottom: 11px; font-size: 15px;
-        }
-        ul li::before {
-            content: ''; position: absolute; left: 2px; top: 10px; width: 7px; height: 7px;
-            border-radius: 50%; background: var(--brand); opacity: .55;
-        }
+        ul li { padding-left: 26px; position: relative; margin-bottom: 11px; font-size: 15px; }
+        ul li::before { content: ''; position: absolute; left: 2px; top: 10px; width: 7px; height: 7px; border-radius: 50%; background: var(--brand); opacity: .55; }
         ul li strong { color: var(--ink); }
 
         /* —— 高亮提示 —— */
-        .highlight {
-            display: flex; gap: 14px; align-items: flex-start;
-            background: var(--amber-bg); border: 1px solid var(--amber-border); border-left: 4px solid var(--amber-border);
-            border-radius: var(--radius-sm); padding: 18px 20px; margin: 20px 0;
-        }
+        .highlight { display: flex; gap: 14px; align-items: flex-start; background: var(--amber-bg); border: 1px solid var(--amber-border); border-left: 4px solid var(--amber-border); border-radius: var(--radius-sm); padding: 18px 20px; margin: 20px 0; }
         .highlight .ic { font-size: 22px; flex: none; line-height: 1.3; }
         .highlight p { color: var(--amber-ink); margin-bottom: 8px; font-size: 14.5px; }
         .highlight p:last-child { margin-bottom: 0; }
         .highlight strong { color: var(--amber-ink); }
+        .highlight.green { background: var(--green-bg); border-color: var(--green-border); border-left-color: var(--green-border); }
+        .highlight.green p, .highlight.green strong { color: var(--green); }
 
         /* —— 步骤卡 —— */
         .steps { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin: 20px 0 4px; }
-        .step {
-            background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius-sm);
-            padding: 16px 16px 14px;
-        }
-        .step .n {
-            width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center;
-            font-size: 13px; font-weight: 750; color: var(--brand); background: var(--brand-soft);
-            margin-bottom: 10px;
-        }
+        .step { background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 16px 16px 14px; }
+        .step .n { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; font-size: 13px; font-weight: 750; color: var(--brand); background: var(--brand-soft); margin-bottom: 10px; }
         .step p { font-size: 13.5px; color: var(--ink-3); margin: 0; line-height: 1.6; }
 
         /* —— 下载按钮 —— */
         .actions { display: flex; flex-wrap: wrap; gap: 14px; margin: 10px 0 4px; }
-        .btn {
-            display: inline-flex; align-items: center; gap: 8px;
-            padding: 12px 24px; border-radius: 12px; text-decoration: none; font-size: 14.5px; font-weight: 640;
-            color: #fff; background: var(--brand); border: none; cursor: pointer;
-            box-shadow: 0 2px 10px var(--brand-glow);
-            transition: transform .12s var(--spring), box-shadow .16s ease, background .16s ease;
-        }
+        .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; border-radius: 12px; text-decoration: none; font-size: 14.5px; font-weight: 640; color: #fff; background: var(--brand); border: none; cursor: pointer; box-shadow: 0 2px 10px var(--brand-glow); transition: transform .12s var(--spring), box-shadow .16s ease, background .16s ease; }
         .btn:hover { background: var(--brand-deep); transform: translateY(-1px); box-shadow: 0 6px 20px var(--brand-glow); }
         .btn:active { transform: translateY(0) scale(.98); }
         .btn.baidu { background: var(--baidu); box-shadow: 0 2px 10px rgba(192, 57, 43, .24); }
         .btn.baidu:hover { background: var(--baidu-deep); }
+        .btn.green { background: var(--green); box-shadow: 0 2px 10px rgba(13, 159, 110, .24); }
+        .btn.green:hover { background: #0b9a6a; }
         .btn .ic { font-size: 17px; }
-
         .pwd { display: flex; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
         .pwd .label { font-size: 14px; color: var(--ink-3); }
+
+        /* —— 社群卡片 —— */
+        .community { display: flex; gap: 22px; align-items: center; flex-wrap: wrap; margin: 8px 0 4px; }
+        .community .qr { flex: none; width: 168px; height: 168px; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 10px; display: grid; place-items: center; }
+        .community .qr img { width: 100%; height: 100%; object-fit: contain; border-radius: 8px; }
+        .community .info { flex: 1; min-width: 220px; }
+        .community .info .tt { font-size: 17px; font-weight: 680; color: var(--ink); margin-bottom: 8px; }
+        .community .info p { font-size: 14px; color: var(--ink-3); margin-bottom: 8px; }
+
+        /* —— 指南/FAQ —— */
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 18px 0 4px; }
+        .card { background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 18px 18px 16px; }
+        .card h3 { font-size: 15px; font-weight: 680; color: var(--ink); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+        .card p { font-size: 13.5px; color: var(--ink-3); line-height: 1.7; margin: 0; }
+        .faq { margin: 16px 0 4px; }
+        .faq-item { border-bottom: 1px solid var(--line); padding: 14px 0; }
+        .faq-item:last-child { border-bottom: none; }
+        .faq-item h3 { font-size: 15px; font-weight: 660; color: var(--ink); margin-bottom: 6px; }
+        .faq-item p { font-size: 14px; color: var(--ink-3); margin: 0; }
 
         /* —— 滚动渐显 —— */
         .section { opacity: 0; transform: translateY(18px); }
@@ -212,22 +185,20 @@
         @media (prefers-reduced-motion: reduce) { .section { opacity: 1; transform: none; } }
 
         /* —— 页脚 —— */
-        .footer {
-            text-align: center; margin-top: 16px; padding: 28px 24px 48px;
-            color: var(--ink-3); font-size: 14px; line-height: 2;
-        }
+        .footer { text-align: center; margin-top: 16px; padding: 28px 24px 48px; color: var(--ink-3); font-size: 14px; line-height: 2; }
         .footer a { color: var(--brand); text-decoration: none; font-weight: 560; }
         .footer a:hover { text-decoration: underline; }
         .footer .divider { width: 44px; height: 2px; background: var(--brand); margin: 0 auto 18px; opacity: .5; }
 
         /* —— 响应式 —— */
-        /* 帮助文档桌面窗口默认 860 宽（minWidth 640）：目录保持左侧双栏；
-           仅在真正窄（<620，低于窗口最小宽度）时才折叠，避免默认窗口下目录跑到最后 */
+        /* 帮助文档桌面窗口默认 860 宽（minWidth 640）：目录保持左侧双栏；仅真正窄时才折叠 */
         @media (max-width: 620px) {
             .wrap { grid-template-columns: 1fr; }
             .toc { position: static; order: 2; }
             .content { order: 1; }
             .hero h1 { font-size: 32px; }
+            .grid { grid-template-columns: 1fr; }
+            .community { flex-direction: column; align-items: center; text-align: center; }
         }
     </style>
 </head>
@@ -247,6 +218,9 @@
         <nav class="toc" aria-label="目录">
             <p class="toc-title">目录</p>
             <a href="#intro">项目介绍</a>
+            <a href="#community">加入社群</a>
+            <a href="#guide">使用指南</a>
+            <a href="#faq">常见问题</a>
             <a href="#network">下载 / 更新失败</a>
             <a href="#baidu">百度网盘下载</a>
             <a href="#contact">联系我们</a>
@@ -263,11 +237,72 @@
                     <li><strong>内置提示词库</strong> — 丰富模板即取即用，提升使用效率</li>
                     <li><strong>桌面宠物</strong> — 可爱的桌面伴侣，支持互动与气泡提示</li>
                     <li><strong>插件市场</strong> — 连接官方社区，按需扩展功能</li>
+                    <li><strong>全局记忆</strong> — 图形化记忆编辑，DSH 自动读取</li>
                 </ul>
+                <p>无论是日常问答、内容创作，还是代码辅助、工作流自动化，DSH-Desktop 都能为你提供稳定的 DeepSeek AI 能力。</p>
+            </section>
+
+            <section class="section" id="community">
+                <h2><span class="num">02</span><span class="emoji">👥</span> 加入社群</h2>
+                <p class="lead">有任何问题或建议，欢迎加入官方 QQ 群交流反馈。</p>
+                <div class="community">
+                    <div class="qr">
+                        <img src="https://cdn.jsdelivr.net/gh/XWJ-z/dsh-Desktop@main/windows/app/assets/qq-group.png" alt="QQ 群二维码" />
+                    </div>
+                    <div class="info">
+                        <p class="tt">📌 DSH-Desktop 官方交流群</p>
+                        <p>群号：<code>916607090</code></p>
+                        <p>扫码或搜索群号加入，遇到问题随时提问，你的建议直接决定下一个功能！</p>
+                        <a href="https://qm.qq.com/cgi-bin/qm/qr?k=916607090" class="btn green" target="_blank"><span class="ic">💬</span> 一键加群</a>
+                    </div>
+                </div>
+                <div class="highlight green">
+                    <span class="ic">💡</span>
+                    <div><p><strong>进群能获得什么？</strong></p><p>版本更新提醒 · 使用技巧分享 · 问题快速解答 · 功能建议直达开发者。</p></div>
+                </div>
+            </section>
+
+            <section class="section" id="guide">
+                <h2><span class="num">03</span><span class="emoji">🧭</span> 使用指南</h2>
+                <p class="lead">快速了解常用功能，开箱即用。</p>
+                <div class="grid">
+                    <div class="card"><h3>🐳 桌面宠物</h3><p>桌面鲸鱼伴侣，可拖拽到任意位置。悬停/点击会切换表情、弹出气泡提示，右键可隐藏或切换工具箱形态。</p></div>
+                    <div class="card"><h3>📝 提示词库</h3><p>内置 200+ 精选提示词模板，支持搜索、复制与一键注入输入框；「我的提示词」可自建并持久化保存。</p></div>
+                    <div class="card"><h3>📥 拖文件入工作区</h3><p>把文件拖进窗口，自动复制到当前 DSH 工作区并注入提示词；纯图片（PNG/JPG/WebP/GIF）直接放行给 DSH 显示缩略图附件。</p></div>
+                    <div class="card"><h3>🧠 全局记忆</h3><p>图形化编辑 ~/.dsh/AGENTS.md 与各角色记忆文件，让 DSH 记住你的称呼、项目背景与常用约定，无需手动发送。</p></div>
+                    <div class="card"><h3>🔌 插件市场</h3><p>连接官方社区，分类浏览、搜索、一键复制安装命令，按需扩展能力。</p></div>
+                    <div class="card"><h3>💾 数据备份</h3><p>一键备份 DSH 用户数据（工作区/会话/全局记忆/我的提示词/设置），更换机器或出问题时快速恢复。</p></div>
+                </div>
+            </section>
+
+            <section class="section" id="faq">
+                <h2><span class="num">04</span><span class="emoji">❓</span> 常见问题</h2>
+                <div class="faq">
+                    <div class="faq-item">
+                        <h3>下载更新失败？</h3>
+                        <p>多为本地代理环境（科学上网）干扰。关闭代理后重试；仍失败可用「手动下载安装包」或百度网盘备用渠道。</p>
+                    </div>
+                    <div class="faq-item">
+                        <h3>提示词或插件描述是乱码？</h3>
+                        <p>旧版本已修复中文乱码问题。若仍有乱码，请先更新到最新版确认网络拉取正常。</p>
+                    </div>
+                    <div class="faq-item">
+                        <h3>我的提示词会丢失吗？</h3>
+                        <p>不会。「我的提示词」持久化保存在本地，重启不丢，并通过「数据备份」随包备份，恢复可还原。</p>
+                    </div>
+                    <div class="faq-item">
+                        <h3>想手动升级 DSH？</h3>
+                        <p>启动时检测到 DSH 新版会弹窗提示「立即升级」；也可在「检查更新」窗口查看并一键升级。</p>
+                    </div>
+                    <div class="faq-item">
+                        <h3>找不到答案？</h3>
+                        <p>加入上方 QQ 群，或到 GitHub 提 issue，我们会尽快响应。</p>
+                    </div>
+                </div>
             </section>
 
             <section class="section" id="network">
-                <h2><span class="num">02</span><span class="emoji">⚠️</span> 下载 / 更新失败？请关闭科学上网</h2>
+                <h2><span class="num">05</span><span class="emoji">⚠️</span> 下载 / 更新失败？请关闭科学上网</h2>
                 <p class="lead">DSH-Desktop 的下载与更新依赖 GitHub CDN。若下载失败或更新卡顿，多为本地代理环境所致。</p>
                 <div class="highlight">
                     <span class="ic">💡</span>
@@ -282,7 +317,7 @@
             </section>
 
             <section class="section" id="baidu">
-                <h2><span class="num">03</span><span class="emoji">💾</span> 百度网盘下载</h2>
+                <h2><span class="num">06</span><span class="emoji">💾</span> 百度网盘下载</h2>
                 <p class="lead">无法访问 GitHub 或下载较慢时，可使用百度网盘作为备用渠道。</p>
                 <div class="actions">
                     <a href="https://pan.baidu.com/s/1Y9CSRXKZ48cQYNi60ozBmA?pwd=8yh8" class="btn baidu" target="_blank"><span class="ic">📥</span> 百度网盘下载</a>
@@ -298,10 +333,10 @@
             </section>
 
             <section class="section" id="contact">
-                <h2><span class="num">04</span><span class="emoji">📧</span> 联系我们</h2>
+                <h2><span class="num">07</span><span class="emoji">📧</span> 联系我们</h2>
                 <p class="lead">使用中遇到问题，欢迎通过以下方式联系我们。</p>
                 <ul>
-                    <li><strong>QQ 群</strong> — <code>916607090</code></li>
+                    <li><strong>QQ 群</strong> — <code>916607090</code>（扫码/搜索进群，见"加入社群"）</li>
                     <li><strong>GitHub</strong> — <a href="https://github.com/XWJ-z/dsh-Desktop" target="_blank" style="color:var(--brand);font-weight:560;text-decoration:none;">XWJ-z/dsh-Desktop</a></li>
                 </ul>
             </section>
@@ -315,7 +350,6 @@
 
     <script>
         (function () {
-            // 滚动渐显
             var sections = document.querySelectorAll('.section');
             var rm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
             if (rm) { sections.forEach(function (s) { s.classList.add('in'); }); return; }
@@ -324,7 +358,6 @@
             }, { threshold: 0.12 });
             sections.forEach(function (s) { io.observe(s); });
 
-            // 侧栏目录高亮当前区块
             var links = document.querySelectorAll('.toc a');
             var byId = {};
             links.forEach(function (a) { byId[a.getAttribute('href').slice(1)] = a; });
