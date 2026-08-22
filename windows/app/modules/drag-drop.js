@@ -16,6 +16,8 @@
  *  - 幂等：同一页面生命周期只安装一次（window.__dshDropInstalled）；
  *    overlay 被 SPA 清掉时 dragenter 自动重建；
  *  - 只对 Files 拖拽显示 overlay / 取路径；非文件拖拽不 preventDefault。
+ *  - v1.1.5：纯图片拖拽（PNG/JPEG/WebP/GIF）放行给 DSH 原生附件处理（0.1.1-rc.2+），
+ *    非图片/混合文件仍由本模块拦截复制进工作区；
  *
  * ⚠ v0.9.2 bug 修复（zx(6)，2026-08-17）：
  *   之前仅 drop 调用了 stopPropagation，dragenter/dragover/dragleave 只
@@ -59,10 +61,23 @@ function createDragDrop(deps) {
         };
 
         const hasFiles = (dt) => !!dt && Array.from(dt.types || []).includes('Files');
+        // v1.1.5（DSH 0.1.1-rc.2 原生支持图片拖放）：纯图片拖拽放行给 DSH 原生处理。
+        // 用 dataTransfer.items 判断（dragenter/dragover 阶段 items 即可用，files 为空）；
+        // kind==='file' 且 type 为 image/png|jpeg|webp|gif 视为图片；空 type 不算（兜底走我们）
+        const isImageOnlyDrag = (dt) => {
+          try {
+            const items = Array.from((dt && dt.items) || []);
+            if (items.length === 0) return false;
+            return items.every((it) =>
+              it.kind === 'file' &&
+              /^image\/(png|jpe?g|webp|gif)$/i.test(it.type || ''));
+          } catch { return false; }
+        };
         let depth = 0;
 
         window.addEventListener('dragenter', (e) => {
           if (!hasFiles(e.dataTransfer)) return;
+          if (isImageOnlyDrag(e.dataTransfer)) return; // v1.1.5：纯图片放行，DSH 原生处理
           // 必须 stopPropagation+stopImmediatePropagation：否则 DSH 自己的
           // document 级拖放监听（DropOverlay）会收到 dragenter 激活「图片
           // 拖动添加界面」，而 drop 被我们吞掉后其计数永不归零 → 遮罩卡死
@@ -77,6 +92,7 @@ function createDragDrop(deps) {
         // dragover 必须 preventDefault（否则浏览器默认导航到 file://，drop 不触发）
         window.addEventListener('dragover', (e) => {
           if (!hasFiles(e.dataTransfer)) return;
+          if (isImageOnlyDrag(e.dataTransfer)) return; // v1.1.5：纯图片放行（不 preventDefault，DSH 接收）
           e.preventDefault();
           e.stopPropagation();
           e.stopImmediatePropagation();
@@ -84,6 +100,7 @@ function createDragDrop(deps) {
 
         window.addEventListener('dragleave', (e) => {
           if (!hasFiles(e.dataTransfer)) return;
+          if (isImageOnlyDrag(e.dataTransfer)) return; // v1.1.5：纯图片放行
           e.preventDefault();
           e.stopPropagation();
           e.stopImmediatePropagation();
@@ -92,6 +109,7 @@ function createDragDrop(deps) {
 
         window.addEventListener('drop', (e) => {
           if (!hasFiles(e.dataTransfer)) return;
+          if (isImageOnlyDrag(e.dataTransfer)) return; // v1.1.5：纯图片放行，交给 DSH 附件处理
           e.preventDefault();
           e.stopPropagation(); // 文件拖拽全窗口接管，DSH 页面不处理
           e.stopImmediatePropagation();
