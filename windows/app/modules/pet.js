@@ -155,6 +155,8 @@ function createPet(deps) {
           +   '<div class="pet-item" data-action="promptlib">💡 提示词库</div>'
           // v1.1.1：插件市场入口（用户指令：保留 💎 图标）
           +   '<div class="pet-item" data-action="pluginmarket">💎 插件市场</div>'
+          // v1.2.1 T5：技能库入口（技能 = 纯文本指令，本地写入无执行风险）
+          +   '<div class="pet-item" data-action="skilllib">🛠️ 技能库</div>'
           +   '<div class="pet-item" data-action="webopen">🌐 网页打开</div>'
           +   (petHidden
               ? '<div class="pet-item" data-action="showpet">🐋 显示宠物</div>'
@@ -367,6 +369,9 @@ function createPet(deps) {
             } else if (it.dataset.action === 'pluginmarket') {
               // v1.1.1：打开插件市场窗口
               if (window.dshDesktop && window.dshDesktop.openPluginMarket) window.dshDesktop.openPluginMarket();
+            } else if (it.dataset.action === 'skilllib') {
+              // v1.2.1 T5：打开技能库窗口
+              if (window.dshDesktop && window.dshDesktop.openSkillLibrary) window.dshDesktop.openSkillLibrary();
             } else if (it.dataset.action === 'webopen') {
               if (window.dshDesktop && window.dshDesktop.openExternal) window.dshDesktop.openExternal(url);
             } else if (it.dataset.action === 'hide') {

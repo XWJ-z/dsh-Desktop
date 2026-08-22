@@ -149,6 +149,8 @@ contextBridge.exposeInMainWorld('dshDesktop', {
   openPluginMarket: () => ipcRenderer.invoke('toolbox:open-plugin-market'),
   /** v1.1.1 三轮：打开帮助文档窗口（应用内本地 + 后台静默同步远程） */
   openHelpDoc: () => ipcRenderer.invoke('app:open-help-doc'),
+  /** v1.2.1 T5：打开技能库窗口 */
+  openSkillLibrary: () => ipcRenderer.invoke('toolbox:open-skill-library'),
   /** 获取插件市场分类列表（含「全部」以外的 14 分类） */
   getPluginCategories: () => ipcRenderer.invoke('plugin-market:categories'),
   /** 获取全部插件（缓存优先，过期自动刷新） */

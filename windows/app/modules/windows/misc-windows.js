@@ -50,6 +50,8 @@ function createMiscWindowsModule(deps) {
     setPluginMarketWin, // v1.1.1：插件市场窗口
     getHelpDocWin,
     setHelpDocWin, // v1.1.1 二轮：帮助文档窗口
+    getSkillLibWin,
+    setSkillLibWin, // v1.2.1 T5：技能库窗口
     secureWebPreferences,
   } = deps;
 
@@ -222,6 +224,34 @@ function createMiscWindowsModule(deps) {
     setHelpDocWin(win);
   }
 
+  /** v1.2.1 T5：技能库窗口 —— 已装技能 / 自建技能 / 技能市场 三块；与插件市场同款弹窗外观 */
+  function openSkillLibraryWindow() {
+    const existing = getSkillLibWin();
+    if (existing && !existing.isDestroyed()) {
+      if (existing.isMinimized()) existing.restore();
+      existing.focus();
+      return;
+    }
+    const win = new BrowserWindow({
+      width: 900,
+      height: 620,
+      resizable: true,
+      minimizable: true,
+      minWidth: 700,
+      minHeight: 500,
+      modal: false,
+      title: '技能库', // v1.2.1：技能 = 纯文本指令（YAML+Markdown），本地写入无执行风险
+      autoHideMenuBar: true,
+      backgroundColor: nativeTheme.shouldUseDarkColors ? '#0f1115' : '#eef0f4',
+      webPreferences: secureWebPreferences(),
+    });
+    win.loadFile(path.join(app.getAppPath(), 'renderer', 'skill-library.html'));
+    win.on('closed', () => {
+      setSkillLibWin(null);
+    });
+    setSkillLibWin(win);
+  }
+
   /** 关闭行为询问弹窗（v0.6.1 T-027 → v0.7.10 改原生）：退出 / 关闭到托盘 + 记住我的选择。
    *  用户要求：和恢复数据弹窗一样用 Windows 原生对话框，不做深色美化。 */
   function openCloseChoiceWindow(parentWin) {    dialog
@@ -340,6 +370,7 @@ function createMiscWindowsModule(deps) {
     openGlobalMemoryWindow, // v0.9.12
     openPluginMarketWindow, // v1.1.1：插件市场窗口
     openHelpDocWindow, // v1.1.1 二轮：帮助文档窗口（本地优先 + 后台静默同步）
+    openSkillLibraryWindow, // v1.2.1 T5：技能库窗口
     openCloseChoiceWindow,
     openBackupProgress,
     updateBackupProgress,

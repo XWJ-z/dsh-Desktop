@@ -1,0 +1,48 @@
+{
+  "_comment": "技能市场列表（v1.2.1 T6）—— 老大精选：安全性高/实用性高/用的人多。首发占位 6 条，待老大确认清单后替换/扩充。技能 = 纯文本指令（YAML frontmatter + Markdown），本地写入无代码执行风险；但内容会注入模型上下文。install 时从 repo@main/file 拉取 SKILL.md。",
+  "version": 1,
+  "skills": [
+    {
+      "name": "finesse-ui",
+      "description": "高端网页界面设计 skill（品牌/产品/电商/H5 四大流派，绝不廉价的 Web 界面）",
+      "category": "设计",
+      "repo": "mouse-lin/finesse-skill",
+      "file": "skills/finesse-ui/SKILL.md"
+    },
+    {
+      "name": "code-review",
+      "description": "代码审查：按工程规范逐项检查（健壮性/安全/可维护性），输出结构化审查报告",
+      "category": "开发",
+      "repo": "XWJ-z/dsh-Desktop",
+      "file": "skills/code-review/SKILL.md"
+    },
+    {
+      "name": "academic-writing",
+      "description": "学术写作：润色/格式/引用规范，符合 AIGC 要求的中英文学术表达",
+      "category": "写作",
+      "repo": "XWJ-z/dsh-Desktop",
+      "file": "skills/academic-writing/SKILL.md"
+    },
+    {
+      "name": "readme-helper",
+      "description": "README 生成器：按项目自动产出结构化 README（安装/使用/贡献/许可）",
+      "category": "文档",
+      "repo": "XWJ-z/dsh-Desktop",
+      "file": "skills/readme-helper/SKILL.md"
+    },
+    {
+      "name": "regex-wizard",
+      "description": "正则表达式专家：最常见的 20 个正则写法 + 验证与讲解，随取随用",
+      "category": "编程",
+      "repo": "XWJ-z/dsh-Desktop",
+      "file": "skills/regex-wizard/SKILL.md"
+    },
+    {
+      "name": "mitm-safe-review",
+      "description": "安全审查辅助：依赖/密钥/权限等安全风险快速识别清单",
+      "category": "安全",
+      "repo": "XWJ-z/dsh-Desktop",
+      "file": "skills/mitm-safe-review/SKILL.md"
+    }
+  ]
+}

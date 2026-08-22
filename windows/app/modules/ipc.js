@@ -35,6 +35,7 @@ function registerIpc(deps) {
     refreshMenus,
     openPromptLibWindow,
     openPluginMarketWindow,
+    openSkillLibraryWindow, // v1.2.1 T5：技能库窗口
     openUpdateWindow,
     getWebUrl,
     // v0.9：提示词注入公共链路 + 拖文件处理（drop:files）
@@ -183,6 +184,11 @@ function registerIpc(deps) {
   // v1.1.1：插件市场窗口
   ipcMain.handle('toolbox:open-plugin-market', () => {
     openPluginMarketWindow();
+    return true;
+  });
+  // v1.2.1 T5：技能库窗口
+  ipcMain.handle('toolbox:open-skill-library', () => {
+    openSkillLibraryWindow();
     return true;
   });
   // v1.1.1 三轮：帮助文档窗口（应用内打开本地 help.html + 后台静默同步远程）

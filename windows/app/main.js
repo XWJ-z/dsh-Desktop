@@ -125,6 +125,7 @@ let noticeWin = null; // 公告窗口（v0.8.11 T0.6）
 let globalMemoryWin = null; // 全局记忆窗口（v0.9.12）
 let pluginMarketWin = null; // 插件市场窗口（v1.1.1）
 let helpDocWin = null; // 帮助文档窗口（v1.1.1 二轮：本地优先 + 后台静默远程同步）
+let skillLibWin = null; // 技能库窗口（v1.2.1 T5）
 let serverChild = null; // dsh web 服务子进程
 let resolvedPort = DEFAULT_PORT;
 let quitting = false;
@@ -638,6 +639,10 @@ const miscWindowsModule = createMiscWindowsModule({
   setHelpDocWin: (v) => {
     helpDocWin = v;
   }, // v1.1.1 二轮
+  getSkillLibWin: () => skillLibWin,
+  setSkillLibWin: (v) => {
+    skillLibWin = v;
+  }, // v1.2.1 T5：技能库窗口
   secureWebPreferences,
 });
 const {
@@ -648,6 +653,7 @@ const {
   openGlobalMemoryWindow,
   openPluginMarketWindow, // v1.1.1：插件市场窗口
   openHelpDocWindow, // v1.1.1 二轮：帮助文档窗口
+  openSkillLibraryWindow, // v1.2.1 T5：技能库窗口
   openCloseChoiceWindow,
   openBackupProgress,
   updateBackupProgress,
