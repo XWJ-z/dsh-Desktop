@@ -69,8 +69,8 @@ function createDragDrop(deps) {
         //   与 files 均为空/不可读，故该函数只在 drop 阶段可靠 —— 必须用 files[].type 判断，
         //   而非 items[].type（后者在这两个阶段恒为空，会把图片误判为非图片而拦截）。
         //   type 为 image/png|jpeg|webp|gif 视为纯图片；空 type 不算（兜底走我们）
-        //   ⚠ 用字符串构造 RegExp：注入体在 JS 模板字符串（反引号）内，/^image\/.../ 里的
-        //   \/ 会被模板折叠成 / 导致语法错误，故不可用正则字面量。
+        //   ⚠ 用字符串构造 RegExp：注入体在 JS 模板字符串（反引号）内，正则字面量里的
+        //   图片 MIME 分隔符会被模板字符串处理掉导致语法错误，故不用正则字面量。
         const IMG_TYPE_RE = new RegExp('^image/(png|jpe?g|webp|gif)$', 'i');
         const isImageOnlyDrag = (dt) => {
           try {

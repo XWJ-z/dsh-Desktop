@@ -35,15 +35,6 @@ function createHelpDoc(deps) {
     return path.join(app.getAppPath(), 'renderer', 'help.html');
   }
 
-  /** 读取缓存元信息（{ updated }），缺失/损坏返回 null */
-  function readCacheMeta() {
-    try {
-      return JSON.parse(fs.readFileSync(cacheMetaPath(), 'utf8'));
-    } catch {
-      return null;
-    }
-  }
-
   /**
    * GET 并返回响应文本（Electron net.request —— Chromium 网络栈 + 系统 CA +
    * 自动跟随重定向；Node https 在此环境 TLS 验证失败且 jsDelivr @main 会 301）
