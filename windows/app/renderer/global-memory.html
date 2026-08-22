@@ -156,6 +156,7 @@
       transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
     }
     .memo-card:hover, .role-card:hover { transform: translateY(-2px); border-color: rgba(124,120,255,0.4); box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), var(--shadow-card); }
+    .memo-card:active, .role-card:active { transform: translateY(-1px) scale(0.98); transition-duration: .08s; }
     .memo-head, .role-card-head { display: flex; align-items: center; gap: 8px; }
     .memo-head .hash { font: 600 15px Consolas, monospace; color: var(--brand); }
     .memo-title, .role-card-name {
@@ -185,6 +186,7 @@
       color: var(--text-secondary); flex-shrink: 0;
     }
     .role-item:hover { border-color: rgba(94,106,210,.5); }
+    .role-item:active { transform: scale(0.97); transition-duration: .08s; }
     .role-item.active { background: linear-gradient(90deg, rgba(124,120,255,0.16), rgba(124,120,255,0.04)); border-color: rgba(124,120,255,0.55); color: var(--text-primary); }
     .role-item-icon { font-size: 13px; flex-shrink: 0; }
     .role-item-name {

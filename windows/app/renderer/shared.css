@@ -87,11 +87,11 @@
 }
 ::-webkit-scrollbar-thumb:hover { background: var(--border-strong); background-clip: padding-box; }
 
-/* ── 背景：明显品牌辉光氛围（theme-aware）── */
+/* 背景：明显品牌辉光氛围（theme-aware）—— 顶部不用渐变光带/radial 弧，
+   避免在窗口顶边呈现紫色圆弧（v1.1.5 用户反馈：去掉顶部紫色弧线） */
 body {
   font-family: var(--font);
   background:
-    linear-gradient(180deg, rgba(124,120,255,0.10) 0%, rgba(124,120,255,0.03) 20%, transparent 38%),
     radial-gradient(940px 760px at 100% 118%, rgba(124,120,255,0.15) 0%, transparent 54%),
     radial-gradient(820px 720px at -8% 112%, rgba(94,106,210,0.12) 0%, transparent 50%),
     linear-gradient(180deg, var(--bg-panel) 0%, var(--bg-deep) 100%);
@@ -103,19 +103,6 @@ body {
   align-items: center;
   padding: 24px;
   user-select: none;
-}
-
-/* 顶部品牌光带 */
-body::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, transparent, var(--accent) 20%, var(--accent) 80%, transparent);
-  z-index: 999;
-  pointer-events: none;
 }
 
 h1 { font-size: 22px; font-weight: 750; letter-spacing: -0.6px; line-height: 1.15; }
@@ -187,3 +174,50 @@ h2 { font-size: 15px; font-weight: 680; letter-spacing: -0.2px; line-height: 1.3
 /* ── 便捷工具类 ── */
 .hairline { height: 1px; background: var(--border-standard); }
 .divider { height: 1px; background: var(--border-subtle); margin: 12px 0; }
+
+/* ── 交互灵动底座（v1.1.5 finesse 微交互）──
+   统一的可点击元素按压反馈：press 轻微下沉+缩放，松开 spring 回弹。
+   只动 transform/opacity（恒 60fps）；reduced-motion 时禁用一切动效。 */
+:root {
+  --press-scale: 0.97;
+  --spring: cubic-bezier(0.22, 1.2, 0.36, 1); /* 略过冲的 spring 回弹 */
+}
+/* 常见可点击元素统一微交互；各弹窗私有类在对应 html 内单独补充 :active */
+.btn, .tab, .cat, .cat-head, .item, .act, .search, 
+.plugin-card, .category-item, .memo-card, .role-card, .role-item,
+.page-head .title, .modal-actions button, .modal-mask button {
+  transition: transform .16s var(--spring), box-shadow .18s ease, 
+              border-color .16s ease, background .14s ease, color .14s ease;
+}
+.btn:active, .tab:active, .cat:active, .cat-head:active,
+.item:active, .act:active, .search:active,
+.plugin-card:active, .category-item:active, .memo-card:active,
+.role-card:active, .role-item:active,
+.modal-actions button:active, .modal-mask button:active {
+  transform: scale(var(--press-scale)) translateY(1px);
+  transition-duration: .08s;
+}
+.btn:hover, .tab:hover, .cat:hover, .cat-head:hover, .item:hover,
+.plugin-card:hover, .category-item:hover, .memo-card:hover,
+.role-card:hover, .role-item:hover {
+  transition-duration: .18s;
+}
+/* 取消过度缩放：输入框/文本域保持静止，仅聚焦态反馈 */
+.search:focus, input:focus, select:focus, textarea:focus { transition-duration: .12s; }
+
+/* reduced-motion：禁用一切装饰动效，仅保留必要的即时反馈 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .btn:active, .tab:active, .cat:active, .cat-head:active,
+  .item:active, .act:active, .plugin-card:active, .category-item:active,
+  .memo-card:active, .role-card:active, .role-item:active,
+  .modal-actions button:active, .modal-mask button:active {
+    transform: none;
+  }
+}
+

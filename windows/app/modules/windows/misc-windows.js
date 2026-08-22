@@ -111,8 +111,10 @@ function createMiscWindowsModule(deps) {
 
   /** 提示词库窗口（v0.8.3 T4 → v0.8.7）：左侧分类 + 右侧提示词卡片，点击直接注入 DSH 输入框（失败降级复制） */
   function openPromptLibWindow() {
-    if (getPromptLibWin() && !getPromptLibWin().isDestroyed()) {
-      getPromptLibWin().focus();
+    const existing = getPromptLibWin();
+    if (existing && !existing.isDestroyed()) {
+      if (existing.isMinimized()) existing.restore(); // v1.1.5：最小化后再点入口，恢复显示
+      existing.focus();
       return;
     }
     const win = new BrowserWindow({
@@ -138,8 +140,10 @@ function createMiscWindowsModule(deps) {
   /** v0.9.12：全局记忆窗口 —— 左右分栏编辑（基础设定字段 + 自动识别 ## 区块长文本）。
    *  modal:false 便于对照主窗口；表单区块级写回，不破坏用户其他记忆内容。 */
   function openGlobalMemoryWindow() {
-    if (getGlobalMemoryWin() && !getGlobalMemoryWin().isDestroyed()) {
-      getGlobalMemoryWin().focus();
+    const existing = getGlobalMemoryWin();
+    if (existing && !existing.isDestroyed()) {
+      if (existing.isMinimized()) existing.restore(); // v1.1.5：最小化后再点入口，恢复显示
+      existing.focus();
       return;
     }
     const win = new BrowserWindow({
@@ -164,8 +168,10 @@ function createMiscWindowsModule(deps) {
 
   /** v1.1.1：插件市场窗口 —— 连接官方 awesome-dsh-plugin 社区，支持分类查找、搜索、安装引导 */
   function openPluginMarketWindow() {
-    if (getPluginMarketWin() && !getPluginMarketWin().isDestroyed()) {
-      getPluginMarketWin().focus();
+    const existing = getPluginMarketWin();
+    if (existing && !existing.isDestroyed()) {
+      if (existing.isMinimized()) existing.restore(); // v1.1.5：最小化后再点入口，恢复显示
+      existing.focus();
       return;
     }
     const win = new BrowserWindow({

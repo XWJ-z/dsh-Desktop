@@ -76,6 +76,7 @@
         flex-shrink: 0;
       }
       .search-box button:hover { background: var(--grad-primary-hover); box-shadow: var(--shadow-glow); }
+      .search-box button:active { transform: scale(0.96) translateY(1px); transition-duration: .08s; }
       /* v1.1.1 二轮：手动刷新按钮 —— ghost 风格，与品牌搜索区分 */
       .search-box button#refreshBtn {
         background: var(--bg-hover);
@@ -124,6 +125,7 @@
         transition: background .12s ease, color .12s ease, border-color .12s ease;
       }
       .category-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+      .category-item:active { background: var(--bg-hover); transform: scale(0.97); }
       .category-item.active {
         background: linear-gradient(90deg, rgba(124,120,255,0.18), rgba(124,120,255,0.05));
         border-left-color: var(--accent);
@@ -158,6 +160,11 @@
         transform: translateY(-3px);
         border-color: rgba(124,120,255,0.42);
         box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), var(--shadow-pop);
+      }
+      .plugin-card:active {
+        transform: translateY(-1px) scale(0.98);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), var(--shadow-card);
+        transition-duration: .08s;
       }
       .plugin-name {
         font-size: 15px;
