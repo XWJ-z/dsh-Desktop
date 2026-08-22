@@ -32,6 +32,7 @@ const ignore = [
   /^\/scripts(\/|$)/,
   /^\/electron-out\.log$/,
   /^\/electron-err\.log$/,
+  /^\/skills(\/|$)/, // v1.2.1 T6：技能本体在 GitHub 仓库（市场按需 raw 拉取），不随壳分发
 ];
 
 async function main() {
