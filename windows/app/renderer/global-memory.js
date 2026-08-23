@@ -116,11 +116,14 @@ function renderRight() {
     return;
   }
   if (activeKey === MEMO_KEY) {
-    // v1.0.2（用户指令 2）：所有 ## 区块合并到一个「全局记忆区块」类别，内部卡片列表
-    head.innerHTML = '全局记忆区块 <span class="tag">## 标题可改 · 长文本 · 可折叠</span>';
+    // v1.2.3（用户指令）：所有 ## 区块合并到一个「全局记忆区块」类别，左侧列表 + 右侧编辑（对齐 DSH 角色）
+    head.innerHTML = '全局记忆区块 <span class="tag">## 标题可改 · 长文本 · 可编辑</span>';
     body.innerHTML = `
       <div class="guide-tip">💡 这里汇总 AGENTS.md 里除 用户设定 / 我的设定 / DSH 角色 外的全部 ## 区块，各自独立保存，内容格式原样保留。</div>
-      <div class="memo-list" id="memo-list"></div>
+      <div class="memo-layout">
+        <div class="memo-list" id="memo-list"></div>
+        <div class="memo-editor" id="memo-editor"></div>
+      </div>
       <button id="btn-add-sec" class="add-field">＋ 添加区块</button>`;
     renderMemoList();
     const addBtn = el('btn-add-sec');
@@ -200,41 +203,69 @@ function renderRows(listElId, arr) {
 function renderFields() { renderRows('fields', userFields); }
 function renderDshFields() { renderRows('dsh-fields', dshFields); }
 
-// ── v1.0.2（用户指令 2）：全局记忆区块 —— 所有 ## 区块的卡片列表（可折叠）──
+// ── v1.2.3（用户指令）：全局记忆区块 —— 左侧区块列表 + 右侧编辑（对齐 DSH 角色，无卡片弹跳）──
+let selectedSectionIndex = -1; // 当前编辑的区块下标（-1 = 无）
 function renderMemoList() {
   const list = el('memo-list');
   if (!list) return;
+  // 选中下标越界时回落到最后一个；无区块则置 -1
+  if (sections.length === 0) selectedSectionIndex = -1;
+  else if (selectedSectionIndex < 0 || selectedSectionIndex >= sections.length) selectedSectionIndex = 0;
+  // 左侧区块列表：## 图标 + 标题 + 删除
   list.innerHTML = sections.map((s, i) => `
-    <div class="memo-card" data-i="${i}">
-      <div class="memo-head">
-        <span class="hash">##</span>
-        <input class="memo-title" value="${escapeHtml(s.title)}" placeholder="区块标题（如：项目备忘）" />
-        <button class="fold" data-i="${i}" title="折叠/展开">${s.collapsed ? '▸' : '▾'}</button>
-        <button class="del" data-i="${i}" title="删除此区块">✕</button>
-      </div>
-      <textarea class="memo-body sec-body" rows="4" placeholder="此区块内容…" ${s.collapsed ? 'style="display:none"' : ''}>${escapeHtml(s.body)}</textarea>
+    <div class="memo-item${i === selectedSectionIndex ? ' active' : ''}" data-i="${i}" title="点击编辑此区块">
+      <span class="memo-item-icon">##</span>
+      <span class="memo-item-name">${escapeHtml(s.title || '（未命名）')}</span>
+      <button class="del" data-i="${i}" title="删除此区块">✕</button>
     </div>`).join('')
     + (sections.length === 0 ? '<div class="sec-empty">还没有 ## 区块 —— 点下方「＋ 添加区块」新建，或直接编辑保存后自动识别</div>' : '');
-  list.querySelectorAll('.memo-title').forEach((t) => {
-    const i = Number(t.closest('.memo-card').dataset.i);
-    t.addEventListener('input', () => { sections[i].title = t.value; });
-  });
-  list.querySelectorAll('.memo-body').forEach((b) => {
-    const i = Number(b.closest('.memo-card').dataset.i);
-    b.addEventListener('input', () => { sections[i].body = b.value; });
-  });
-  list.querySelectorAll('.memo-card .fold').forEach((b) => {
-    b.addEventListener('click', () => {
-      const i = Number(b.closest('.memo-card').dataset.i);
-      sections[i].collapsed = !sections[i].collapsed;
+  list.querySelectorAll('.memo-item').forEach((row) => {
+    row.addEventListener('click', (e) => {
+      if (e.target.closest('.del')) return;
+      selectedSectionIndex = Number(row.dataset.i);
       renderMemoList();
     });
   });
-  list.querySelectorAll('.memo-card .del').forEach((b) => {
-    b.addEventListener('click', () => {
-      sections.splice(Number(b.closest('.memo-card').dataset.i), 1);
+  list.querySelectorAll('.memo-item .del').forEach((b) => {
+    b.addEventListener('click', (e) => {
+      e.stopPropagation();
+      sections.splice(Number(b.closest('.memo-item').dataset.i), 1);
       renderMemoList();
     });
+  });
+  renderMemoEditor();
+}
+
+/** 右侧编辑面板：## 标题 + 区块长文本（格式原样保留） */
+function renderMemoEditor() {
+  const ed = el('memo-editor');
+  if (!ed) return;
+  const s = sections[selectedSectionIndex];
+  if (!s) {
+    ed.innerHTML = '<div class="sec-empty">点击左侧区块进入编辑，或「＋ 添加区块」新建</div>';
+    return;
+  }
+  ed.innerHTML = `
+    <div class="memo-editor-head">
+      <span class="hash">##</span>
+      <input class="memo-editor-title" value="${escapeHtml(s.title)}" placeholder="区块标题（如：项目备忘）" />
+      <button class="del" title="删除此区块">✕</button>
+    </div>
+    <div class="memo-editor-field">
+      <div class="memo-editor-label">区块内容<span class="hint">（长文本 · 格式原样保留）</span></div>
+      <textarea class="memo-editor-body" rows="10" placeholder="此区块内容…">${escapeHtml(s.body)}</textarea>
+    </div>`;
+  const title = ed.querySelector('.memo-editor-title');
+  title.addEventListener('input', () => {
+    sections[selectedSectionIndex].title = title.value;
+    // 实时同步列表里的标题显示
+    const item = document.querySelector(`.memo-item[data-i="${selectedSectionIndex}"] .memo-item-name`);
+    if (item) item.textContent = title.value || '（未命名）';
+  });
+  const del = ed.querySelector('.memo-editor .del');
+  if (del) del.addEventListener('click', () => { sections.splice(selectedSectionIndex, 1); renderMemoList(); });
+  ed.querySelector('.memo-editor-body').addEventListener('input', (e) => {
+    sections[selectedSectionIndex].body = e.target.value;
   });
 }
 
@@ -243,10 +274,10 @@ function addSection() {
   let name = '新区块';
   let i = 1;
   while (sections.some((s) => s.title === name)) { i++; name = `新区块${i}`; }
-  sections.push({ title: name, body: '', collapsed: false });
+  sections.push({ title: name, body: '' });
+  selectedSectionIndex = sections.length - 1;
   renderMemoList();
-  const cards = document.querySelectorAll('.memo-card .memo-title');
-  const t = cards[cards.length - 1];
+  const t = document.querySelector('.memo-editor-title');
   if (t) { t.focus(); t.select(); }
 }
 
@@ -479,7 +510,10 @@ async function loadData() {
   if (selectedRoleIndex >= roleFields.length) selectedRoleIndex = roleFields.length - 1;
   sections = list
     .filter((s) => s.kind === 'long')
-    .map((s) => ({ title: s.title, body: (s.body || []).join('\n'), collapsed: false }));
+    .map((s) => ({ title: s.title, body: (s.body || []).join('\n') }));
+  // v1.2.3（用户指令）：区块改为左列表+右编辑，选中下标越界时回落到第一个
+  if (sections.length === 0) selectedSectionIndex = -1;
+  else if (selectedSectionIndex < 0 || selectedSectionIndex >= sections.length) selectedSectionIndex = 0;
   // v1.0.1（用户指令）：左下角不再显示双路径（按钮直达目录即可）
   el('path').textContent = filePath;
 }

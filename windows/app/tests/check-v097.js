@@ -404,8 +404,8 @@ function testGlobalMemory() {
   ok(rjs0.includes('renderRight'), '窗口右侧内容区（renderRight）');
   ok(rjs0.includes('👤 用户设定') && rjs0.includes('🤖 我的设定') && rjs0.includes('🧠 全局记忆区块') && rjs0.includes('🎭 DSH 角色'),
     '左侧 4 个固定类别：用户设定/我的设定/全局记忆区块/DSH 角色（v1.0.2 用户指令）');
-  ok(rjs0.includes('renderMemoList') && rjs0.includes('memo-list') && rjs0.includes('MEMO_KEY'),
-    '全局记忆区块：合并所有 ## 区块的卡片列表（v1.0.2 用户指令 2）');
+  ok(rjs0.includes('renderMemoList') && rjs0.includes('memo-list') && rjs0.includes('MEMO_KEY') && rjs0.includes('memo-editor'),
+    '全局记忆区块：合并所有 ## 区块 + 左侧列表 + 右侧编辑（v1.2.3 用户指令，对齐 DSH 角色）');
   ok(rjs0.includes('默认角色') && rjs0.includes('f-select'), '默认角色字段为下拉选择（f-select）');
   ok(rjs0.includes('isRoleSelect ? \'\' : \'<button class="del"'), '「默认角色」字段行不渲染删除按钮（v1.0.2c 用户反馈：默认角色不能删除）');
   ok(rjs0.includes('const delBtn = row.querySelector(\'.del\')') && rjs0.includes('if (delBtn)'), '删除按钮监听做空值保护（无删除按钮的行不报错）');
@@ -453,7 +453,7 @@ function testGlobalMemory() {
   ok(rjs0.includes('tidy-bar') && rjs0.includes('showTidyBar'), '保存后询问是否让 DSH 整理记忆');
   ok(rjs0.includes('injectPrompt'), '整理提示词经注入链路进 DSH 输入框');
   ok(!/window\.prompt\(/.test(rjs0), '不使用 window.prompt（沙箱渲染进程禁用，改界面内输入）');
-  ok(rjs0.includes('memo-title'), '区块标题可修改（全局记忆区块卡片标题输入框，v1.0.2）');
+  ok(rjs0.includes('memo-editor-title'), '区块标题可修改（全局记忆区块右侧编辑标题输入框，v1.2.3）');
   ok(rjs0.includes('onSaveClick'), '保存走前端二次确认（onSaveClick）');
   ok(rjs0.includes('确认保存？'), '文件存在 → 按钮二次确认（防误覆盖）');
   ok(rjs0.includes('SAVE_TIMEOUT_MS') || rjs0.includes('保存超时'), '保存带超时兜底（绝不卡「保存中」）');

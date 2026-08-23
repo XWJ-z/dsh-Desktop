@@ -424,26 +424,26 @@ async function main() {
         while (Date.now() - t2 < 5000) {
           const s = await memCdp.send('Runtime.evaluate', {
             expression: `(() => {
-              const cards = Array.from(document.querySelectorAll('#memo-list .memo-card'));
-              const t = cards[0] ? cards[0].querySelector('.memo-title') : null;
+              const items = Array.from(document.querySelectorAll('#memo-list .memo-item'));
+              const edTitle = document.querySelector('.memo-editor-title');
               return {
                 hasMemoList: !!document.getElementById('memo-list'),
                 hasAddSec: !!document.getElementById('btn-add-sec'),
-                cardCount: cards.length,
-                title: t ? t.value : '',
-                hasBody: !!(cards[0] && cards[0].querySelector('.memo-body')),
-                hasFold: !!(cards[0] && cards[0].querySelector('.fold')),
+                hasEditor: !!document.getElementById('memo-editor'),
+                itemCount: items.length,
+                title: edTitle ? edTitle.value : '',
+                hasBody: !!document.querySelector('.memo-editor-body'),
               };
             })()`,
             returnByValue: true,
           });
           sv = s.result && s.result.value;
-          if (sv && sv.hasMemoList && sv.hasAddSec && sv.cardCount >= 1) break;
+          if (sv && sv.hasMemoList && sv.hasAddSec && sv.hasEditor && sv.itemCount >= 1) break;
           await sleep(400);
         }
-        ok(!!sv && sv.hasMemoList && sv.hasAddSec, '全局记忆区块：区块卡片列表 + 「＋ 添加区块」按钮（v1.0.2）');
-        ok(!!sv && sv.cardCount >= 1 && sv.hasBody && sv.hasFold, `全局记忆区块列出全部 ## 区块卡片（可折叠，${sv && sv.cardCount} 个）`);
-        ok(!!sv && sv.title === '其他记忆', `其他记忆 区块已回填到卡片（标题可编辑，实际 ${sv && sv.title}）`);
+        ok(!!sv && sv.hasMemoList && sv.hasAddSec && sv.hasEditor, '全局记忆区块：左侧列表 + 右侧编辑 + 「＋ 添加区块」按钮（v1.2.3）');
+        ok(!!sv && sv.itemCount >= 1 && sv.hasBody, `全局记忆区块左侧列表 + 右侧内容编辑（${sv && sv.itemCount} 个区块）`);
+        ok(!!sv && sv.title === '其他记忆', `其他记忆 区块已在右侧编辑区回填（标题可编辑，实际 ${sv && sv.title}）`);
         ok(!!fv && !fv.hasPathMem, '左下角不再显示双路径（v1.0.1 用户反馈）');
         ok(!!fv && fv.hasBtnMem && fv.hasBtnRoles, '两个按钮：记忆文件位置(AGENTS) / 角色文件位置（v1.0.1）');
         ok(!!fv && (fv.btnMemText || '').includes('记忆文件位置(AGENTS)'), `按钮文案：记忆文件位置(AGENTS)（实际 ${fv && fv.btnMemText}）`);

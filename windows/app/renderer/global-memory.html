@@ -194,38 +194,52 @@
       color: #e5484d; font-size: 13px; font-weight: 590;
       margin-left: 2px;
     }
-    /* v1.0.2（用户指令 2/3）：全局记忆区块 / DSH 角色 —— 卡片列表式（合并 ## 区块 / 角色文件全文） */
-    .memo-list, .role-cards {
-      display: flex; flex-direction: column; gap: 10px;
-      overflow-y: auto; flex: 1; min-height: 0; padding-right: 2px;
+    /* v1.2.3（用户指令）：全局记忆区块 —— 左侧区块列表 + 右侧编辑（对齐 DSH 角色，去掉卡片弹跳） */
+    .memo-layout { display: flex; gap: 12px; flex: 1; min-height: 0; }
+    .memo-list {
+      width: 210px; flex-shrink: 0; display: flex; flex-direction: column; gap: 6px;
+      overflow-y: auto; align-content: flex-start; padding-right: 2px;
     }
-    .memo-card, .role-card {
-      background: var(--bg-input);
-      background: color-mix(in srgb, var(--bg-input) 78%, transparent);
-      border: 1px solid var(--border-standard); border-top-color: var(--border-strong);
-      border-radius: var(--radius-card); padding: 9px 11px;
-      display: flex; flex-direction: column; gap: 8px; flex-shrink: 0;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
-      transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+    .memo-item {
+      display: flex; align-items: center; gap: 7px;
+      padding: 9px 10px; border-radius: var(--radius-btn); cursor: pointer;
+      background: var(--bg-input); border: 1px solid var(--border-standard);
+      color: var(--text-secondary); flex-shrink: 0;
     }
-    .memo-card:hover, .role-card:hover { transform: translateY(-2px); border-color: rgba(124,120,255,0.4); box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), var(--shadow-card); }
-    .memo-card:active, .role-card:active { transform: translateY(-1px) scale(0.98); transition-duration: .08s; }
-    .memo-head, .role-card-head { display: flex; align-items: center; gap: 8px; }
-    .memo-head .hash { font: 600 15px Consolas, monospace; color: var(--brand); }
-    .memo-title, .role-card-name {
-      flex: 1; min-width: 0; padding: 7px 11px; font-size: 13.5px; font-weight: 590;
+    .memo-item:hover { border-color: rgba(94,106,210,.5); }
+    .memo-item.active { background: linear-gradient(90deg, rgba(124,120,255,0.16), rgba(124,120,255,0.04)); border-color: rgba(124,120,255,0.55); color: var(--text-primary); }
+    .memo-item-icon { font: 600 12px Consolas, "Courier New", monospace; color: var(--text-quaternary); flex-shrink: 0; }
+    .memo-item-name { font-size: 12.5px; font-weight: 590; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .memo-item .del { width: 22px; height: 22px; flex-shrink: 0; border: none; background: transparent; cursor: pointer; color: var(--text-quaternary); font-size: 12px; border-radius: 6px; }
+    .memo-item .del:hover { color: #ff6b6b; background: rgba(255,107,107,.12); }
+    .memo-editor {
+      flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px;
+      background: var(--bg-input); border: 1px solid var(--border-standard);
+      border-radius: var(--radius-btn); padding: 12px 14px; overflow-y: auto;
+    }
+    .memo-editor-head { display: flex; align-items: center; gap: 8px; }
+    .memo-editor-head .hash { font: 600 15px Consolas, monospace; color: var(--brand); }
+    .memo-editor-field { display: flex; flex-direction: column; gap: 5px; flex: 1; min-height: 0; }
+    .memo-editor-title {
+      flex: 1; min-width: 0; padding: 8px 11px; font-size: 13.5px; font-weight: 590;
+      font-family: Consolas, "Courier New", "Microsoft YaHei", sans-serif;
       background: var(--bg-input); border: 1px solid var(--border-standard);
       border-radius: 8px; color: var(--text-primary); outline: none;
     }
-    .memo-title { font-family: Consolas, "Courier New", "Microsoft YaHei", sans-serif; font-size: 14px; }
-    .memo-title:focus, .role-card-name:focus { border-color: rgba(94,106,210,.55); }
-    .memo-card .fold {
-      width: 26px; height: 26px; flex-shrink: 0; border: none; background: transparent;
-      cursor: pointer; color: var(--text-quaternary); font-size: 13px; border-radius: 6px;
+    .memo-editor-title:focus { border-color: rgba(94,106,210,.55); }
+    .memo-editor .del { width: 26px; height: 26px; flex-shrink: 0; border: none; background: transparent; cursor: pointer; color: var(--text-quaternary); font-size: 14px; border-radius: 6px; }
+    .memo-editor .del:hover { color: #ff6b6b; background: rgba(255,107,107,.12); }
+    .memo-editor-label { font-size: 12px; font-weight: 590; color: var(--brand); font-family: Consolas, "Courier New", "Microsoft YaHei", monospace; }
+    .memo-editor-label .hint { font-weight: 400; color: var(--text-quaternary); margin-left: 6px; font-family: inherit; font-size: 11px; }
+    .memo-editor-body {
+      flex: 1; min-height: 200px; resize: vertical; width: 100%; box-sizing: border-box;
+      padding: 10px 12px;
+      background: var(--bg-input); border: 1px solid var(--border-standard);
+      border-radius: var(--radius-btn); color: var(--text-primary); outline: none;
+      font: 12.5px/1.7 Consolas, "Courier New", "Microsoft YaHei", monospace;
+      white-space: pre;
     }
-    .memo-card .fold:hover { color: var(--text-primary); background: var(--bg-hover); }
-    .role-card .role-icon { font-size: 15px; }
-    .role-card-body { min-height: 120px; }
+    .memo-editor-body:focus { border-color: rgba(94,106,210,.55); }
     /* v1.0.3（用户反馈 2）：角色列表 + 点击进入编辑（角色名 ≤30 字符） */
     .role-layout { display: flex; gap: 12px; flex: 1; min-height: 0; }
     .role-list {
