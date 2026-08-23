@@ -248,7 +248,6 @@ const serverApi = createServerLifecycle({
   getMainWindow: () => mainWindow,
   getWebUrl: webUrl,
   getResolvedPort: () => resolvedPort,
-  getServerHost: () => (settings.lanAccess ? '0.0.0.0' : DEFAULT_HOST), // v1.2.1 T7：局域网访问绑定 host
 });
 const { stopServer, stopServerOnly, spawnServer } = serverApi;
 
@@ -667,14 +666,6 @@ const {
 } = miscWindowsModule;
 openHelpDocWindowRef = openHelpDocWindow; // 晚绑定（helpDocApi 组装于 misc-windows 之前）
 
-// v1.2.1 T7：局域网访问 —— 重启 DSH 服务（读取 settings.lanAccess 决定绑定 host）
-async function restartServerForLan() {
-  await stopServerOnly(); // 只停 DSH 服务（不退出应用），恢复数据前同机制
-  await spawnServer(resolvedPort);
-  await waitForServer(DEFAULT_HOST, resolvedPort, SERVER_READY_TIMEOUT_MS);
-  appendLog('info', `DSH 服务已重启（局域网访问${settings.lanAccess ? '开，绑定 0.0.0.0' : '关，绑定 127.0.0.1'}）：${webUrl()}`);
-}
-
 // v1.0.3（用户反馈 3）：角色选择竖排窗口 —— 依赖 secureWebPreferences（组装于其后）
 const rolePickerApi = createRolePicker({
   BrowserWindow,
@@ -793,14 +784,14 @@ const settingsApi = createSettings({
   refreshMenus: () => refreshMenusRef(), // v0.8.12：menuApi 晚绑定（避免循环依赖）
 });
 
-// v1.2.1 T7：局域网扫码访问 —— getLanIps / 开关切换（重启服务 + 弹二维码窗口）
+// v1.2.1 T7：局域网扫码访问 —— TCP 反向代理（DSH 保持 127.0.0.1，壳在 0.0.0.0 暴露）
 const lanApi = createLanAccess({
   os,
+  net, // node:net（TCP 反向代理，转发到本机 DSH 端口）
   appendLog,
   getSettings: () => settings,
   saveSettings: () => settingsApi.saveSettings(),
   getResolvedPort: () => resolvedPort,
-  restartServer: () => restartServerForLan(),
   openQrWindow: () => openLanQrWindow(),
   closeQrWindow: () => closeLanQrWindow(),
 });
@@ -1382,6 +1373,8 @@ if (!gotLock) {
       pushStage('ready');
       // v1.2.1 T8：任务完成通知监听（服务就绪后启动）
       startTaskNotifyWatch();
+      // v1.2.1 T7：局域网访问（若用户在设置里开启过）→ 启动反向代理恢复暴露
+      lanApi.ensureRunning();
 
       // 审查 H2：服务就绪后关闭 loading 窗口，新建 1440×900 主窗口承载 GUI
       if (!silentStart) {
@@ -1502,6 +1495,8 @@ if (!gotLock) {
       clearInterval(taskNotifyWatchTimer);
       taskNotifyWatchTimer = null;
     }
+    // v1.2.1 T7：退出停止局域网反向代理（释放端口）
+    try { lanApi.stopProxy(); } catch { /* ignore */ }
     // v0.8.1（T4）：退出释放全局快捷键（防残留占用）
     hotkeyApi.unregisterAll();
     // 审查 v12 P1-2：SIGTERM 宽限期定时器可能随主进程退出被终止，导致残留子进程
