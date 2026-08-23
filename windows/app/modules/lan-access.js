@@ -30,7 +30,7 @@
  */
 
 function createLanAccess(deps) {
-  const { os, net, http, appendLog, getSettings, saveSettings, getResolvedPort, openQrWindow } = deps;
+  const { os, net, appendLog, getSettings, saveSettings, getResolvedPort, openQrWindow } = deps;
 
   let proxyServer = null; // 局域网 TCP 反向代理
   let proxyPort = 0;      // 代理监听端口（QR 用）
@@ -82,60 +82,18 @@ function createLanAccess(deps) {
     });
   }
 
-  /** 重写转发给 DSH 的 Host/Origin/Referer 为 localhost（DSH 端点校验，非 localhost 一律 403） */
-  function rewriteForDsh(h, targetPort) {
-    const out = { ...h };
-    out.host = `127.0.0.1:${targetPort}`;
-    if (out.origin) out.origin = `http://127.0.0.1:${targetPort}`;
-    if (out.referer) out.referer = String(out.referer).replace(/^https?:\/\/[^/]+/, `http://127.0.0.1:${targetPort}`);
-    return out;
-  }
-
-  /** 转发普通 HTTP 请求（改写 Host/Origin/Referer 后发给 127.0.0.1:<targetPort>） */
-  function forwardHttp(req, res, targetPort) {
-    const headers = rewriteForDsh(req.headers, targetPort);
-    const up = http.request({
-      host: '127.0.0.1',
-      port: targetPort,
-      method: req.method,
-      path: req.url,
-      headers,
-    }, (upRes) => {
-      const h = { ...upRes.headers };
-      // 去掉 hop-by-hop，交给 Node 重编码（避免 connection/transfer-encoding 串线）
-      delete h.connection; delete h['keep-alive']; delete h['proxy-connection']; delete h['transfer-encoding'];
-      res.writeHead(upRes.statusCode, h);
-      upRes.pipe(res);
-    });
-    up.on('error', () => { try { res.writeHead(502); res.end(); } catch { /* ignore */ } });
-    req.on('error', () => { try { up.destroy(); } catch { /* ignore */ } });
-    req.pipe(up);
-  }
-
-  /** 转发 WebSocket / HTTP Upgrade（改写 Host/Origin 后建连，再裸管道双向） */
-  function forwardUpgrade(req, socket, head, targetPort) {
-    const headers = rewriteForDsh(req.headers, targetPort);
+  /** 处理代理连接：把 socket 管道到 127.0.0.1:<targetPort>（裸 TCP，WS/HTTP 原样转发） */
+  function handleProxy(socket, targetPort) {
     const upstream = net.connect(targetPort, '127.0.0.1');
     socket.on('error', () => { try { upstream.destroy(); } catch { /* ignore */ } });
     upstream.on('error', () => { try { socket.destroy(); } catch { /* ignore */ } });
-    upstream.on('connect', () => {
-      let headStr = `${req.method} ${req.url} HTTP/1.1\r\n`;
-      for (const [k, v] of Object.entries(headers)) {
-        if (v === undefined || v === null) continue;
-        headStr += `${k}: ${Array.isArray(v) ? v.join(', ') : v}\r\n`;
-      }
-      headStr += '\r\n';
-      upstream.write(headStr);
-      if (head && head.length) upstream.write(head);
-      upstream.pipe(socket).pipe(upstream);
-    });
+    socket.pipe(upstream).pipe(socket);
   }
 
   /**
    * 启动局域网反向代理（绑定 0.0.0.0:<dshPort+offset> → 127.0.0.1:<dshPort>）。
-   * v1.2.7：由裸 TCP 转发改为 HTTP/WS 感知的反向代理 —— 把发往 DSH 的 Host/Origin/Referer
-   * 改写为 localhost（DSH 的 /api/dynamicCordisRunner/* 校验 Host/Origin，非 localhost 返回 403，
-   * 导致手机扫码能开出前端却选不了工作区/建不了会话）。改后 DSH 端视为 localhost 访问，功能可用。
+   * 裸 TCP 转发。需要 DSH 以 `--trusted-host <局域网IP>` 启动（见 serverLifecycle.js），
+   * 使 DSH 的 /api browser-trust fence 信任局域网 Host，否则手机请求会 403。
    */
   async function startProxy() {
     if (proxyServer) return true;
@@ -144,8 +102,7 @@ function createLanAccess(deps) {
       const want = targetPort + off;
       try {
         const srv = await new Promise((resolve, reject) => {
-          const s = http.createServer((req, res) => forwardHttp(req, res, targetPort));
-          s.on('upgrade', (req, socket, head) => forwardUpgrade(req, socket, head, targetPort));
+          const s = net.createServer((socket) => handleProxy(socket, targetPort));
           s.on('error', (err) => {
             if (err && err.code === 'EADDRINUSE') reject(err);
             else { appendLog('warn', `局域网代理错误：${err.message}`); }

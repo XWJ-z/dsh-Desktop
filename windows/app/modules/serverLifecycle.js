@@ -31,6 +31,7 @@ function createServerLifecycle(deps) {
     getServerChild, setServerChild,
     getServerStopRequested, setServerStopRequested,
     getMainWindow, getWebUrl, getResolvedPort,
+    os,
   } = deps;
 
   /** 应用退出：统一清理所有派生子进程，宽限期后强制结束 */
@@ -88,6 +89,19 @@ function createServerLifecycle(deps) {
           const runnerArgs = runner.env.ELECTRON_RUN_AS_NODE === '1' ? ['--expose-internals'] : [];
           // DSH 永远绑定 127.0.0.1（v1.2.1 局域网访问用壳的 TCP 代理暴露，见 lan-access.js）
           const host = defaultHost;
+          // v1.2.7：让 DSH 的 /api browser-trust fence 信任局域网 IP（含代理端口），
+          // 否则手机经代理带局域网 Host 访问会 403 → 扫码选不了工作区/建不了会话。
+          const trustedHosts = [];
+          try {
+            const itf = os.networkInterfaces();
+            for (const key of Object.keys(itf)) {
+              for (const a of (itf[key] || [])) {
+                if (a.family === 'IPv4' && !a.internal) {
+                  trustedHosts.push(a.address, `${a.address}:${String(port)}`, `${a.address}:${String(port + 1)}`);
+                }
+              }
+            }
+          } catch { /* ignore */ }
           const args = [
             ...runnerArgs,
             dshBin,
@@ -95,6 +109,8 @@ function createServerLifecycle(deps) {
             '--host', host,
             '--port', String(port),
           ];
+          // 把局域网 IP 及其 authority 加为受信 Host（DSH web --trusted-host 可重复）
+          trustedHosts.forEach((th) => args.push('--trusted-host', th));
           const cfg = readShellConfig();
           appendLog('info', `DSH 入口：${dshBin}（${cfg.dshPackage}@${installedDshVersion() ?? '?'}）`);
           appendLog('info', `DSH 运行器：${runner.label}`);

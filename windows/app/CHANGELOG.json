@@ -6,7 +6,7 @@
       "notes": [
         "🎉 v1.2.7 —— 手机访问修复：二维码刷新 + 修复扫码功能不可用（内部版）",
         "🔹 修复：",
-        "· 手机访问扫码 —— 修复「手机扫码出来是新界面、选不了工作区、建不了会话」：此前反向代理是裸 TCP 转发，把手机的 `Host`/`Origin`（局域网IP）原样发给 DSH；DSH 网页对非 localhost 的 `Host`/`Origin` 一律返回 403（`/api/dynamicCordisRunner/*`），导致前端工作区/会话接口全被拒。现改为 HTTP/WebSocket 感知的反向代理，把发往 DSH 的 `Host`/`Origin`/`Referer` 改写为 localhost，DSH 端视为本机访问，手机即可正常选择工作区、新建会话（连的是电脑同一个 DSH）",
+        "· 手机访问扫码 —— 修复「手机扫码出来是新界面、选不了工作区、建不了会话」：DSH 网页的 /api 有 browser-trust fence，非 localhost 的 Host/Origin 一律 403，使手机经代理访问时工作区/会话接口全被拒（/api/dynamicCordisRunner/*、/api/workspace.list、WebSocket events.*）。现改为：DSH 启动时传 `--trusted-host <局域网IP>`（含带端口 authority），使 DSH 信任局域网 Host；局域网反向代理恢复为裸 TCP 转发（HTTP/WebSocket 均正确转发），手机即可连电脑同一 DSH、正常选工作区/新建会话",
         "🔹 优化：",
         "· 手机访问二维码 —— 支持每 30 秒自动刷新 + 「🔄 刷新二维码」手动刷新：局域网 IP 或代理端口变化时，扫码地址自动更新，避免手机扫到旧地址"
       ],
