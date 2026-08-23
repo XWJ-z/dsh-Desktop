@@ -946,7 +946,6 @@ const menuApi = createMenu({
   setMinimizeToTray: settingsApi.setMinimizeToTray,
   setCloseAsk: settingsApi.setCloseAsk, // v1.0.3：关闭时总是询问开关
   setCheckUpdateOnStart: settingsApi.setCheckUpdateOnStart,
-  setLanAccess: (enabled) => lanApi.setLanMode(enabled), // v1.2.1 T7：局域网访问开关
   setTaskNotify, // v1.2.1 T8：任务完成通知开关
   clearCloseChoice: settingsApi.clearCloseChoice,
   saveSettings: settingsApi.saveSettings,

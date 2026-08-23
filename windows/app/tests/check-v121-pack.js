@@ -47,7 +47,8 @@ function run() {
   console.log('[菜单/入口文案]');
   ok(pet.includes('🧠 记忆管理'), '宠物菜单「🧠 记忆管理」');
   ok(pet.includes('🛠️ 技能库'), '宠物菜单「🛠️ 技能库」');
-  ok(menu.includes("label: '局域网访问'"), '设置菜单「局域网访问」');
+  ok(pet.includes('data-action="lan"') && pet.includes('📱 局域网访问'), '宠物菜单「📱 局域网访问」开关（已从设置菜单移入）');
+  ok(!menu.includes("label: '局域网访问'"), '设置菜单不再含「局域网访问」');
   ok(menu.includes("label: '任务完成通知'"), '设置菜单「任务完成通知」');
 
   console.log('[' + (failed ? 'FAIL' : 'OK') + ']');

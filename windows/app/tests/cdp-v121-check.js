@@ -95,6 +95,33 @@ async function main() {
   ok(!!pet && pet.ok, '宠物菜单存在');
   ok(!!pet && pet.ok && pet.items.includes('🧠 记忆管理'), '宠物菜单含「🧠 记忆管理」');
   ok(!!pet && pet.ok && pet.items.includes('🛠️ 技能库'), '宠物菜单含「🛠️ 技能库」');
+  ok(!!pet && pet.ok && pet.items.some((t) => String(t).indexOf('📱 局域网访问') === 0), '宠物菜单含「📱 局域网访问」开关');
+  ok(!!pet && pet.ok && !pet.items.some((t) => String(t).indexOf('局域网访问') === 0 && String(t).indexOf('📱') !== 0), '设置菜单不再含「局域网访问」（已移至宠物菜单）');
+
+  // [2b] 局域网开关点击切换（宠物菜单）：默认关 → 点「局域网访问」→ 应变为「（已开）」
+  console.log('[2b] 局域网访问宠物菜单切换');
+  const lanClick = await cdp.eval(`(async () => {
+    const p = document.getElementById('dsh-pet');
+    if (!p) return { ok:false, reason:'no pet' };
+    const lanItem = Array.from(p.querySelectorAll('.pet-item')).find((i) => (i.textContent || '').indexOf('📱 局域网访问') === 0);
+    if (!lanItem) return { ok:false, reason:'no lan item' };
+    lanItem.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    await new Promise((r) => setTimeout(r, 600));
+    return { ok:true, text: lanItem.textContent.trim() };
+  })()`);
+  console.log('  lanClick:', JSON.stringify(lanClick));
+  ok(!!lanClick && lanClick.ok && /（已开）/.test(lanClick.text || ''), '宠物菜单点「局域网访问」→ 文案变为（已开）');
+  // 关闭回去，保持默认关
+  const lanClickOff = await cdp.eval(`(async () => {
+    const p = document.getElementById('dsh-pet');
+    const lanItem = Array.from(p.querySelectorAll('.pet-item')).find((i) => (i.textContent || '').indexOf('📱 局域网访问') === 0);
+    if (!lanItem) return { ok:false };
+    lanItem.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    await new Promise((r) => setTimeout(r, 600));
+    return { ok:true, text: lanItem.textContent.trim() };
+  })()`);
+  console.log('  lanClickOff:', JSON.stringify(lanClickOff));
+  ok(!!lanClickOff && lanClickOff.ok && !/（已开）/.test(lanClickOff.text || ''), '宠物菜单再点「局域网访问」→ 文案回到无（已开）');
 
   // ② 记忆管理窗口双 Tab
   console.log('[3] 记忆管理窗口（双 Tab）');
