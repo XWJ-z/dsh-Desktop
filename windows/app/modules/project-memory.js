@@ -36,7 +36,7 @@ const FILE_NAME = 'AGENTS.md';
 const MAX_SIZE = 1024 * 1024; // 1MB（对齐全局记忆）
 
 function createProjectMemory(deps) {
-  const { fs, path, app, appendLog, getWorkspacePath } = deps;
+  const { fs, path, app, appendLog, getWorkspacePath, readWorkspaceRegistry } = deps;
 
   /** 索引文件路径：userData/projects-memory-index.json */
   function indexFile() {
@@ -112,7 +112,8 @@ function createProjectMemory(deps) {
   /**
    * 区块化解析（复用全局记忆的长区块思路，项目记忆用简化版）：
    *  - head：第一个 `## ` 之前的头部原文；
-   *  - sections：[{ title, body }] —— 每个 `## xxxx` 区块（body 为原文行）。
+   *  - sections：[{ title, body, subs[] }] —— 每个 `## xxxx` 区块（body 为原文行），
+   *    并支持 `### 三级子区块`（subs）。
    *  与全局记忆不同：项目记忆不做 用户设定/我的设定/DSH角色 特判，
    *  所有 `## 标题` 一律当「长区块」处理（标题可改、内容可编辑、删除即生效）。
    * @param {string} content
@@ -122,32 +123,53 @@ function createProjectMemory(deps) {
     const head = [];
     const sections = [];
     let cur = null;
+    let curSub = null;
     let seenSection = false;
     for (const line of String(content || '').split(/\r?\n/)) {
       const t = /^##\s+(.+)$/.exec(line);
       if (t) {
         seenSection = true;
-        cur = { title: t[1].trim(), body: [] };
+        cur = { title: t[1].trim(), body: [], subs: [] };
         sections.push(cur);
+        curSub = null;
         continue;
       }
-      if (cur) cur.body.push(line);
-      else if (!seenSection) head.push(line);
+      if (cur) {
+        // v1.2.3：支持 ### 三级子区块（窗口左导航可单独选中/编辑）
+        const sub = /^###\s+(.+)$/.exec(line);
+        if (sub) {
+          curSub = { title: sub[1].trim(), body: [] };
+          cur.subs.push(curSub);
+          continue;
+        }
+        if (curSub) curSub.body.push(line);
+        else cur.body.push(line);
+      } else if (!seenSection) head.push(line);
     }
     return { head: head.join('\n'), sections };
   }
 
-  /** 渲染单个长区块（## 标题 + 原格式内容；标题空则丢弃） */
-  function renderLong(title, body) {
+  /** 渲染单个长区块（## 标题 + 原格式内容 + ### 子区块；标题空则丢弃） */
+  function renderLong(title, body, subs) {
     const raw = Array.isArray(body) ? body.join('\n') : String(body || '');
     const b = raw.replace(/^\s*\n+|\s+$/g, ''); // 去首尾多余空行
-    return `## ${title}${b ? `\n\n${b}` : ''}`;
+    const subBlocks = (Array.isArray(subs) && subs.length)
+      ? subs.map((sb) => {
+          const sbRaw = Array.isArray(sb.body) ? sb.body.join('\n') : String(sb.body || '');
+          const sbBody = sbRaw.replace(/^\s*\n+|\s+$/g, '');
+          return `### ${sb.title}${sbBody ? `\n\n${sbBody}` : ''}`;
+        }).join('\n\n')
+      : '';
+    let out = `## ${title}`;
+    if (b) out += `\n\n${b}`;
+    if (subBlocks) out += `\n\n${subBlocks}`;
+    return out;
   }
 
   /**
-   * 重组完整文件：head + 各 ## 区块（按序；空标题区块丢弃）。
+   * 重组完整文件：head + 各 ## 区块（按序；空标题区块丢弃；携带 ### 子区块）。
    * @param {string} head
-   * @param {Array} sections [{ title, body }]
+   * @param {Array} sections [{ title, body, subs }]
    */
   function renderProjectMemory(head, sections) {
     const blocks = [];
@@ -156,7 +178,7 @@ function createProjectMemory(deps) {
     (sections || []).forEach((s) => {
       const title = String((s && s.title) || '').trim();
       if (!title) return;
-      blocks.push(renderLong(title, (s && s.body) || ''));
+      blocks.push(renderLong(title, (s && s.body) || '', (s && s.subs) || []));
     });
     return blocks.join('\n\n') + (blocks.length ? '\n' : '');
   }
@@ -235,7 +257,50 @@ function createProjectMemory(deps) {
   }
 
   /**
-   * 读取窗口数据：当前工作区 + 该工作区项目记忆块 + 历史项目列表。
+   * 列出所有候选工作区（供「项目列表」）：
+   *  ① DSH 工作区注册表（~/.dsh/storages/workspace.json 的 tables.workspaces）—— 全部注册工作区；
+   *  ② 历史索引（本窗口保存过的项目）；
+   *  ③ 当前工作区（若不在上述两者）。
+   *  去重后每项标注：exists = 该工作区是否已有 AGENTS.md 项目记忆；current = 是否当前工作区。
+   * @param {string|null} currentWs 当前工作区（可为 null）
+   * @returns {Array<{path:string,name:string,lastEdited:string,exists:boolean,current:boolean}>}
+   */
+  function listProjectWorkspaces(currentWs) {
+    const map = new Map();
+    // ① 工作区注册表
+    try {
+      const reg = readWorkspaceRegistry ? readWorkspaceRegistry() : null;
+      if (reg && reg.tables && reg.tables.workspaces) {
+        for (const v of Object.values(reg.tables.workspaces)) {
+          const p = v && v.path;
+          if (!p || !validateWorkspace(p)) continue;
+          map.set(p, { path: p, name: projectName(p) });
+        }
+      }
+    } catch { /* 忽略注册表异常 */ }
+    // ② 历史索引
+    listProjects().forEach((p) => {
+      if (!validateWorkspace(p.path)) return;
+      const e = map.get(p.path) || { path: p.path, name: projectName(p.path) };
+      if (p.lastEdited) e.lastEdited = p.lastEdited;
+      map.set(p.path, e);
+    });
+    // ③ 当前工作区兜底
+    if (currentWs && validateWorkspace(currentWs)) {
+      const e = map.get(currentWs) || { path: currentWs, name: projectName(currentWs) };
+      map.set(currentWs, e);
+    }
+    return [...map.values()].map((e) => ({
+      path: e.path,
+      name: e.name,
+      lastEdited: e.lastEdited || '',
+      exists: fs.existsSync(getProjectMemoryPath(e.path)),
+      current: e.path === currentWs,
+    }));
+  }
+
+  /**
+   * 读取窗口数据：当前工作区 + 该工作区项目记忆块 + 候选工作区列表。
    * @returns {{ workspace: string|null, exists: boolean, path: string, content: string,
    *             head: string, sections: Array, projects: Array }}
    */
@@ -253,7 +318,7 @@ function createProjectMemory(deps) {
       content: raw === null ? '' : raw,
       head: parsed.head,
       sections: parsed.sections,
-      projects: listProjects(),
+      projects: listProjectWorkspaces(validWs),
     };
   }
 
@@ -263,6 +328,7 @@ function createProjectMemory(deps) {
     validateWorkspace,
     projectName,
     listProjects,
+    listProjectWorkspaces, // v1.2.3：全工作区候选列表（含 exists/current 标记）
     readRaw,
     parseProjectMemory,
     renderProjectMemory,

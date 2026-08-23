@@ -1,18 +1,16 @@
 'use strict';
 
 /**
- * memory-project.js — 记忆管理窗口「项目记忆」Tab + Tab 切换（v1.2.1 T2）
+ * memory-project.js — 记忆管理窗口「项目记忆」Tab + Tab 切换（v1.2.3 重构）
  *
- * 职责：
- *  - Tab 切换（全局记忆 / 项目记忆）：只控制 #panel-global / #panel-project 显隐，
- *    不触碰 global-memory.js 的任何逻辑（Tab 1 零回归）。
- *  - 项目记忆：当前工作区显示 + 区块编辑器（head + ## 区块）+ 项目列表切换 +
- *    新建（手动输入路径）+ 删除 + 打开目录。
+ * 布局（对齐全局记忆「左导航 + 右编辑」的三栏）：
+ *  - 左栏「项目列表」：列出所有候选工作区的项目记忆（DSH 工作区注册表 + 历史索引 + 当前工作区），
+ *    带 是否有 AGENTS.md（exists）/ 是否当前工作区（current）标记；
+ *  - 中栏「区块导航」：当前项目 AGENTS.md 的 ## 区块（含 ### 子区块缩进），可选中/新增/删除；
+ *  - 右栏「内容编辑」：编辑选中区块/子区块的标题 + 内容（复用全局记忆 memo-* 样式）。
  *
  * 依赖（preload）：dshDesktop.getProjectMemory / readProjectMemory /
  *   saveProjectMemory / deleteProjectMemory / openProjectMemoryFolder。
- * 说明（来自方案）：全局记忆用于所有对话，项目记忆仅当前项目生效（<工作区>/AGENTS.md，
- *   DSH 启动自动读取，壳体只做编辑界面）。
  */
 
 (function () {
@@ -37,18 +35,63 @@
 
   const $ = (id) => document.getElementById(id);
 
+  // ── 编号辅助（与全局记忆一致：新增区块/子区块自动编号）──
+  const CN_NUMS = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+  function cnNum(n) {
+    const x = Math.floor(Number(n) || 0);
+    if (x <= 0) return String(x);
+    if (x < 10) return CN_NUMS[x];
+    const tens = Math.floor(x / 10);
+    const ones = x % 10;
+    if (x < 20) return '十' + (ones ? CN_NUMS[ones] : '');
+    return CN_NUMS[tens] + '十' + (ones ? CN_NUMS[ones] : '');
+  }
+  function cnToNum(s) {
+    const str = String(s || '').trim();
+    if (!str) return null;
+    if (str.length === 1) { const i = CN_NUMS.indexOf(str); return i >= 0 ? i : null; }
+    if (str === '十') return 10;
+    const shi = str.indexOf('十');
+    if (shi === -1) return null;
+    const tens = shi === 0 ? 1 : CN_NUMS.indexOf(str[shi - 1]);
+    if (tens <= 0) return null;
+    let val = tens * 10;
+    const tail = str.slice(shi + 1);
+    if (tail) { const o = CN_NUMS.indexOf(tail); if (o < 0) return null; val += o; }
+    return val;
+  }
+  function numFromTitle(title) {
+    const t = String(title || '').trim();
+    const c = /^([零一二三四五六七八九十]+)/.exec(t);
+    if (c) { const v = cnToNum(c[1]); if (v != null) return v; }
+    const a = /^(\d+)/.exec(t);
+    if (a) return parseInt(a[1], 10);
+    return null;
+  }
+  function nextSubNum(subs) {
+    let maxM = 0, sectionN = null;
+    (Array.isArray(subs) ? subs : []).forEach((sb) => {
+      const m = /^(\d+)[.、](\d+)\b/.exec(String(sb.title || '').trim());
+      if (m) { const n = parseInt(m[1], 10); const mm = parseInt(m[2], 10); if (mm > maxM) { maxM = mm; sectionN = n; } }
+    });
+    return sectionN === null ? null : `${sectionN}.${maxM + 1}`;
+  }
+
   // ── 项目记忆编辑状态 ──
   const pm = {
-    current: null, // 当前编辑的项目路径
-    data: null,    // data() 结果（含 workspace / projects）
+    current: null,           // 当前编辑的项目路径
+    data: null,              // data() 结果（含 projects / workspace）
+    head: '',                // 当前项目记忆的头部（第一个 ## 前）
+    sections: [],            // 当前项目记忆 [{title, body, subs:[{title,body}]}]
+    selectedSectionIndex: -1,
+    selectedSubIndex: -1,
     warning: false,
 
     async load() {
       try {
         const d = await window.dshDesktop.getProjectMemory();
         this.data = d;
-        this.renderWorkspace(d);
-        this.renderList(d.projects || []);
+        this.renderList((d.projects || []));
         if (d.workspace) {
           this.switchTo(d.workspace);
         } else {
@@ -68,7 +111,7 @@
               $('pm-guide').hidden = true;
               $('pm-main').style.display = 'flex';
               this.current = r.workspace;
-              this.fillEditor(r);
+              this.loadProject(r);
               this.renderList(this.data.projects || []);
             } else {
               $('pm-guide').innerHTML = '<span style="color:#e5484d;">路径无效：必须是已存在的目录。</span>';
@@ -80,27 +123,22 @@
       }
     },
 
-    renderWorkspace(d) {
-      const row = $('pm-ws-row');
-      if (d.workspace) {
-        row.innerHTML = `<span>当前项目：</span><code>${escapeHtml(d.workspace)}</code>`;
-      } else {
-        row.innerHTML = '<span>当前项目：<b>未定位（请先在 DSH 中选择工作区）</b></span>';
-      }
-    },
-
     renderList(projects) {
       const list = $('pm-list');
       if (!projects || projects.length === 0) {
-        list.innerHTML = '<div class="pm-empty">还没有编辑过项目记忆</div>';
+        list.innerHTML = '<div class="pm-empty">还没找到工作区（请先在 DSH 中选择）</div>';
         return;
       }
       list.innerHTML = '';
       projects.forEach((p) => {
         const item = document.createElement('div');
         item.className = 'pm-item' + (this.current === p.path ? ' active' : '');
+        const mark = p.current === true
+          ? '<span class="pm-item-date" style="color:var(--brand);">当前</span>'
+          : (p.exists === false ? '<span class="pm-item-date" style="color:#e5484d;">无记忆</span>' : '');
         item.innerHTML =
           `<span class="pm-item-name">${escapeHtml(p.name || p.path)}</span>` +
+          mark +
           (p.lastEdited ? `<span class="pm-item-date">${escapeHtml(p.lastEdited)}</span>` : '');
         item.addEventListener('click', () => this.switchTo(p.path));
         list.appendChild(item);
@@ -118,8 +156,8 @@
       this.current = r.workspace;
       $('pm-guide').hidden = true;
       $('pm-main').style.display = 'flex';
-      this.fillEditor(r);
-      this.renderList(this.data.projects || []);
+      this.loadProject(r);
+      this.renderList((this.data && this.data.projects) || []);
     },
 
     _warn(msg) {
@@ -128,44 +166,220 @@
       $('pm-guide').textContent = '⚠️ ' + msg;
     },
 
-    fillEditor(r) {
+    loadProject(r) {
       this._existingPath = r.path || '';
+      this.head = r.head || '';
       $('pm-current-path').textContent = r.workspace || '';
-      const head = $('pm-head');
-      head.value = r.head || '';
-      const sections = $('pm-sections');
-      sections.innerHTML = '';
-      const secs = (r.sections || []).slice();
-      if (secs.length === 0) {
-        $('pm-empty').hidden = false;
-      } else {
-        $('pm-empty').hidden = true;
-        secs.forEach((s) => this._addSec(s.title, (s.body || []).join('\n')));
-      }
+      $('pm-head').value = this.head;
+      this.sections = (r.sections || []).map((s) => ({
+        title: s.title,
+        body: (s.body || []).join('\n'),
+        subs: (Array.isArray(s.subs) && s.subs.length)
+          ? s.subs.map((sb) => ({ title: sb.title, body: (sb.body || []).join('\n') }))
+          : [],
+      }));
+      if (this.sections.length === 0) this.selectedSectionIndex = -1;
+      else if (this.selectedSectionIndex < 0 || this.selectedSectionIndex >= this.sections.length) this.selectedSectionIndex = 0;
+      if (this.selectedSubIndex !== -1 && !((this.sections[this.selectedSectionIndex] || {}).subs || [])[this.selectedSubIndex]) this.selectedSubIndex = -1;
+      this.renderNav();
     },
 
-    _addSec(title, body) {
-      const sections = $('pm-sections');
-      const wrap = document.createElement('div');
-      wrap.className = 'pm-sec';
-      wrap.innerHTML =
-        '<div class="pm-sec-head">' +
-        '<span class="hash">##</span>' +
-        '<input class="pm-sec-title" value="' + escAttr(title || '') + '" placeholder="区块标题（如 项目背景）">' +
-        '<button class="del" title="删除该区块">×</button></div>' +
-        '<textarea class="pm-sec-body" placeholder="区块内容…">' + escText(body || '') + '</textarea>';
-      wrap.querySelector('.del').addEventListener('click', () => wrap.remove());
-      sections.appendChild(wrap);
+    // ── 中栏：区块导航（复用 memo-list / memo-item / memo-group / memo-sub 样式）──
+    renderNav() {
+      const nav = $('pm-nav');
+      if (!nav) return;
+      const hasSubs = (s) => Array.isArray(s.subs) && s.subs.length > 0;
+      if (this.sections.length === 0) {
+        nav.innerHTML = '<div class="sec-empty">还没有 ## 区块 —— 点下方「＋ 添加区块」新建</div>';
+        this.renderEditor();
+        return;
+      }
+      nav.innerHTML = this.sections.map((s, i) => {
+        if (!hasSubs(s)) {
+          return `<div class="memo-item${i === this.selectedSectionIndex && this.selectedSubIndex === -1 ? ' active' : ''}" data-i="${i}" title="点击编辑此区块">
+            <span class="memo-item-icon">##</span>
+            <span class="memo-item-name">${escapeHtml(s.title || '（未命名）')}</span>
+            <button class="del" data-i="${i}" title="删除此区块">✕</button>
+          </div>`;
+        }
+        const group = `<div class="memo-group${i === this.selectedSectionIndex && this.selectedSubIndex === -1 ? ' active' : ''}" data-i="${i}" title="点击编辑此区块标题/前言">
+          <span class="memo-item-icon">##</span>
+          <span class="memo-group-name">${escapeHtml(s.title || '（未命名）')}</span>
+          <button class="del" data-i="${i}" title="删除此区块（含子区块）">✕</button>
+        </div>`;
+        const subs = s.subs.map((sb, j) => `
+          <div class="memo-sub${i === this.selectedSectionIndex && this.selectedSubIndex === j ? ' active' : ''}" data-i="${i}" data-j="${j}" title="点击编辑此子区块">
+            <span class="memo-item-icon memo-sub-icon">###</span>
+            <span class="memo-sub-name">${escapeHtml(sb.title || '（未命名）')}</span>
+            <button class="del" data-i="${i}" data-j="${j}" title="删除此子区块">✕</button>
+          </div>`).join('');
+        return group + subs;
+      }).join('');
+      nav.querySelectorAll('.memo-item, .memo-group').forEach((row) => {
+        row.addEventListener('click', (e) => {
+          if (e.target.closest('.del')) return;
+          this.selectedSectionIndex = Number(row.dataset.i);
+          this.selectedSubIndex = -1;
+          this.renderNav();
+        });
+      });
+      nav.querySelectorAll('.memo-sub').forEach((row) => {
+        row.addEventListener('click', (e) => {
+          if (e.target.closest('.del')) return;
+          this.selectedSectionIndex = Number(row.dataset.i);
+          this.selectedSubIndex = Number(row.dataset.j);
+          this.renderNav();
+        });
+      });
+      nav.querySelectorAll('.memo-item .del, .memo-group .del').forEach((b) => {
+        b.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.sections.splice(Number(b.closest('[data-i]').dataset.i), 1);
+          this.selectedSubIndex = -1;
+          this.renderNav();
+        });
+      });
+      nav.querySelectorAll('.memo-sub .del').forEach((b) => {
+        b.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const i = Number(b.dataset.i);
+          const j = Number(b.dataset.j);
+          const sec = this.sections[i];
+          if (sec && Array.isArray(sec.subs)) sec.subs.splice(j, 1);
+          this.renderNav();
+        });
+      });
+      this.renderEditor();
+    },
+
+    // ── 右栏：内容编辑（复用 memo-editor 样式）──
+    renderEditor() {
+      const ed = $('pm-editor');
+      if (!ed) return;
+      if (this.sections.length === 0) {
+        $('pm-empty').hidden = false;
+        ed.style.display = 'none';
+        return;
+      }
       $('pm-empty').hidden = true;
+      ed.style.display = 'flex';
+      const s = this.sections[this.selectedSectionIndex];
+      if (!s) {
+        ed.innerHTML = '<div class="sec-empty">点击左侧区块进入编辑，或「＋ 添加区块」新建</div>';
+        return;
+      }
+      if (this.selectedSubIndex >= 0) {
+        const sb = (s.subs && s.subs[this.selectedSubIndex]);
+        if (!sb) { ed.innerHTML = '<div class="sec-empty">该子区块不存在</div>'; return; }
+        ed.innerHTML = `
+          <div class="memo-editor-head">
+            <span class="hash">###</span>
+            <input class="memo-editor-title" value="${escAttr(sb.title)}" placeholder="子区块标题（如 4.1 场景）" />
+            <button class="del" title="删除此子区块">✕</button>
+          </div>
+          <div class="memo-editor-field">
+            <div class="memo-editor-label">子区块内容<span class="hint">（长文本 · 格式原样保留）</span></div>
+            <textarea class="memo-editor-body" rows="9" placeholder="此子区块内容…">${escText(sb.body)}</textarea>
+          </div>`;
+        const title = ed.querySelector('.memo-editor-title');
+        title.addEventListener('input', () => {
+          s.subs[this.selectedSubIndex].title = title.value;
+          const item = document.querySelector(`.memo-sub[data-i="${this.selectedSectionIndex}"][data-j="${this.selectedSubIndex}"] .memo-sub-name`);
+          if (item) item.textContent = title.value || '（未命名）';
+        });
+        ed.querySelector('.memo-editor-head .del').addEventListener('click', () => {
+          s.subs.splice(this.selectedSubIndex, 1);
+          this.selectedSubIndex = -1;
+          this.renderNav();
+        });
+        ed.querySelector('.memo-editor-body').addEventListener('input', (e) => { s.subs[this.selectedSubIndex].body = e.target.value; });
+        return;
+      }
+      // 区块级：## 标题 + 前言；含子区块时提供只读汇总
+      const hasSubs = Array.isArray(s.subs) && s.subs.length > 0;
+      const hasIntro = String(s.body || '').trim() !== '';
+      let introField = '';
+      if (!hasSubs || hasIntro) {
+        introField = `
+          <div class="memo-editor-field">
+            <div class="memo-editor-label${hasSubs ? ' with-del' : ''}">区块内容<span class="hint">（长文本 · 格式原样保留）</span>${hasSubs ? '<button class="del intro-del" title="删除此区块的前言内容">✕</button>' : ''}</div>
+            <textarea class="memo-editor-body${hasSubs ? ' compact' : ''}" rows="10" placeholder="此区块内容…">${escText(s.body)}</textarea>
+          </div>`;
+      }
+      const subPreview = hasSubs ? `
+        <div class="memo-sub-preview">
+          <div class="memo-editor-label">本区块全部内容<span class="hint">（只读汇总 · 编辑请在左侧点 ### 子项）</span></div>
+          ${s.subs.map((sb, j) => `
+            <div class="memo-sub-preview-item">
+              <div class="memo-sub-preview-head"><span class="hash">###</span>${escapeHtml(sb.title || '（未命名）')}</div>
+              <pre class="memo-sub-preview-body">${escapeHtml(sb.body || '')}</pre>
+            </div>`).join('')}
+        </div>` : '';
+      ed.innerHTML = `
+        <div class="memo-editor-head">
+          <span class="hash">##</span>
+          <input class="memo-editor-title" value="${escAttr(s.title)}" placeholder="区块标题（如 项目背景）" />
+          <button class="del" title="删除此区块">✕</button>
+        </div>${introField}${subPreview}`;
+      const title = ed.querySelector('.memo-editor-title');
+      title.addEventListener('input', () => {
+        s.title = title.value;
+        const item = document.querySelector(`.memo-item[data-i="${this.selectedSectionIndex}"] .memo-item-name, .memo-group[data-i="${this.selectedSectionIndex}"] .memo-group-name`);
+        if (item) item.textContent = title.value || '（未命名）';
+      });
+      ed.querySelector('.memo-editor-head .del').addEventListener('click', () => {
+        this.sections.splice(this.selectedSectionIndex, 1);
+        this.selectedSubIndex = -1;
+        this.renderNav();
+      });
+      const introDel = ed.querySelector('.intro-del');
+      if (introDel) introDel.addEventListener('click', () => { s.body = ''; this.renderNav(); });
+      const body = ed.querySelector('.memo-editor-body');
+      if (body) body.addEventListener('input', (e) => { s.body = e.target.value; });
+    },
+
+    addSection() {
+      const baseName = '新区块';
+      const maxNum = this.sections.reduce((a, s) => Math.max(a, numFromTitle(s.title) || 0), 0);
+      const num = maxNum >= 1 ? maxNum + 1 : null;
+      let title = num !== null ? `${cnNum(num)}、${baseName}` : baseName;
+      let i = 1;
+      while (this.sections.some((s2) => s2.title === title)) { i++; title = num !== null ? `${cnNum(num)}、${baseName}${i}` : `${baseName}${i}`; }
+      this.sections.push({ title, body: '', subs: [] });
+      this.selectedSectionIndex = this.sections.length - 1;
+      this.selectedSubIndex = -1;
+      this.renderNav();
+      const t = document.querySelector('#pm-editor .memo-editor-title');
+      if (t) { t.focus(); t.select(); }
+    },
+
+    addSub() {
+      const s = this.sections[this.selectedSectionIndex];
+      if (!s) return;
+      if (!Array.isArray(s.subs)) s.subs = [];
+      let num = nextSubNum(s.subs);
+      if (!num) {
+        const sn = numFromTitle(s.title);
+        if (sn != null && sn >= 1) num = `${sn}.${s.subs.length + 1}`;
+      }
+      const title = num ? `${num} 新区块` : `场景 ${s.subs.length + 1}`;
+      s.subs.push({ title, body: '' });
+      this.selectedSubIndex = s.subs.length - 1;
+      this.renderNav();
+      const t = document.querySelector('#pm-editor .memo-editor-title');
+      if (t) { t.focus(); t.select(); }
     },
 
     collect() {
-      const sections = [];
-      document.querySelectorAll('#pm-sections .pm-sec').forEach((el) => {
-        const title = el.querySelector('.pm-sec-title').value.trim();
-        const body = el.querySelector('.pm-sec-body').value.replace(/\r?\n/g, '\n');
-        if (title) sections.push({ title, body });
-      });
+      const sections = this.sections
+        .map((s) => ({
+          title: String(s.title || '').trim(),
+          body: (s.body || '').replace(/\r?\n/g, '\n'),
+          subs: (Array.isArray(s.subs) && s.subs.length)
+            ? s.subs.map((sb) => ({ title: String(sb.title || '').trim(), body: String(sb.body || '').replace(/\r?\n/g, '\n') })).filter((sb) => sb.title !== '')
+            : undefined,
+        }))
+        .filter((s) => s.title !== '');
       return { head: $('pm-head').value, sections };
     },
   };
@@ -184,8 +398,10 @@
       pm.current = r.workspace;
       $('pm-guide').hidden = true;
       $('pm-main').style.display = 'flex';
-      pm.fillEditor(r);
-      pm.renderList((pm.data.projects || []).concat([{ path: r.workspace, name: basename(r.workspace) }]));
+      pm.loadProject(r);
+      const list = (pm.data && pm.data.projects) || [];
+      if (!list.some((x) => x.path === r.workspace)) list.push({ path: r.workspace, name: basename(r.workspace) });
+      pm.renderList(list);
     } else {
       alert('路径无效：必须是已存在的目录。');
     }
@@ -193,29 +409,37 @@
   $('pm-new-go').addEventListener('click', async () => {
     const p = $('pm-new-path').value.trim();
     await openByPath(p);
-    if (pm.current) { newRow.style.display = 'none'; }
+    if (pm.current) newRow.style.display = 'none';
   });
   $('pm-new-path').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('pm-new-go').click(); });
 
-  $('pm-add-sec').addEventListener('click', () => pm._addSec('', ''));
+  $('pm-add-sec').addEventListener('click', () => pm.addSection());
 
   $('pm-save').addEventListener('click', async () => {
     if (!pm.current) { alert('请先选择/输入项目路径'); return; }
     const { head, sections } = pm.collect();
-    // 重组全文：head + ## 区块（对齐 project-memory.renderProjectMemory）
+    // 重组全文：head + ## 区块（含 ### 子区块）
     const blocks = [];
     if (head.trim()) blocks.push(head.trim());
     sections.forEach((s) => {
       const b = (s.body || '').replace(/^\s*\n+|\s+$/g, '');
-      blocks.push('## ' + s.title + (b ? '\n\n' + b : ''));
+      let block = '## ' + s.title + (b ? '\n\n' + b : '');
+      if (Array.isArray(s.subs) && s.subs.length) {
+        const subBlocks = s.subs.map((sb) => {
+          const sbB = (sb.body || '').replace(/^\s*\n+|\s+$/g, '');
+          return '### ' + sb.title + (sbB ? '\n\n' + sbB : '');
+        }).join('\n\n');
+        block += '\n\n' + subBlocks;
+      }
+      blocks.push(block);
     });
     const content = blocks.join('\n\n') + (blocks.length ? '\n' : '');
     const r = await window.dshDesktop.saveProjectMemory(pm.current, content);
     if (r && r.ok) {
       showBanner('项目记忆已保存 ✓', true);
-      const d = await window.dshDesktop.getProjectMemory(); // 刷新索引/列表
+      const d = await window.dshDesktop.getProjectMemory(); // 刷新项目列表（exists 标记）
       pm.data = d;
-      pm.renderList(d.projects || []);
+      pm.renderList((d.projects || []));
     } else {
       showBanner('保存失败：' + ((r && r.message) || '未知错误'), false);
     }
@@ -229,7 +453,7 @@
       showBanner('项目记忆已删除 ✓', true);
       const d = await window.dshDesktop.getProjectMemory();
       pm.data = d;
-      pm.renderList(d.projects || []);
+      pm.renderList((d.projects || []));
       if (d.workspace) pm.switchTo(d.workspace);
       else { $('pm-main').style.display = 'none'; $('pm-guide').hidden = true; pm._warn('项目记忆已删除，请选择/输入项目'); }
     } else {

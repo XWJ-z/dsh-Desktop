@@ -470,7 +470,7 @@ const workspaceApi = createWorkspaceLocator({ fs, os, path, appendLog });
 const { getWorkspacePath } = workspaceApi;
 
 // v1.2.1 T1：项目记忆 —— 工作区级记忆 <工作区>/AGENTS.md（DSH 自动读取，壳体只做编辑界面）
-const projectMemoryApi = createProjectMemory({ fs, path, app, appendLog, getWorkspacePath });
+const projectMemoryApi = createProjectMemory({ fs, path, app, appendLog, getWorkspacePath, readWorkspaceRegistry: workspaceApi.readWorkspaceRegistry });
 
 // v1.2.1 T4：技能库 —— 扫描/读写/删除技能 + 技能市场（三源拉取 + raw 安装）
 const skillLibraryApi = createSkillLibrary({
