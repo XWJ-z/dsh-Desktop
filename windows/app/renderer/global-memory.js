@@ -125,10 +125,16 @@ function renderRight() {
         <div class="memo-list" id="memo-list"></div>
         <div class="memo-editor" id="memo-editor"></div>
       </div>
-      <button id="btn-add-sec" class="add-field">＋ 添加区块</button>`;
+      <div class="memo-addbar">
+        <button id="btn-add-sub-sec" class="add-field add-sec-btn add-sec-sub" title="给左侧选中的区块添加一个 ### 子区块">＋ 添加子区块</button>
+        <button id="btn-add-sec" class="add-field add-sec-btn" title="新建一个 ## 区块">＋ 添加区块</button>
+      </div>`;
     renderMemoList();
     const addBtn = el('btn-add-sec');
     if (addBtn) addBtn.addEventListener('click', addSection);
+    // v1.2.3（用户指令）：「＋ 添加子区块」—— 给当前选中的区块添加子区块
+    const addSubBtn = el('btn-add-sub-sec');
+    if (addSubBtn) addSubBtn.addEventListener('click', addSub);
     return;
   }
   if (activeKey === ROLES_KEY) {
@@ -215,14 +221,11 @@ function renderMemoList() {
   else if (selectedSectionIndex < 0 || selectedSectionIndex >= sections.length) { selectedSectionIndex = sections.length - 1; selectedSubIndex = -1; }
   const hasSubs = (s) => Array.isArray(s.subs) && s.subs.length > 0;
   list.innerHTML = sections.map((s, i) => {
-    // v1.2.3（用户指令）：每个区块行右侧都放一个「＋ 添加子区块」快捷按钮（导航区也可加子区块）
-    const addSubNavBtn = `<button class="add-sub-nav" data-i="${i}" title="添加子区块">＋</button>`;
     if (!hasSubs(s)) {
       // 无子区块 → 普通项（编辑 ## 标题 + 内容）
       return `<div class="memo-item${i === selectedSectionIndex && selectedSubIndex === -1 ? ' active' : ''}" data-i="${i}" title="点击编辑此区块">
         <span class="memo-item-icon">##</span>
         <span class="memo-item-name">${escapeHtml(s.title || '（未命名）')}</span>
-        ${addSubNavBtn}
         <button class="del" data-i="${i}" title="删除此区块">✕</button>
       </div>`;
     }
@@ -230,7 +233,6 @@ function renderMemoList() {
     const group = `<div class="memo-group${i === selectedSectionIndex && selectedSubIndex === -1 ? ' active' : ''}" data-i="${i}" title="点击编辑此区块标题/前言">
       <span class="memo-item-icon">##</span>
       <span class="memo-group-name">${escapeHtml(s.title || '（未命名）')}</span>
-      ${addSubNavBtn}
       <button class="del" data-i="${i}" title="删除此区块（含子区块）">✕</button>
     </div>`;
     const subs = s.subs.map((sb, j) => `
@@ -244,18 +246,10 @@ function renderMemoList() {
     + (sections.length === 0 ? '<div class="sec-empty">还没有 ## 区块 —— 点下方「＋ 添加区块」新建，或直接编辑保存后自动识别</div>' : '');
   list.querySelectorAll('.memo-item, .memo-group').forEach((row) => {
     row.addEventListener('click', (e) => {
-      if (e.target.closest('.del') || e.target.closest('.add-sub-nav')) return;
+      if (e.target.closest('.del')) return;
       selectedSectionIndex = Number(row.dataset.i);
       selectedSubIndex = -1;
       renderMemoList();
-    });
-  });
-  list.querySelectorAll('.add-sub-nav').forEach((b) => {
-    b.addEventListener('click', (e) => {
-      e.stopPropagation();
-      selectedSectionIndex = Number(b.dataset.i);
-      selectedSubIndex = -1;
-      addSub();
     });
   });
   list.querySelectorAll('.memo-sub').forEach((row) => {

@@ -218,13 +218,14 @@
     .memo-item-name { font-size: 12.5px; font-weight: 590; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .memo-item .del { width: 22px; height: 22px; flex-shrink: 0; border: none; background: transparent; cursor: pointer; color: var(--text-quaternary); font-size: 12px; border-radius: 6px; }
     .memo-item .del:hover { color: #ff6b6b; background: rgba(255,107,107,.12); }
-    /* v1.2.3（用户指令）：导航区每个区块行的「＋ 添加子区块」快捷按钮 */
-    .add-sub-nav {
-      width: 22px; height: 22px; flex-shrink: 0; border: none; background: transparent;
-      cursor: pointer; color: var(--text-quaternary); font-size: 14px; line-height: 1;
-      border-radius: 6px; display: flex; align-items: center; justify-content: center;
+    /* v1.2.3（用户指令）：底部「＋ 添加子区块 / ＋ 添加区块」两按钮并排，背景对比可区分 */
+    .memo-addbar { display: flex; gap: 8px; margin-top: 10px; }
+    .memo-addbar .add-sec-btn {
+      flex: 1; align-self: stretch; display: flex; align-items: center; justify-content: center;
+      padding: 10px 14px; font-size: 13px; font-weight: 700;
     }
-    .add-sub-nav:hover { color: var(--brand); background: rgba(94,106,210,.16); }
+    .memo-addbar .add-sec-sub { background: transparent; color: var(--text-secondary); }
+    .memo-addbar #btn-add-sec { background: rgba(124,120,255,.12); border-color: rgba(124,120,255,.5); color: var(--text-primary); }
     /* v1.2.3：## 组头 + 缩进 ### 子项 */
     .memo-group {
       display: flex; align-items: center; gap: 7px;
