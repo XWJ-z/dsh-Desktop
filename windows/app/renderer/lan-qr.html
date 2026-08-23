@@ -32,6 +32,10 @@
     .qrcode { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 6px 0; }
     .qrcode img { width: 190px; height: 190px; border-radius: 8px; background: #fff; padding: 6px; object-fit: contain; }
     .qrcode .url { font-family: Consolas, "Courier New", "Microsoft YaHei", monospace; font-size: 12px; color: var(--text-primary); user-select: text; }
+    .qr-actions { display: flex; align-items: center; gap: 10px; }
+    .btn { padding: 8px 16px; border: none; border-radius: var(--radius-btn); background: var(--bg-hover); color: var(--text-primary); cursor: pointer; font-size: 12.5px; font-weight: 590; }
+    .btn:hover { background: var(--bg-input); border-color: var(--border-strong); }
+    .qr-tip { font-size: 11.5px; color: var(--text-quaternary); }
     .hint { font-size: 12px; color: var(--text-secondary); line-height: 1.7; }
     .warn { font-size: 12px; color: #e5484d; font-weight: 590; line-height: 1.7; background: rgba(229,72,77,.08); border: 1px solid rgba(229,72,77,.35); border-radius: var(--radius-btn); padding: 8px 10px; }
     .firewall { font-size: 12px; color: var(--warn); line-height: 1.7; background: rgba(245,166,35,.08); border: 1px solid rgba(245,166,35,.3); border-radius: var(--radius-btn); padding: 8px 10px; }
@@ -53,6 +57,11 @@
   </div>
 
   <div id="qr-box" class="qr-box"></div>
+
+  <div class="qr-actions">
+    <button id="lan-refresh" class="btn">🔄 刷新二维码</button>
+    <span class="qr-tip">每 30 秒自动刷新（地址变化会自动更新）</span>
+  </div>
 
   <div class="firewall" id="firewall" hidden>
     首次使用如无法访问：在 Windows 防火墙放行 DSH-Desktop（或允许 Node/Electron 访问专用网络），并确保手机与电脑在同一 WiFi。

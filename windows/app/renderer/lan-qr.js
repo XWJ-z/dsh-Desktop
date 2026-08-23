@@ -78,5 +78,10 @@
     }
   });
 
+  // v1.2.7：二维码 30s 自动刷新 + 手动刷新（局域网 IP/代理端口变化时自动更新）
+  const refreshBtn = document.getElementById('lan-refresh');
+  if (refreshBtn) refreshBtn.addEventListener('click', () => refresh());
+  setInterval(() => { if (sw.checked) refresh(); }, 30000);
+
   await refresh();
 })();
