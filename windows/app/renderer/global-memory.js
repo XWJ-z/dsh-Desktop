@@ -44,6 +44,7 @@ let dshFields = [];    // DSH 设定 [{name,value}]
 let roleFields = [];   // DSH 角色 [{name, desc: 定位, memory: 详细记忆+其他}]（v1.0.3：字段输入化）
 let sections = [];     // 其他 ## 区块 [{title, body}]（全局记忆区块类别下展示）
 let activeKey = USERS_KEY;
+let nextSectionNum = null; // v1.2.3（用户指令 4）：新区块自动编号基准（loadData 按所有 ## 标题算出）
 let fileExists = false;
 let filePath = '';
 let fileSignature = ''; // v1.0.2b：AGENTS.md + 角色文件 变更指纹（聚焦自动刷新依据）
@@ -84,8 +85,8 @@ function renderCats() {
   const cats = el('cats');
   let html = `<div class="cat ${activeKey === USERS_KEY ? 'active' : ''}" data-key="${USERS_KEY}">👤 用户设定<span class="tag">字段</span></div>`;
   html += `<div class="cat ${activeKey === DSH_KEY ? 'active' : ''}" data-key="${DSH_KEY}">🤖 我的设定<span class="tag">字段</span></div>`;
-  html += `<div class="cat ${activeKey === MEMO_KEY ? 'active' : ''}" data-key="${MEMO_KEY}">🧠 全局记忆区块<span class="tag">## 汇总</span></div>`;
   html += `<div class="cat ${activeKey === ROLES_KEY ? 'active' : ''}" data-key="${ROLES_KEY}">🎭 DSH 角色<span class="tag">文件同步</span></div>`;
+  html += `<div class="cat ${activeKey === MEMO_KEY ? 'active' : ''}" data-key="${MEMO_KEY}">🧠 全局记忆区块<span class="tag">## 汇总</span></div>`;
   cats.innerHTML = html;
   cats.querySelectorAll('.cat[data-key]').forEach((c) => {
     c.addEventListener('click', () => { activeKey = c.dataset.key; renderAll(); });
@@ -324,7 +325,8 @@ function renderMemoEditor() {
       <textarea class="memo-editor-body${hasSubs ? ' compact' : ''}" rows="10" placeholder="此区块内容…">${escapeHtml(s.body)}</textarea>
     </div>`;
   }
-  const addSubBtn = hasSubs ? '<button id="btn-add-sub" class="add-field">＋ 添加子区块</button>' : '';
+  // v1.2.3（用户指令 2）：「＋ 添加子区块」放到子区块内容汇总之后、更醒目的全宽按钮（不再被前言框遮挡）
+  const addSubBtn = '<button id="btn-add-sub" class="add-field add-sub-btn">＋ 添加子区块</button>';
   // v1.2.3（用户修复）：该 ## 下所有 ### 子区块内容汇总（只读预览；编辑请在左侧点 ### 子项）——
   // 解决「点 ## 组头显示空白」。# # 本身可能没有前言，内容都收在 ### 子区块里。
   const subPreview = hasSubs ? `
@@ -341,7 +343,7 @@ function renderMemoEditor() {
       <span class="hash">##</span>
       <input class="memo-editor-title" value="${escapeHtml(s.title)}" placeholder="区块标题（如：项目备忘）" />
       <button class="del" title="删除此区块">✕</button>
-    </div>${introField}${addSubBtn}${subPreview}`;
+    </div>${introField}${subPreview}${addSubBtn}`;
   const title = ed.querySelector('.memo-editor-title');
   title.addEventListener('input', () => {
     s.title = title.value;
@@ -357,12 +359,69 @@ function renderMemoEditor() {
   if (addSubBtnEl) addSubBtnEl.addEventListener('click', addSub);
 }
 
-/** 「＋ 添加区块」：界面内新建（不用 prompt —— 沙箱渲染进程禁用 window.prompt） */
+// ── v1.2.3（用户指令 3/4）：新区块 / 子区块自动编号 ──
+const CN_NUMS = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+/** 1..99 → 中文数字（一…九 / 十 / 十一… / 二十… / 九十九） */
+function cnNum(n) {
+  const x = Math.floor(Number(n) || 0);
+  if (x <= 0) return String(x);
+  if (x < 10) return CN_NUMS[x];
+  const tens = Math.floor(x / 10);
+  const ones = x % 10;
+  if (x < 20) return '十' + (ones ? CN_NUMS[ones] : '');
+  return CN_NUMS[tens] + '十' + (ones ? CN_NUMS[ones] : '');
+}
+/** 中文数字（一…九 / 十 / 十一… / 二十…）→ 整数；不认识返回 null */
+function cnToNum(s) {
+  const str = String(s || '').trim();
+  if (!str) return null;
+  if (str.length === 1) { const i = CN_NUMS.indexOf(str); return i >= 0 ? i : null; }
+  if (str === '十') return 10;
+  const shi = str.indexOf('十');
+  if (shi === -1) return null;
+  const tens = shi === 0 ? 1 : CN_NUMS.indexOf(str[shi - 1]);
+  if (tens <= 0) return null;
+  let val = tens * 10;
+  const tail = str.slice(shi + 1);
+  if (tail) { const o = CN_NUMS.indexOf(tail); if (o < 0) return null; val += o; }
+  return val;
+}
+/** 从标题开头提取序号（中文 一… 或 数字 1…）；无序号返回 null */
+function numFromTitle(title) {
+  const t = String(title || '').trim();
+  const c = /^([零一二三四五六七八九十]+)/.exec(t);
+  if (c) { const v = cnToNum(c[1]); if (v != null) return v; }
+  const a = /^(\d+)/.exec(t);
+  if (a) return parseInt(a[1], 10);
+  return null;
+}
+/** 计算下一个子区块序号（沿用现有「n.m 标题」规律，如 4.3 → 4.4）；无规律返回 null */
+function nextSubNum(subs) {
+  let maxM = 0, sectionN = null;
+  (Array.isArray(subs) ? subs : []).forEach((sb) => {
+    const m = /^(\d+)[.、](\d+)\b/.exec(String(sb.title || '').trim());
+    if (m) {
+      const thisN = parseInt(m[1], 10);
+      const thisM = parseInt(m[2], 10);
+      if (thisM > maxM) { maxM = thisM; sectionN = thisN; }
+    }
+  });
+  return sectionN === null ? null : `${sectionN}.${maxM + 1}`;
+}
+
+/** 「＋ 添加区块」：界面内新建（不用 prompt —— 沙箱渲染进程禁用 window.prompt）
+ *  v1.2.3（用户指令 4）：自动编号 —— 现有 ## 最大序号 +1（如已有 四 → 新加 五、新区块）。 */
 function addSection() {
-  let name = '新区块';
+  const baseName = '新区块';
+  const num = nextSectionNum;
+  let title = num !== null ? `${cnNum(num)}、${baseName}` : baseName;
   let i = 1;
-  while (sections.some((s) => s.title === name)) { i++; name = `新区块${i}`; }
-  sections.push({ title: name, body: '', subs: [] });
+  while (sections.some((s) => s.title === title)) {
+    i++;
+    title = num !== null ? `${cnNum(num)}、${baseName}${i}` : `${baseName}${i}`;
+  }
+  sections.push({ title, body: '', subs: [] });
+  if (num !== null) nextSectionNum = num + 1; // 后续新增继续递增
   selectedSectionIndex = sections.length - 1;
   selectedSubIndex = -1;
   renderMemoList();
@@ -370,13 +429,15 @@ function addSection() {
   if (t) { t.focus(); t.select(); }
 }
 
-/** 「＋ 添加子区块」：给当前含子区块的 ## 追加一个 ### 子区块 */
+/** 「＋ 添加子区块」：给当前 ## 追加一个 ### 子区块
+ *  v1.2.3（用户指令 3）：自动编号 —— 沿用现有「n.m」规律（如 4.1/4.2/4.3 → 4.4）。 */
 function addSub() {
   const s = sections[selectedSectionIndex];
   if (!s) return;
   if (!Array.isArray(s.subs)) s.subs = [];
-  const n = s.subs.length + 1;
-  s.subs.push({ title: `场景 ${n}`, body: '' });
+  const num = nextSubNum(s.subs);
+  const title = num ? `${num} 新区块` : `场景 ${s.subs.length + 1}`;
+  s.subs.push({ title, body: '' });
   selectedSubIndex = s.subs.length - 1;
   renderMemoList();
   const t = document.querySelector('.memo-editor-title');
@@ -627,6 +688,10 @@ async function loadData() {
   if (sections.length === 0) selectedSectionIndex = -1;
   else if (selectedSectionIndex < 0 || selectedSectionIndex >= sections.length) selectedSectionIndex = 0;
   if (selectedSubIndex !== -1 && !(sections[selectedSectionIndex] && sections[selectedSectionIndex].subs && sections[selectedSectionIndex].subs[selectedSubIndex])) selectedSubIndex = -1;
+  // v1.2.3（用户指令 4）：新区块自动编号基准 —— 取所有 ## 区块标题的最大序号（中文/数字），新加继续
+  let maxSecNum = 0;
+  list.forEach((s) => { const n = numFromTitle(s.title); if (n != null && n > maxSecNum) maxSecNum = n; });
+  nextSectionNum = maxSecNum >= 1 ? maxSecNum + 1 : null;
   // v1.0.1（用户指令）：左下角不再显示双路径（按钮直达目录即可）
   el('path').textContent = filePath;
 }
