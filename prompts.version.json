@@ -1,6 +1,6 @@
 {
   "_comment": "提示词库版本标记（v1.1.1 起独立升级）：prompts-updater.js 三源拉取本文件比对版本，大于缓存才拉 prompts.json 更新，版本按日期命名（YYYY-MM-DD）",
-  "version": "2026-08-19",
-  "updated": "2026-08-19",
+  "version": "2026-08-23",
+  "updated": "2026-08-23",
   "description": "DSH-Desktop 提示词库版本（按日期命名，YYYY-MM-DD）"
 }
