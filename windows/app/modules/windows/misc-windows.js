@@ -362,10 +362,10 @@ function createMiscWindowsModule(deps) {
     }
   }
 
-  // ── v1.2.1 T7：局域网扫码二维码窗口（极简，仿备份进度窗口外观）──
+  // ── v1.2.1 T7：手机访问二维码窗口（含药丸开关；窗口做大、说明完整展示不滚动）──
   let lanQrWin = null;
 
-  /** 打开局域网扫码窗口（幂等：已存在则复用/聚焦） */
+  /** 打开手机访问窗口（幂等：已存在则复用/聚焦） */
   function openLanQrWindow() {
     if (lanQrWin && !lanQrWin.isDestroyed()) {
       lanQrWin.show();
@@ -373,14 +373,15 @@ function createMiscWindowsModule(deps) {
       return;
     }
     lanQrWin = new BrowserWindow({
-      width: 360,
-      height: 400,
-      resizable: false,
-      minimizable: false,
-      maximizable: false,
+      width: 460,
+      height: 560,
+      resizable: true,
+      minimizable: true,
+      minWidth: 420,
+      minHeight: 500,
       parent: getMainWindow(),
       modal: false,
-      title: '局域网访问',
+      title: '手机访问',
       autoHideMenuBar: true,
       backgroundColor: nativeTheme.shouldUseDarkColors ? '#0f1115' : '#eef0f4',
       webPreferences: secureWebPreferences(),
@@ -391,7 +392,7 @@ function createMiscWindowsModule(deps) {
     });
   }
 
-  /** 关闭局域网扫码窗口 */
+  /** 关闭手机访问窗口 */
   function closeLanQrWindow() {
     if (lanQrWin && !lanQrWin.isDestroyed()) lanQrWin.close();
     lanQrWin = null;
@@ -410,7 +411,7 @@ function createMiscWindowsModule(deps) {
     openBackupProgress,
     updateBackupProgress,
     closeBackupProgress,
-    openLanQrWindow, // v1.2.1 T7：局域网扫码窗口
+    openLanQrWindow, // v1.2.1 T7：手机访问窗口
     closeLanQrWindow,
   };
 }

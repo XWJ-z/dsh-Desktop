@@ -95,33 +95,40 @@ async function main() {
   ok(!!pet && pet.ok, '宠物菜单存在');
   ok(!!pet && pet.ok && pet.items.includes('🧠 记忆管理'), '宠物菜单含「🧠 记忆管理」');
   ok(!!pet && pet.ok && pet.items.includes('🛠️ 技能库'), '宠物菜单含「🛠️ 技能库」');
-  ok(!!pet && pet.ok && pet.items.some((t) => String(t).indexOf('📱 局域网访问') === 0), '宠物菜单含「📱 局域网访问」开关');
-  ok(!!pet && pet.ok && !pet.items.some((t) => String(t).indexOf('局域网访问') === 0 && String(t).indexOf('📱') !== 0), '设置菜单不再含「局域网访问」（已移至宠物菜单）');
+  ok(!!pet && pet.ok && pet.items.some((t) => String(t).indexOf('📱 手机访问') === 0), '宠物菜单含「📱 手机访问」入口');
+  ok(!!pet && pet.ok && !pet.items.some((t) => String(t).indexOf('局域网访问') === 0 && String(t).indexOf('📱') !== 0), '宠物菜单不再含「局域网访问」');
 
-  // [2b] 局域网开关点击切换（宠物菜单）：默认关 → 点「局域网访问」→ 应变为「（已开）」
-  console.log('[2b] 局域网访问宠物菜单切换');
-  const lanClick = await cdp.eval(`(async () => {
+  // [2b] 手机访问入口（宠物菜单）：点击打开弹窗（开关在弹窗内，不在此切换）
+  console.log('[2b] 手机访问入口打开弹窗');
+  const lanOpen = await cdp.eval(`(async () => {
     const p = document.getElementById('dsh-pet');
     if (!p) return { ok:false, reason:'no pet' };
-    const lanItem = Array.from(p.querySelectorAll('.pet-item')).find((i) => (i.textContent || '').indexOf('📱 局域网访问') === 0);
+    const lanItem = Array.from(p.querySelectorAll('.pet-item')).find((i) => (i.textContent || '').indexOf('📱 手机访问') === 0);
     if (!lanItem) return { ok:false, reason:'no lan item' };
     lanItem.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-    await new Promise((r) => setTimeout(r, 600));
-    return { ok:true, text: lanItem.textContent.trim() };
+    return { ok:true };
   })()`);
-  console.log('  lanClick:', JSON.stringify(lanClick));
-  ok(!!lanClick && lanClick.ok && /（已开）/.test(lanClick.text || ''), '宠物菜单点「局域网访问」→ 文案变为（已开）');
-  // 关闭回去，保持默认关
-  const lanClickOff = await cdp.eval(`(async () => {
-    const p = document.getElementById('dsh-pet');
-    const lanItem = Array.from(p.querySelectorAll('.pet-item')).find((i) => (i.textContent || '').indexOf('📱 局域网访问') === 0);
-    if (!lanItem) return { ok:false };
-    lanItem.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-    await new Promise((r) => setTimeout(r, 600));
-    return { ok:true, text: lanItem.textContent.trim() };
-  })()`);
-  console.log('  lanClickOff:', JSON.stringify(lanClickOff));
-  ok(!!lanClickOff && lanClickOff.ok && !/（已开）/.test(lanClickOff.text || ''), '宠物菜单再点「局域网访问」→ 文案回到无（已开）');
+  ok(!!lanOpen && lanOpen.ok, '宠物菜单点「📱 手机访问」');
+  const lanWin = await waitTarget(SIM_DEBUG_PORT, (t) => /lan-qr\.html/.test(t.url), 20000);
+  ok(!!lanWin, '手机访问弹窗（lan-qr.html）打开');
+  if (lanWin) {
+    const lc = cdpConnect(lanWin.webSocketDebuggerUrl);
+    await sleep(800);
+    const lstate = await lc.eval(`(() => {
+      const sw = document.getElementById('lan-switch');
+      const st = document.getElementById('switch-state');
+      const qr = document.getElementById('qr-box');
+      const csp = document.querySelector('body');
+      const overflow = csp ? getComputedStyle(csp).overflow : null;
+      return { hasSwitch: !!sw, state: st ? st.textContent.trim() : null, on: sw ? sw.checked : null, qrEmpty: qr ? /未开启/.test(qr.textContent || '') : null, overflow };
+    })()`);
+    console.log('  lanWindow:', JSON.stringify(lstate));
+    ok(!!lstate && lstate.hasSwitch, '手机访问弹窗含药丸开关');
+    ok(!!lstate && lstate.on === false && /未开启/.test(lstate.state || ''), '默认关闭（药丸未开 + 显示未开启）');
+    ok(!!lstate && lstate.qrEmpty === true, '关闭态不显示二维码（仅提示）');
+    ok(!!lstate && lstate.overflow === 'hidden', '弹窗 body overflow:hidden（不滚动）');
+    lc.close();
+  }
 
   // ② 记忆管理窗口双 Tab
   console.log('[3] 记忆管理窗口（双 Tab）');

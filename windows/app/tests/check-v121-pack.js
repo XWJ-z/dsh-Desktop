@@ -18,6 +18,7 @@ function run() {
   const preload = read('preload.js');
   const pet = read('modules/pet.js');
   const menu = read('modules/menu.js');
+  const qrhtml = read('renderer/lan-qr.html');
 
   console.log('[版本一致]');
   ok(pkg.version === '1.2.1', 'package.json version = 1.2.1（实际 ' + pkg.version + '）');
@@ -47,9 +48,11 @@ function run() {
   console.log('[菜单/入口文案]');
   ok(pet.includes('🧠 记忆管理'), '宠物菜单「🧠 记忆管理」');
   ok(pet.includes('🛠️ 技能库'), '宠物菜单「🛠️ 技能库」');
-  ok(pet.includes('data-action="lan"') && pet.includes('📱 局域网访问'), '宠物菜单「📱 局域网访问」开关（已从设置菜单移入）');
-  ok(!menu.includes("label: '局域网访问'"), '设置菜单不再含「局域网访问」');
+  ok(pet.includes('data-action="lan"') && pet.includes('📱 手机访问'), '宠物菜单「📱 手机访问」入口（开关在弹窗内）');
+  ok(!menu.includes("label: '手机访问'") && !menu.includes("label: '局域网访问'"), '设置菜单不再含「手机访问/局域网访问」');
   ok(menu.includes("label: '任务完成通知'"), '设置菜单「任务完成通知」');
+  ok(qrhtml.includes('id="lan-switch"'), '手机访问弹窗含药丸开关');
+  ok(qrhtml.includes('overflow: hidden'), '手机访问弹窗禁止滚动（说明完整展示）');
 
   console.log('[' + (failed ? 'FAIL' : 'OK') + ']');
   process.exit(failed ? 1 : 0);

@@ -159,8 +159,8 @@ function createPet(deps) {
           +   '<div class="pet-item" data-action="pluginmarket">💎 插件市场</div>'
           // v1.2.1 T5：技能库入口（技能 = 纯文本指令，本地写入无执行风险）
           +   '<div class="pet-item" data-action="skilllib">🛠️ 技能库</div>'
-          // v1.2.1 T7：局域网访问开关（宠物菜单，用户指令移到此处）—— 开关 + 弹/关二维码窗口
-          +   '<div class="pet-item" data-action="lan">📱 局域网访问' + (lanOn ? '（已开）' : '') + '</div>'
+          // v1.2.1 T7：手机访问入口（宠物菜单）—— 打开弹窗，开关在弹窗内（药丸开关）
+          +   '<div class="pet-item" data-action="lan">📱 手机访问' + (lanOn ? '（已开）' : '') + '</div>'
           +   '<div class="pet-item" data-action="webopen">🌐 网页打开</div>'
           +   (petHidden
               ? '<div class="pet-item" data-action="showpet">🐋 显示宠物</div>'
@@ -377,20 +377,8 @@ function createPet(deps) {
               // v1.2.1 T5：打开技能库窗口
               if (window.dshDesktop && window.dshDesktop.openSkillLibrary) window.dshDesktop.openSkillLibrary();
             } else if (it.dataset.action === 'lan') {
-              // v1.2.1 T7：局域网访问开关（宠物菜单）—— 读取当前状态取反，切换后更新菜单文案
-              if (window.dshDesktop && window.dshDesktop.getLanAccess && window.dshDesktop.setLanAccess) {
-                window.dshDesktop.getLanAccess().then((cur) => {
-                  const target = !cur;
-                  return window.dshDesktop.setLanAccess(target).then((r) => {
-                    if (r && r.ok) {
-                      it.textContent = target ? '📱 局域网访问（已开）' : '📱 局域网访问';
-                    } else {
-                      it.textContent = '📱 局域网访问' + (cur ? '（已开）' : '');
-                      say(['局域网访问切换失败，请重试'], 2600);
-                    }
-                  });
-                }).catch(() => {});
-              }
+              // v1.2.1 T7：手机访问入口 —— 打开弹窗，开启/关闭在弹窗内的药丸开关
+              if (window.dshDesktop && window.dshDesktop.openLanQr) window.dshDesktop.openLanQr();
             } else if (it.dataset.action === 'webopen') {
               if (window.dshDesktop && window.dshDesktop.openExternal) window.dshDesktop.openExternal(url);
             } else if (it.dataset.action === 'hide') {

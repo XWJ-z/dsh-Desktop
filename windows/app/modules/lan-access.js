@@ -141,15 +141,15 @@ function createLanAccess(deps) {
       const okProxy = await startProxy();
       if (okProxy) {
         openQrWindow();
-        appendLog('info', '局域网访问已开启（基于反向代理，DSH 保持 127.0.0.1 绑定）');
+        appendLog('info', '手机访问已开启（基于反向代理，DSH 保持 127.0.0.1 绑定）');
         return { ok: true };
       }
       closeQrWindow();
-      return { ok: false, message: '局域网代理启动失败（端口不可用），请稍后重试' };
+      return { ok: false, message: '手机访问代理启动失败（端口不可用），请稍后重试' };
     }
     stopProxy();
     closeQrWindow();
-    appendLog('info', '局域网访问已关闭');
+    appendLog('info', '手机访问已关闭');
     return { ok: true };
   }
 

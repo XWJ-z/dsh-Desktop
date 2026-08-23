@@ -390,7 +390,7 @@ function registerIpc(deps) {
       }
       return { enabled: data.enabled, port: data.port, ips };
     } catch (err) {
-      appendLog('error', `局域网二维码数据异常：${err.message}`);
+      appendLog('error', `手机访问二维码数据异常：${err.message}`);
       return { enabled: false, port: 0, ips: [] };
     }
   });
@@ -398,7 +398,7 @@ function registerIpc(deps) {
     try {
       return await lanApi.setLanMode(!!enabled);
     } catch (err) {
-      appendLog('error', `切换局域网访问异常：${err.message}`);
+      appendLog('error', `切换手机访问异常：${err.message}`);
       return { ok: false, message: err.message };
     }
   });
