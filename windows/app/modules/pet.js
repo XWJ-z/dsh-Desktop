@@ -153,8 +153,8 @@ function createPet(deps) {
           // v1.2.1：改为「记忆管理」（全局记忆 + 项目记忆 双 Tab）
           +   '<div class="pet-item" data-action="memory">🧠 记忆管理</div>'
           +   '<div class="pet-item" data-action="promptlib">💡 提示词库</div>'
-          // v1.1.1：插件市场入口（用户指令：保留 💎 图标）
-          +   '<div class="pet-item" data-action="pluginmarket">💎 插件市场</div>'
+          // v1.2.6：插件市场更名插件库（用户指令：保留 💎 图标）
+          +   '<div class="pet-item" data-action="pluginmarket">💎 插件库</div>'
           // v1.2.1 T5：技能库入口（技能 = 纯文本指令，本地写入无执行风险）
           +   '<div class="pet-item" data-action="skilllib">🛠️ 技能库</div>'
           // v1.2.1 T7：手机访问入口（宠物菜单）—— 打开弹窗，开关在弹窗内（药丸开关）

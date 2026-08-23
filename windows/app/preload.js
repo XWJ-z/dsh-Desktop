@@ -174,6 +174,15 @@ contextBridge.exposeInMainWorld('dshDesktop', {
   copyPluginCommand: (command) => ipcRenderer.invoke('plugin-market:copy-command', command),
   /** 打开插件 GitHub 仓库（白名单外链） */
   openPluginRepo: (url) => ipcRenderer.invoke('plugin-market:open-repo', url),
+  // ── v1.2.6：插件库「已装 / 自建」──
+  /** 枚举已装插件（调 dsh plugin list）→ { ok, plugins?:[{name}], message?, fallback? } */
+  getInstalledPlugins: () => ipcRenderer.invoke('plugin-lib:installed'),
+  /** 列出自建插件（用户本地纯文本封装）→ [{ name, description, command, hint }] */
+  listBuiltPlugins: () => ipcRenderer.invoke('plugin-lib:list-built'),
+  /** 保存自建插件（{ name, description, command, hint }）→ { ok, message? } */
+  saveBuiltPlugin: (payload) => ipcRenderer.invoke('plugin-lib:save-built', payload),
+  /** 删除自建插件（name）→ { ok, message? } */
+  deleteBuiltPlugin: (name) => ipcRenderer.invoke('plugin-lib:delete-built', name),
   // ── v1.1.1：提示词库单独升级（更新窗口）──
   /** 查询提示词库更新信息（{ current, latest, hasUpdate }） */
   queryPromptsUpdate: () => ipcRenderer.invoke('prompts:query'),

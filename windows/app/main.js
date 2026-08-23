@@ -33,7 +33,7 @@ const {
   Notification, // v1.2.1 T8：任务完成通知（系统通知）
   net: electronNet, // v1.1.1：Electron net（Chromium 网络栈 + 系统 CA）；与 node:net 区分
 } = require('electron');
-const { spawn, execFileSync } = require('node:child_process');
+const { spawn, spawnSync, execFileSync } = require('node:child_process');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const http = require('node:http');
@@ -592,6 +592,8 @@ const pluginMarketApi = createPluginMarket({
   net: electronNet, // Electron net（Chromium 网络栈/系统 CA，拉取 README/中文描述）
   appendLog,
   isAllowedExternalUrl,
+  os, // v1.2.6：插件库已装插件（DSH_HOME / ~/.dsh 定位）
+  spawnSync, // v1.2.6：插件库已装插件（执行 dsh plugin list）
 });
 pluginMarketApi.loadCache(); // 启动即载入缓存
 

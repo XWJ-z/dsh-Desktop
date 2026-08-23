@@ -69,7 +69,7 @@ const PLUGIN_CATEGORIES = [
 ];
 
 function createPluginMarket(deps) {
-  const { app, fs, path, shell, clipboard, net, appendLog, isAllowedExternalUrl } = deps;
+  const { app, fs, path, shell, clipboard, net, appendLog, isAllowedExternalUrl, os, spawnSync } = deps;
 
   let cachedPlugins = null;
   let cacheTimestamp = 0;
@@ -464,6 +464,186 @@ function createPluginMarket(deps) {
     }
   }
 
+  // ── v1.2.6：插件库「已装插件」（dsh plugin list CLI）+「自建插件」（纯文本封装）──
+
+  /** DSH home 根目录（$DSH_HOME 优先，否则 ~/.dsh） */
+  function dshHome() {
+    const env = process.env.DSH_HOME;
+    if (env && env.trim().length > 0) return path.resolve(env.trim());
+    return path.join(os.homedir(), '.dsh');
+  }
+
+  /** 默认 profile 目录（应用以 `dsh web` 启动 → profile=web） */
+  function profileDir() {
+    return path.join(dshHome(), 'profiles', 'web');
+  }
+
+  /** DSH CLI 入口候选（profile 共享 node_modules 优先；应用自装运行时兜底） */
+  function dshBinCandidates() {
+    const home = dshHome();
+    return [
+      path.join(home, 'profiles', 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js'),
+      path.join(app.getPath('userData'), 'dshenv', 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js'),
+    ];
+  }
+
+  function runSync(cmd, args, opts) {
+    try {
+      return spawnSync(cmd, args, { encoding: 'utf8', windowsHide: true, ...(opts || {}) });
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * 确保 pnpm 在 PATH（dsh plugin 会在 profile 目录跑 pnpm）：
+   *  ① PATH 上已有 pnpm → 直接用；
+   *  ② 没有但 corepack 可用（其 `pnpm --version` 成功）→ 造一个临时 pnpm.cmd 垫片垫进 PATH；
+   *  ③ 都没有 → 返回 { ok:false }。
+   * 垫片只依赖 PATH 上的 corepack 命令，不依赖 nodejs 安装位置，跨机健壮。
+   * 注意：Windows 上 pnpm/corepack 是 .cmd，spawnSync 需 shell:true 才能解析到。
+   */
+  function ensurePnpmPath() {
+    const probe = runSync('pnpm', ['--version'], { shell: true });
+    if (probe && probe.status === 0) return { ok: true, needShim: false };
+
+    const cp = runSync('corepack', ['pnpm', '--version'], { shell: true });
+    if (cp && cp.status === 0) {
+      const shimDir = path.join(app.getPath('userData'), 'plugin-pnpm-shim');
+      try {
+        fs.mkdirSync(shimDir, { recursive: true });
+        const shim = path.join(shimDir, 'pnpm.cmd');
+        fs.writeFileSync(shim, '@echo off\r\ncorepack pnpm %*\r\n', 'ascii');
+        return { ok: true, needShim: true, shimDir };
+      } catch (err) {
+        appendLog('warn', `创建 pnpm 垫片失败：${err.message}`);
+        return { ok: false };
+      }
+    }
+    return { ok: false };
+  }
+
+  /** 解析 `dsh plugin --profile web list --json` 输出为插件名数组（容错：JSON / 行文本） */
+  function parsePluginOutput(stdout) {
+    if (!stdout) return [];
+    // 去掉 ANSI 颜色码
+    const clean = String(stdout).replace(/\x1b\[[0-9;]*m/g, '');
+    const names = new Set();
+    const addName = (n) => {
+      const nm = String(n || '').trim();
+      if (!nm) return;
+      // 排除 profile 根项目与 DSH 运行时内件（@deepseek-ai/* 全部是运行时 bundle）
+      if (nm === 'dsh-profile-web') return;
+      if (/^@deepseek-ai\//.test(nm)) return;
+      names.add(nm);
+    };
+    const walk = (node) => {
+      if (node == null) return;
+      if (Array.isArray(node)) { node.forEach(walk); return; }
+      if (typeof node === 'object') {
+        if (node.name) addName(node.name);
+        if (node.dependencies && typeof node.dependencies === 'object') Object.keys(node.dependencies).forEach(addName);
+        if (node.children) walk(node.children);
+      }
+    };
+    try {
+      walk(JSON.parse(clean));
+      if (names.size) return Array.from(names);
+    } catch { /* JSON 失败 → 走行解析 */ }
+    // 行解析：每行一个包名（去树形符号）
+    clean.split(/\r?\n/).forEach((l) => {
+      const m = /^\s*(?:[├└│┌┐┘─\s+-]*)\s*([\w@./-]+)(?:\s+[a-z0-9.]+\s*)?$/.exec(l);
+      if (m) addName(m[1]);
+    });
+    return Array.from(names);
+  }
+
+  /**
+   * 枚举已装插件：执行 `dsh plugin --profile web list --json`（DSH CLI，内部为 pnpm ls）。
+   * @returns {Promise<{ ok:boolean, plugins?:Array<{name:string}>, message?:string, fallback?:boolean }>}
+   */
+  async function listInstalledPlugins() {
+    const bin = dshBinCandidates().find((p) => fs.existsSync(p));
+    if (!bin) {
+      appendLog('warn', '未找到 DSH CLI 入口，无法枚举已装插件');
+      return { ok: false, message: '未找到 DSH 运行时，无法枚举已装插件' };
+    }
+    const pnpm = ensurePnpmPath();
+    if (!pnpm.ok) {
+      appendLog('warn', '枚举已装插件失败：需要 pnpm 才能列出 DSH 插件');
+      return { ok: false, message: '需要 pnpm（或 corepack）才能枚举已装插件', fallback: true };
+    }
+    const env = { ...process.env };
+    if (pnpm.needShim) env.PATH = `${pnpm.shimDir};${env.PATH || ''}`;
+    // 用应用自带 electron 运行时作 node（ELECTRON_RUN_AS_NODE），不依赖 PATH 上的 node
+    const nodeExe = process.execPath;
+    env.ELECTRON_RUN_AS_NODE = '1';
+    const r = runSync(nodeExe, [bin, 'plugin', '--profile', 'web', 'list', '--json'], {
+      cwd: profileDir(),
+      env,
+      maxBuffer: 8 * 1024 * 1024,
+    });
+    if (!r || r.status !== 0 || !r.stdout) {
+      appendLog('warn', '枚举已装插件命令失败');
+      return { ok: false, message: '枚举已装插件失败（请确认 DSH 运行时就绪）', fallback: true };
+    }
+    const plugins = parsePluginOutput(r.stdout).map((name) => ({ name }));
+    appendLog('info', `已装插件枚举：${plugins.length} 个`);
+    return { ok: true, plugins };
+  }
+
+  // ── 自建插件（纯文本封装，无代码执行）──
+  function builtPluginsFile() {
+    return path.join(app.getPath('userData'), 'self-built-plugins.json');
+  }
+  function listBuiltPlugins() {
+    try {
+      const raw = fs.readFileSync(builtPluginsFile(), 'utf8');
+      const d = JSON.parse(raw);
+      return Array.isArray(d.plugins) ? d.plugins : [];
+    } catch {
+      return [];
+    }
+  }
+  function saveBuiltPlugin(payload) {
+    const p = payload || {};
+    const name = String(p.name || '').trim();
+    if (!name) return { ok: false, message: '请填写插件名称' };
+    const plugins = listBuiltPlugins();
+    const idx = plugins.findIndex((x) => x.name === name);
+    const item = {
+      name,
+      description: String(p.description || '').trim(),
+      command: String(p.command || '').trim(),
+      hint: String(p.hint || '').trim(),
+      updatedAt: Date.now(),
+    };
+    try {
+      fs.mkdirSync(path.dirname(builtPluginsFile()), { recursive: true });
+      if (idx >= 0) plugins[idx] = item;
+      else plugins.push(item);
+      const f = builtPluginsFile();
+      fs.writeFileSync(`${f}.tmp`, JSON.stringify({ plugins }, null, 2), 'utf8');
+      fs.renameSync(`${f}.tmp`, f);
+      appendLog('info', `自建插件已保存：${name}`);
+      return { ok: true };
+    } catch (err) {
+      appendLog('error', `保存自建插件失败：${err.message}`);
+      return { ok: false, message: err.message };
+    }
+  }
+  function deleteBuiltPlugin(name) {
+    const plugins = listBuiltPlugins().filter((x) => x.name !== name);
+    try {
+      const f = builtPluginsFile();
+      fs.writeFileSync(`${f}.tmp`, JSON.stringify({ plugins }, null, 2), 'utf8');
+      fs.renameSync(`${f}.tmp`, f);
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, message: err.message };
+    }
+  }
+
   return {
     loadCache,
     getPlugins,
@@ -474,6 +654,11 @@ function createPluginMarket(deps) {
     openPluginRepo,
     openOfficialMarket,
     getCategories: () => PLUGIN_CATEGORIES,
+    listInstalledPlugins,
+    listBuiltPlugins,
+    saveBuiltPlugin,
+    deleteBuiltPlugin,
+    parsePluginOutput,
   };
 }
 

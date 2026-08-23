@@ -184,7 +184,7 @@ function createMiscWindowsModule(deps) {
       minWidth: 700,
       minHeight: 500,
       modal: false,
-      title: '插件市场', // v1.1.1：去掉 💎（用户指令：插件市场不显示表情）
+      title: '插件库', // v1.2.6：插件市场更名插件库（去掉 💎，用户指令：不显示表情）
       autoHideMenuBar: true,
       backgroundColor: nativeTheme.shouldUseDarkColors ? '#0f1115' : '#eef0f4',
       webPreferences: secureWebPreferences(),
