@@ -98,6 +98,12 @@ async function run() {
   const got2 = await probe(ep1, 'ping');
   ok(got2 === 'world', 'ensureRunning 后代理仍可用');
 
+  // v1.2.1 修复：重启后（settings.lanAccess=true 持久化）ensureRunning 也应再弹二维码窗口
+  // （VM 实测：开关显示"开"但没有二维码窗口）
+  const openQrAfterRestore = calls.openQr;
+  await lan.ensureRunning();
+  ok(calls.openQr > openQrAfterRestore, '重启后 ensureRunning 会重新弹出二维码窗口');
+
   lan.stopProxy();
   backend.close();
   console.log(`\n${passed} 通过, ${failed} 失败`);

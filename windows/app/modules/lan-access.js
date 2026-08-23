@@ -153,9 +153,16 @@ function createLanAccess(deps) {
     return { ok: true };
   }
 
-  /** 启动时恢复（settings.lanAccess 已开则起代理；幂等） */
+  /** 启动时恢复（settings.lanAccess 已开则起代理；幂等）。
+   *  ⚠️ 修复 2026-08-23：此前只起代理不弹二维码窗口 —— 若上一轮已开启局域网访问
+   *  （settings.lanAccess=true 持久化），重启后代理静默恢复、菜单开关显示"开"，
+   *  但二维码窗口不出现（用户反馈：开了开关却没有二维码）。现补 openQrWindow()。 */
   async function ensureRunning() {
-    if (isEnabled()) await startProxy();
+    if (isEnabled()) {
+      const ok = await startProxy();
+      if (ok) openQrWindow();
+      return !!proxyServer;
+    }
     return !!proxyServer;
   }
 

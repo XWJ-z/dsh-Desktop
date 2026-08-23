@@ -209,6 +209,31 @@ async function main() {
   })()`);
   ok(!!lanOff && lanOff.ok, '关闭局域网访问成功');
 
+  // [10] 局域网二维码窗口真实渲染 —— 补齐此前从未测试的「QR <img> 是否真的画出」
+  console.log('[10] 局域网二维码窗口真实渲染');
+  const lanOn2 = await cdp.eval(`(async () => { try { const r = await window.dshDesktop.setLanAccess(true); return { ok: !!r && r.ok !== false }; } catch (e) { return { ok:false, err:String(e) }; } })()`);
+  ok(!!lanOn2 && lanOn2.ok === true, '再次开启局域网访问');
+  const qrWin = await waitTarget(SIM_DEBUG_PORT, (t) => /lan-qr\.html/.test(t.url), 20000);
+  ok(!!qrWin, '局域网二维码窗口（lan-qr.html）打开');
+  if (qrWin) {
+    const qc = cdpConnect(qrWin.webSocketDebuggerUrl);
+    await sleep(900);
+    const qrState = await qc.eval(`(() => {
+      const imgs = Array.from(document.querySelectorAll('#qr-box .qrcode img'));
+      const firstSrc = (imgs[0] && imgs[0].getAttribute('src')) || null;
+      const n = document.querySelectorAll('#qr-box .qrcode').length;
+      const empty = !!document.querySelector('#qr-box .empty');
+      const failTxt = !!document.querySelector('#qr-box .empty');
+      return { count: n, imgCount: imgs.length, firstSrc: firstSrc ? firstSrc.slice(0, 24) : null, empty, failTxt };
+    })()`);
+    console.log('  qrState:', JSON.stringify(qrState));
+    ok(!!qrState && qrState.imgCount > 0 && /^data:image\/png;base64,/.test(qrState.firstSrc || ''), '二维码 img 真实渲染（data:image/png;base64）');
+    ok(!!qrState && qrState.count === qrState.imgCount && !qrState.empty, '每个局域网地址都生成二维码（无空态）');
+    qc.close();
+  }
+  const lanOff2 = await cdp.eval(`(async () => { try { const r = await window.dshDesktop.setLanAccess(false); return { ok: !!r && r.ok !== false }; } catch (e) { return { ok:false, err:String(e) }; } })()`);
+  ok(!!lanOff2 && lanOff2.ok, '再次关闭局域网访问');
+
   killSim();
   console.log(`\nRESULT: ${passed} PASS / ${failed} FAIL`);
   process.exit(failed ? 1 : 0);
