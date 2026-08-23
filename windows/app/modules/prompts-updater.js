@@ -8,6 +8,8 @@
  *  - 版本号 > 缓存版本 → 拉取 prompts.json → 原子写缓存
  *  - 无网络/失败 → 用缓存；无缓存 → 用包内置 prompts.json（兜底）
  *  - 缓存文件：userData/prompts-cache.json
+ *  - v1.2.6：三源按「权威源优先」选源（GitHub API > raw > jsDelivr/CDN），
+ *    防 CDN 边缘缓存旧版或投毒导致的「检查更新仍是旧版本」。
  *
  * 依赖注入（deps）：
  *  - app / fs / path
@@ -99,10 +101,19 @@ function createPromptsUpdater(deps) {
   }
 
   /**
-   * 从 URL 列表中拉取数据（三源并发，取第一个成功的）
+   * 从 URL 列表中拉取数据（三源并发）——v1.2.6：按「权威源优先」选源，防 CDN 缓存旧版/投毒掩盖新版本。
+   *
+   * 说明：三源中 GitHub API（无 CDN 缓存、永远返回仓库原文件）为权威源；
+   *      raw.githubusercontent 次之；jsDelivr 是 CDN、边缘可能残留旧版/被投毒。
+   *      此前「取第一个成功者」会让 jsDelivr（排在首位）的旧边缘顶住权威源，
+   *      造成「明明已发新版，检查更新却仍是旧版」。现改为：只要任一 GitHub
+   *      权威源可达就优先用它；仅当全部 GitHub 源都不可达时才回退 CDN。
+   *
    * @param {Array<{name: string, url: string, headers?: object}>} urls
    * @returns {Promise<any|null>}
    */
+  const SOURCE_PRIORITY = { 'GitHub API': 0, 'raw.githubusercontent': 1, jsDelivr: 2 };
+
   async function fetchFromUrls(urls) {
     const TIMEOUT_MS = 8000;
 
@@ -118,12 +129,14 @@ function createPromptsUpdater(deps) {
       }),
     );
 
-    for (const result of results) {
-      if (result.status === 'fulfilled' && result.value) {
-        return result.value.data;
-      }
-    }
-    return null;
+    // 权威源优先（GitHub API > raw.githubusercontent > jsDelivr/CDN），
+    // CDN 仅在权威源全部不可达时才兜底，避免旧/投毒边缘掩盖权威新版。
+    const fulfilled = results
+      .filter((r) => r.status === 'fulfilled' && r.value)
+      .map((r) => r.value)
+      .sort((a, b) => (SOURCE_PRIORITY[a.name] ?? 9) - (SOURCE_PRIORITY[b.name] ?? 9));
+
+    return fulfilled.length ? fulfilled[0].data : null;
   }
 
   /**
