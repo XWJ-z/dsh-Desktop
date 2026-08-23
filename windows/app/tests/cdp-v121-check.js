@@ -186,6 +186,26 @@ async function main() {
   console.log('  lan:', JSON.stringify(lan));
   ok(!!lan && lan.ok && !lan.enabled, 'lan:qr-data 可用 + 默认未开启');
 
+  // ⑨ 局域网开关切换（回归：开启后不崩溃、DSH 仍 127.0.0.1、代理启动、关闭恢复）
+  console.log('[9] 局域网开关切换');
+  const lanOn = await cdp.eval(`(async () => {
+    try { const r = await window.dshDesktop.setLanAccess(true); return { ok: !!r && r.ok !== false, r }; }
+    catch (e) { return { ok:false, err:String(e) }; }
+  })()`);
+  console.log('  lanOn:', JSON.stringify(lanOn));
+  ok(!!lanOn && lanOn.ok, '开启局域网访问成功（不崩溃）');
+  const alive = await cdp.eval('!!document.body');
+  ok(alive === true, '开启后 DSH 主页面仍活跃（未被重启/未崩溃）');
+  const lanOnData = await cdp.eval(`(async () => { const d = await window.dshDesktop.getLanQrData(); return { enabled:d.enabled, port:d.port, ips:(d.ips||[]).length }; })()`);
+  console.log('  lanOnData:', JSON.stringify(lanOnData));
+  ok(!!lanOnData && lanOnData.enabled === true, '开启后 lan:qr-data enabled=true');
+  ok(!!lanOnData && lanOnData.port > SIM_PORT, '代理端口 > DSH 端口（' + (lanOnData && lanOnData.port) + '）');
+  const lanOff = await cdp.eval(`(async () => {
+    try { const r = await window.dshDesktop.setLanAccess(false); return { ok: !!r && r.ok !== false }; }
+    catch (e) { return { ok:false, err:String(e) }; }
+  })()`);
+  ok(!!lanOff && lanOff.ok, '关闭局域网访问成功');
+
   killSim();
   console.log(`\nRESULT: ${passed} PASS / ${failed} FAIL`);
   process.exit(failed ? 1 : 0);
