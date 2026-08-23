@@ -3,35 +3,20 @@
 /**
  * skill-library.js — 技能库窗口脚本（v1.2.1 T5）
  *
- * 三块（Tab）：
+ * 两块（Tab）：
  *  - 📦 已装技能：扫描 DSH 技能目录（用户级 + 项目级），查看详情（frontmatter+正文），删除
- *  - ✏️ 自建技能：结构化表单（名称/描述/触发时机/正文）→ 自动生成 SKILL.md frontmatter；列表编辑/删除
  *  - 🌐 技能市场：我们维护的 skills-list.json（分类 + 搜索 + 安装）；安全提示常驻
  *
- * 安全：所有用户数据插值经 escapeHtml 防 XSS；技能名 kebab-case 前端预检（主进程仍校验）。
+ * 安全：所有用户数据插值经 escapeHtml 防 XSS。
  */
 
 (function () {
   const $ = (id) => document.getElementById(id);
   function escapeHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
-  const NAME_RE = /^[a-z0-9-]+$/; // 与主进程 skill-library.safeName 一致（kebab-case）
-  function updateNameFeedback() {
-    const fb = $('name-feedback');
-    if (!fb) return;
-    const v = $('form-name').value.trim();
-    if (v && !NAME_RE.test(v)) {
-      fb.textContent = '仅限英文小写/数字/连字符（如 my-skill），不能用中文或空格';
-      fb.className = 'field-feedback bad';
-    } else {
-      fb.textContent = '';
-      fb.className = 'field-feedback';
-    }
-  }
 
   const tabs = document.querySelectorAll('.tabs .tab');
   const panels = {
     installed: $('panel-installed'),
-    create: $('panel-create'),
     market: $('panel-market'),
   };
   tabs.forEach((t) => {
@@ -40,7 +25,6 @@
       tabs.forEach((x) => x.classList.toggle('active', x === t));
       Object.keys(panels).forEach((k) => { panels[k].hidden = k !== name; });
       if (name === 'installed') loadInstalled();
-      if (name === 'create') loadCreate();
       if (name === 'market') loadMarket();
     });
   });
@@ -66,7 +50,7 @@
   }
   function renderInstalled(list) {
     const box = $('inst-list');
-    if (!list || list.length === 0) { box.innerHTML = '<div class="empty">还没有技能 —— 到「自建技能」创建一个，或到「技能市场」安装</div>'; return; }
+    if (!list || list.length === 0) { box.innerHTML = '<div class="empty">还没有技能 —— 到「技能市场」安装</div>'; return; }
     box.innerHTML = '';
     list.forEach((s) => {
       const card = document.createElement('div');
@@ -105,100 +89,6 @@
       box.appendChild(card);
     });
   }
-
-  // ── 自建技能 ──
-  let createList = [];
-  let editingName = null;
-  async function loadCreate() {
-    try {
-      const all = await window.dshDesktop.listInstalledSkills();
-      createList = all.filter((s) => s.level === 'user'); // 自建 = 用户级
-      renderCreateList();
-      if (editingName && createList.some((s) => s.name === editingName)) {
-        // 保持当前编辑
-      } else if (createList.length > 0) {
-        selectCreate(createList[0].name);
-      } else {
-        editingName = null; resetForm();
-      }
-    } catch (e) { showBanner('create-banner', '加载失败：' + e.message, false); }
-  }
-  function renderCreateList() {
-    const box = $('create-items');
-    if (!createList.length) { box.innerHTML = '<div class="empty">还没有自建技能</div>'; return; }
-    box.innerHTML = '';
-    createList.forEach((s) => {
-      const item = document.createElement('div');
-      item.className = 'create-item' + (editingName === s.name ? ' active' : '');
-      item.innerHTML = '<span class="create-item-name">' + escapeHtml(s.name) + '</span><button class="del" title="删除">×</button>';
-      item.addEventListener('click', () => selectCreate(s.name));
-      item.querySelector('.del').addEventListener('click', async (e) => {
-        e.stopPropagation();
-        if (!confirm('确定删除技能「' + s.name + '」？')) return;
-        const r = await window.dshDesktop.deleteSkill(s.name);
-        if (r && r.ok) { showBanner('create-banner', '技能已删除 ✓', true); editingName = null; loadCreate(); }
-        else showBanner('create-banner', '删除失败', false);
-      });
-      box.appendChild(item);
-    });
-  }
-  async function selectCreate(name) {
-    editingName = name;
-    const r = await window.dshDesktop.readSkill(name);
-    if (r && r.ok) {
-      const fm = parseFmLine(r.content);
-      $('form-name').value = name;
-      $('form-desc').value = fm.description || '';
-      $('form-when').value = fm.whenToUse || '';
-      // 正文 = 去掉 frontmatter
-      $('form-body').value = stripFm(r.content);
-    }
-    renderCreateList();
-  }
-  function resetForm() {
-    $('form-name').value = ''; $('form-desc').value = ''; $('form-when').value = ''; $('form-body').value = '';
-  }
-  function parseFmLine(content) {
-    const m = /^\s*---\r?\n([\s\S]*?)\r?\n---/.exec(String(content));
-    const out = {};
-    if (m) {
-      m[1].split(/\r?\n/).forEach((l) => {
-        const kv = /^\s*([A-Za-z0-9_-]+)\s*:\s*(.*)$/.exec(l);
-        if (kv) out[kv[1]] = kv[2].trim();
-        else if (l.trim() && Object.keys(out).length) {
-          const lastKey = Object.keys(out).pop();
-          out[lastKey] += '\n' + l.trim();
-        }
-      });
-    }
-    return out;
-  }
-  function stripFm(content) {
-    return String(content).replace(/^\s*---\r?\n[\s\S]*?\r?\n---\s*(\r?\n|$)/, '').replace(/^\s*\n+|\s+$/g, '');
-  }
-  $('create-new').addEventListener('click', () => {
-    editingName = null; resetForm();
-    renderCreateList();
-    $('form-name').focus();
-  });
-  $('form-name').addEventListener('input', updateNameFeedback);
-  $('form-save').addEventListener('click', async () => {
-    const name = $('form-name').value.trim();
-    const desc = $('form-desc').value.trim();
-    const when = $('form-when').value.trim();
-    const body = $('form-body').value;
-    if (!name) { showBanner('create-banner', '请填写技能名称', false); return; }
-    if (!NAME_RE.test(name)) { showBanner('create-banner', '技能名称必须是英文小写 kebab-case（仅 a-z、数字、连字符，如 my-skill）', false); return; }
-    if (!body.trim()) { showBanner('create-banner', '技能正文不能为空', false); return; }
-    // v1.2.6：保存包裹 try/catch，任何异常都给出可见提示，不再「点了没反应」静默失败
-    try {
-      const r = await window.dshDesktop.saveSkill({ name, description: desc, whenToUse: when, body });
-      if (r && r.ok) { showBanner('create-banner', '技能已保存 ✓', true); editingName = name; loadCreate(); }
-      else showBanner('create-banner', '保存失败：' + ((r && r.message) || '未知'), false);
-    } catch (e) {
-      showBanner('create-banner', '保存失败（异常）：' + (e && e.message ? e.message : String(e)), false);
-    }
-  });
 
   // ── 技能市场 ──
   let marketCache = [];

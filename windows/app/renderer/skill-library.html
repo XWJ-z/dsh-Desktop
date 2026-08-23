@@ -71,39 +71,12 @@
   <div class="subtitle">技能 = 给模型的指令包（YAML frontmatter + Markdown 正文）。<span class="warn">⚠️ 技能内容会注入模型上下文，安装/使用前请确认来源可信。</span></div>
   <div class="tabs">
     <button id="tab-installed" class="tab active" data-tab="installed">📦 已装技能</button>
-    <button id="tab-create" class="tab" data-tab="create">✏️ 自建技能</button>
     <button id="tab-market" class="tab" data-tab="market">🌐 技能市场</button>
   </div>
   <!-- 已装技能 -->
   <div id="panel-installed" class="panel">
     <div id="inst-banner" class="banner"></div>
     <div id="inst-list" class="card-grid"></div>
-  </div>
-  <!-- 自建技能 -->
-  <div id="panel-create" class="panel" hidden>
-    <div id="create-banner" class="banner"></div>
-    <div class="create-wrap">
-      <div class="create-list">
-        <div class="create-list-head">我的技能</div>
-        <div id="create-items" style="display:flex;flex-direction:column;gap:6px;"></div>
-        <button id="create-new" class="add-field" style="padding:8px 12px;border:1px dashed var(--border-standard);border-radius:var(--radius-btn);background:transparent;color:var(--text-secondary);cursor:pointer;font-size:12.5px;font-weight:590;">＋ 新建技能</button>
-      </div>
-      <div class="create-form">
-        <div class="field-label">技能名称 <span class="hint">英文小写 kebab-case（如 project-review）</span></div>
-        <input id="form-name" class="inp" placeholder="例如 project-review" />
-        <div id="name-feedback" class="field-feedback"></div>
-        <div class="field-label">描述 <span class="hint">一句话说明用途（模型据此判断何时调用）</span></div>
-        <input id="form-desc" class="inp" placeholder="例如 审查项目时按清单逐项检查" />
-        <div class="field-label">触发时机（可选） <span class="hint">whenToUse，说明何时使用</span></div>
-        <input id="form-when" class="inp" placeholder="例如 当用户要求审查代码时" />
-        <div class="field-label">正文 <span class="hint">Markdown 指令内容（模型加载时读取）</span></div>
-        <textarea id="form-body" class="inp" style="min-height:180px;" placeholder="# 指令正文…"></textarea>
-        <div class="create-actions">
-          <span style="flex:1;"></span>
-          <button id="form-save" class="btn" style="padding:8px 20px;">保存自建技能</button>
-        </div>
-      </div>
-    </div>
   </div>
   <!-- 技能市场 -->
   <div id="panel-market" class="panel" hidden>

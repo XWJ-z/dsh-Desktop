@@ -479,39 +479,6 @@ function registerIpc(deps) {
     pluginMarket.openPluginRepo(url);
     return true;
   });
-  // v1.2.6：插件库「已装 / 自建」
-  ipcMain.handle('plugin-lib:installed', async () => {
-    try {
-      return await pluginMarket.listInstalledPlugins();
-    } catch (err) {
-      appendLog('error', `枚举已装插件异常：${err.message}`);
-      return { ok: false, message: err.message, fallback: true };
-    }
-  });
-  ipcMain.handle('plugin-lib:list-built', () => {
-    try {
-      return pluginMarket.listBuiltPlugins();
-    } catch (err) {
-      appendLog('error', `列出自建插件异常：${err.message}`);
-      return [];
-    }
-  });
-  ipcMain.handle('plugin-lib:save-built', (_e, payload) => {
-    try {
-      return pluginMarket.saveBuiltPlugin(payload || {});
-    } catch (err) {
-      appendLog('error', `保存自建插件异常：${err.message}`);
-      return { ok: false, message: err.message };
-    }
-  });
-  ipcMain.handle('plugin-lib:delete-built', (_e, name) => {
-    try {
-      return pluginMarket.deleteBuiltPlugin(name);
-    } catch (err) {
-      appendLog('error', `删除自建插件异常：${err.message}`);
-      return { ok: false, message: err.message };
-    }
-  });
   // v1.1.1：提示词库单独升级 —— 更新窗口查询 / 立即更新
   ipcMain.handle('prompts:query', async () => {
     return await promptsUpdater.queryInfo();
