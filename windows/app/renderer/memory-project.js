@@ -315,12 +315,14 @@
               <pre class="memo-sub-preview-body">${escapeHtml(sb.body || '')}</pre>
             </div>`).join('')}
         </div>` : '';
+      // v1.2.5：「＋ 添加子区块」—— 选中 ## 区块时提供（与全局记忆一致），给该区块新增 ### 子区块
+      const addSubBtn = '<button id="pm-add-sub" class="add-field add-sub-btn">＋ 添加子区块</button>';
       ed.innerHTML = `
         <div class="memo-editor-head">
           <span class="hash">##</span>
           <input class="memo-editor-title" value="${escAttr(s.title)}" placeholder="区块标题（如 项目背景）" />
           <button class="del" title="删除此区块">✕</button>
-        </div>${introField}${subPreview}`;
+        </div>${introField}${subPreview}${addSubBtn}`;
       const title = ed.querySelector('.memo-editor-title');
       title.addEventListener('input', () => {
         s.title = title.value;
@@ -336,6 +338,8 @@
       if (introDel) introDel.addEventListener('click', () => { s.body = ''; this.renderNav(); });
       const body = ed.querySelector('.memo-editor-body');
       if (body) body.addEventListener('input', (e) => { s.body = e.target.value; });
+      const addSubEl = ed.querySelector('#pm-add-sub');
+      if (addSubEl) addSubEl.addEventListener('click', () => this.addSub());
     },
 
     addSection() {
@@ -414,6 +418,7 @@
   $('pm-new-path').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('pm-new-go').click(); });
 
   $('pm-add-sec').addEventListener('click', () => pm.addSection());
+  $('pm-add-sub-nav').addEventListener('click', () => pm.addSub());
 
   $('pm-save').addEventListener('click', async () => {
     if (!pm.current) { alert('请先选择/输入项目路径'); return; }

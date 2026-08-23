@@ -56,6 +56,13 @@
     /* v1.2.3：项目记忆三栏 —— 中栏「区块导航」+ 右栏「内容编辑」（复用全局记忆 memo-* 样式） */
     .pm-navcol { width: 200px; flex-shrink: 0; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
     #pm-nav { width: 100%; padding-right: 2px; }
+    /* v1.2.5：项目记忆「区块导航」栏两个添加按钮，统一实底样式（与全局记忆一致、比面板背景显眼） */
+    .pm-navcol .pm-add-nav-btn {
+      align-self: stretch; display: flex; align-items: center; justify-content: center;
+      padding: 10px 14px; font-size: 13px; font-weight: 700;
+      background: rgba(124,120,255,.12); border-color: rgba(124,120,255,.5); color: var(--text-primary);
+    }
+    .pm-navcol .pm-add-nav-btn:hover { background: rgba(124,120,255,.2); }
     .pm-editor { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
     .pm-editor { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; background: var(--bg-input); border: 1px solid var(--border-standard); border-radius: var(--radius-btn); padding: 12px 14px; }
     .pm-head-input { width: 100%; min-height: 44px; resize: vertical; box-sizing: border-box; padding: 8px 11px; background: var(--bg-input); border: 1px solid var(--border-standard); border-radius: var(--radius-btn); color: var(--text-primary); font: 12.5px/1.6 Consolas, "Courier New", "Microsoft YaHei", monospace; outline: none; white-space: pre-wrap; }
@@ -480,7 +487,8 @@
       <div class="pm-navcol">
         <div class="pm-side-head">区块导航</div>
         <div id="pm-nav" class="memo-list pm-nav-list"></div>
-        <button id="pm-add-sec" class="add-field add-sub-btn">＋ 添加区块</button>
+        <button id="pm-add-sec" class="add-field pm-add-nav-btn">＋ 添加区块</button>
+        <button id="pm-add-sub-nav" class="add-field pm-add-nav-btn">＋ 添加子区块</button>
       </div>
       <div class="pm-editor">
         <div id="pm-editor-head" style="font-size:12.5px;color:var(--text-secondary);">正在编辑：<span id="pm-current-path"></span></div>
