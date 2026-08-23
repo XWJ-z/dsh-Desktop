@@ -42,7 +42,7 @@
       border-radius: var(--radius-btn); padding: 10px 12px;
     }
     .pm-main { display: flex; gap: 12px; flex: 1; min-height: 0; }
-    .pm-side { width: 210px; flex-shrink: 0; display: flex; flex-direction: column; gap: 6px; overflow-y: auto; }
+    .pm-side { width: 210px; flex-shrink: 0; display: flex; flex-direction: column; gap: 6px; min-height: 0; overflow-y: auto; }
     .pm-side-head { font-size: 12px; font-weight: 590; color: var(--text-secondary); margin: 2px 4px 0; }
     .pm-item {
       display: flex; align-items: center; gap: 7px; padding: 8px 10px;
@@ -54,8 +54,8 @@
     .pm-item-name { font-size: 12.5px; font-weight: 590; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .pm-item-date { font-size: 10px; color: var(--text-quaternary); flex-shrink: 0; }
     /* v1.2.3：项目记忆三栏 —— 中栏「区块导航」+ 右栏「内容编辑」（复用全局记忆 memo-* 样式） */
-    .pm-navcol { width: 200px; flex-shrink: 0; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-    #pm-nav { width: 100%; padding-right: 2px; }
+    .pm-navcol { width: 200px; flex-shrink: 0; display: flex; flex-direction: column; gap: 6px; min-width: 0; min-height: 0; }
+    #pm-nav { flex: 1; min-height: 0; width: 100%; padding-right: 2px; }
     /* v1.2.5：项目记忆「区块导航」栏两个添加按钮，统一实底样式（与全局记忆一致、比面板背景显眼） */
     .pm-navcol .pm-add-nav-btn {
       align-self: stretch; display: flex; align-items: center; justify-content: center;
@@ -63,7 +63,7 @@
       background: rgba(124,120,255,.12); border-color: rgba(124,120,255,.5); color: var(--text-primary);
     }
     .pm-navcol .pm-add-nav-btn:hover { background: rgba(124,120,255,.2); }
-    .pm-editor { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+    .pm-editor { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
     .pm-editor { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; background: var(--bg-input); border: 1px solid var(--border-standard); border-radius: var(--radius-btn); padding: 12px 14px; }
     .pm-head-input { width: 100%; min-height: 44px; resize: vertical; box-sizing: border-box; padding: 8px 11px; background: var(--bg-input); border: 1px solid var(--border-standard); border-radius: var(--radius-btn); color: var(--text-primary); font: 12.5px/1.6 Consolas, "Courier New", "Microsoft YaHei", monospace; outline: none; white-space: pre-wrap; }
     .pm-head-input:focus { border-color: rgba(94,106,210,.55); }
