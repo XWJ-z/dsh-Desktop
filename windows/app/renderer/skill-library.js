@@ -14,6 +14,19 @@
 (function () {
   const $ = (id) => document.getElementById(id);
   function escapeHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+  const NAME_RE = /^[a-z0-9-]+$/; // 与主进程 skill-library.safeName 一致（kebab-case）
+  function updateNameFeedback() {
+    const fb = $('name-feedback');
+    if (!fb) return;
+    const v = $('form-name').value.trim();
+    if (v && !NAME_RE.test(v)) {
+      fb.textContent = '仅限英文小写/数字/连字符（如 my-skill），不能用中文或空格';
+      fb.className = 'field-feedback bad';
+    } else {
+      fb.textContent = '';
+      fb.className = 'field-feedback';
+    }
+  }
 
   const tabs = document.querySelectorAll('.tabs .tab');
   const panels = {
@@ -168,17 +181,23 @@
     renderCreateList();
     $('form-name').focus();
   });
+  $('form-name').addEventListener('input', updateNameFeedback);
   $('form-save').addEventListener('click', async () => {
     const name = $('form-name').value.trim();
     const desc = $('form-desc').value.trim();
     const when = $('form-when').value.trim();
     const body = $('form-body').value;
     if (!name) { showBanner('create-banner', '请填写技能名称', false); return; }
-    if (!/^[a-z0-9-]+$/.test(name)) { showBanner('create-banner', '技能名称必须是小写 kebab-case（a-z、数字、连字符）', false); return; }
+    if (!NAME_RE.test(name)) { showBanner('create-banner', '技能名称必须是英文小写 kebab-case（仅 a-z、数字、连字符，如 my-skill）', false); return; }
     if (!body.trim()) { showBanner('create-banner', '技能正文不能为空', false); return; }
-    const r = await window.dshDesktop.saveSkill({ name, description: desc, whenToUse: when, body });
-    if (r && r.ok) { showBanner('create-banner', '技能已保存 ✓', true); editingName = name; loadCreate(); }
-    else showBanner('create-banner', '保存失败：' + ((r && r.message) || '未知'), false);
+    // v1.2.6：保存包裹 try/catch，任何异常都给出可见提示，不再「点了没反应」静默失败
+    try {
+      const r = await window.dshDesktop.saveSkill({ name, description: desc, whenToUse: when, body });
+      if (r && r.ok) { showBanner('create-banner', '技能已保存 ✓', true); editingName = name; loadCreate(); }
+      else showBanner('create-banner', '保存失败：' + ((r && r.message) || '未知'), false);
+    } catch (e) {
+      showBanner('create-banner', '保存失败（异常）：' + (e && e.message ? e.message : String(e)), false);
+    }
   });
 
   // ── 技能市场 ──

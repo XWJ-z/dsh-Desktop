@@ -48,6 +48,8 @@
     .create-form { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; background: var(--bg-input); border: 1px solid var(--border-standard); border-radius: var(--radius-btn); padding: 12px 14px; overflow-y: auto; }
     .field-label { font-size: 12px; font-weight: 590; color: var(--brand); }
     .field-label .hint { font-weight: 400; color: var(--text-quaternary); margin-left: 6px; font-size: 11px; }
+    .field-feedback { display: none; font-size: 11px; color: #e5484d; margin-top: 4px; line-height: 1.5; }
+    .field-feedback.bad { display: block; }
     .inp, textarea.inp { width: 100%; box-sizing: border-box; padding: 8px 10px; background: var(--bg-input); border: 1px solid var(--border-standard); border-radius: var(--radius-btn); color: var(--text-primary); font: 12.5px/1.6 Consolas, "Courier New", "Microsoft YaHei", monospace; outline: none; }
     .inp:focus, textarea.inp:focus { border-color: rgba(94,106,210,.55); }
     textarea.inp { resize: vertical; white-space: pre-wrap; }
@@ -87,8 +89,9 @@
         <button id="create-new" class="add-field" style="padding:8px 12px;border:1px dashed var(--border-standard);border-radius:var(--radius-btn);background:transparent;color:var(--text-secondary);cursor:pointer;font-size:12.5px;font-weight:590;">＋ 新建技能</button>
       </div>
       <div class="create-form">
-        <div class="field-label">技能名称 <span class="hint">小写 kebab-case（a-z、数字、连字符）</span></div>
+        <div class="field-label">技能名称 <span class="hint">英文小写 kebab-case（如 project-review）</span></div>
         <input id="form-name" class="inp" placeholder="例如 project-review" />
+        <div id="name-feedback" class="field-feedback"></div>
         <div class="field-label">描述 <span class="hint">一句话说明用途（模型据此判断何时调用）</span></div>
         <input id="form-desc" class="inp" placeholder="例如 审查项目时按清单逐项检查" />
         <div class="field-label">触发时机（可选） <span class="hint">whenToUse，说明何时使用</span></div>
