@@ -19,21 +19,21 @@ const USERS_KEY = '__users__';
 const DSH_KEY = '__dsh__';
 const MEMO_KEY = '__memo__';    // v1.0.2（用户指令 2）：全局记忆区块（合并所有 ## 区块）
 const ROLES_KEY = '__roles__';
-const DEFAULT_FIELDS = ['用户的称呼', '用户的身份/角色', '当前项目', '常用约定'];
-const DEFAULT_DSH_FIELDS = ['我的名字', '语气风格', '输出习惯', '默认角色'];
-const DEFAULT_ROLES = ['角色 1', '角色 2', '角色 3'];
+const DEFAULT_FIELDS = ['称呼', '身份/角色', '当前项目 1', '当前项目 2'];
+const DEFAULT_DSH_FIELDS = ['名字', '语气风格', '输出习惯', '默认角色'];
+const DEFAULT_ROLES = ['日常助理', '嵌入式开发工程师', '全栈工程师'];
 const VALUE_HINTS = {
-  用户的称呼: '例：用户 / 张三',
-  用户的身份角色: '例：技术总监 / 项目负责人',
-  当前项目: '例：DSH-Desktop（Electron 套壳）',
-  常用约定: '例：有改必升版本号；开发日志必写',
-  我的名字: '例：小鲸鱼',
+  称呼: '例：老大 / 张三',
+  '身份/角色': '例：嵌入式开发教学、windows 应用开发师',
+  '当前项目 1': '例：stm32入门PCB（适配江协）→ D:\\...',
+  '当前项目 2': '例：DSH-Desktop（主项目）→ D:\\...',
+  名字: '例：开发助手-6（小名：小六）',
   语气风格: '例：专业、简洁、中文',
   输出习惯: '例：代码带注释、结论先行',
   默认角色: '下拉选择：本次对话默认使用的角色',
-  '角色 1': '角色定位（文件：~/.dsh/roles/角色 1.md）',
-  '角色 2': '角色定位（文件：~/.dsh/roles/角色 2.md）',
-  '角色 3': '角色定位（文件：~/.dsh/roles/角色 3.md）',
+  日常助理: '协助处理日常工作任务',
+  嵌入式开发工程师: 'stm32 单片机开发（软件 + 硬件 + 教学）',
+  全栈工程师: 'windows、fnos、安卓、鸿蒙软件开发',
 };
 const VALUE_HINT_FALLBACK = '填写内容…';
 const TIDY_PROMPT = '整理你的全局记忆，不要改变原意'; // v0.9.12：保存后可选让 DSH 整理记忆
@@ -203,40 +203,79 @@ function renderRows(listElId, arr) {
 function renderFields() { renderRows('fields', userFields); }
 function renderDshFields() { renderRows('dsh-fields', dshFields); }
 
-// ── v1.2.3（用户指令）：全局记忆区块 —— 左侧区块列表 + 右侧编辑（对齐 DSH 角色，无卡片弹跳）──
+// ── v1.2.3（用户指令）：全局记忆区块 —— 左侧层级列表（## 组头 + 缩进 ### 子项）+ 右侧编辑 ──
 let selectedSectionIndex = -1; // 当前编辑的区块下标（-1 = 无）
+let selectedSubIndex = -1;     // 当前编辑的子区块下标（-1 = 区块级/前言；>=0 = ### 子区块）
 function renderMemoList() {
   const list = el('memo-list');
   if (!list) return;
   // 选中下标越界时回落到最后一个；无区块则置 -1
-  if (sections.length === 0) selectedSectionIndex = -1;
-  else if (selectedSectionIndex < 0 || selectedSectionIndex >= sections.length) selectedSectionIndex = 0;
-  // 左侧区块列表：## 图标 + 标题 + 删除
-  list.innerHTML = sections.map((s, i) => `
-    <div class="memo-item${i === selectedSectionIndex ? ' active' : ''}" data-i="${i}" title="点击编辑此区块">
+  if (sections.length === 0) { selectedSectionIndex = -1; selectedSubIndex = -1; }
+  else if (selectedSectionIndex < 0 || selectedSectionIndex >= sections.length) { selectedSectionIndex = sections.length - 1; selectedSubIndex = -1; }
+  const hasSubs = (s) => Array.isArray(s.subs) && s.subs.length > 0;
+  list.innerHTML = sections.map((s, i) => {
+    if (!hasSubs(s)) {
+      // 无子区块 → 普通项（编辑 ## 标题 + 内容）
+      return `<div class="memo-item${i === selectedSectionIndex && selectedSubIndex === -1 ? ' active' : ''}" data-i="${i}" title="点击编辑此区块">
+        <span class="memo-item-icon">##</span>
+        <span class="memo-item-name">${escapeHtml(s.title || '（未命名）')}</span>
+        <button class="del" data-i="${i}" title="删除此区块">✕</button>
+      </div>`;
+    }
+    // 有子区块 → ## 组头 + 缩进 ### 子项
+    const group = `<div class="memo-group${i === selectedSectionIndex && selectedSubIndex === -1 ? ' active' : ''}" data-i="${i}" title="点击编辑此区块标题/前言">
       <span class="memo-item-icon">##</span>
-      <span class="memo-item-name">${escapeHtml(s.title || '（未命名）')}</span>
-      <button class="del" data-i="${i}" title="删除此区块">✕</button>
-    </div>`).join('')
+      <span class="memo-group-name">${escapeHtml(s.title || '（未命名）')}</span>
+      <button class="del" data-i="${i}" title="删除此区块（含子区块）">✕</button>
+    </div>`;
+    const subs = s.subs.map((sb, j) => `
+      <div class="memo-sub${i === selectedSectionIndex && selectedSubIndex === j ? ' active' : ''}" data-i="${i}" data-j="${j}" title="点击编辑此子区块">
+        <span class="memo-item-icon memo-sub-icon">###</span>
+        <span class="memo-sub-name">${escapeHtml(sb.title || '（未命名）')}</span>
+        <button class="del" data-i="${i}" data-j="${j}" title="删除此子区块">✕</button>
+      </div>`).join('');
+    return group + subs;
+  }).join('')
     + (sections.length === 0 ? '<div class="sec-empty">还没有 ## 区块 —— 点下方「＋ 添加区块」新建，或直接编辑保存后自动识别</div>' : '');
-  list.querySelectorAll('.memo-item').forEach((row) => {
+  list.querySelectorAll('.memo-item, .memo-group').forEach((row) => {
     row.addEventListener('click', (e) => {
       if (e.target.closest('.del')) return;
       selectedSectionIndex = Number(row.dataset.i);
+      selectedSubIndex = -1;
       renderMemoList();
     });
   });
-  list.querySelectorAll('.memo-item .del').forEach((b) => {
+  list.querySelectorAll('.memo-sub').forEach((row) => {
+    row.addEventListener('click', (e) => {
+      if (e.target.closest('.del')) return;
+      selectedSectionIndex = Number(row.dataset.i);
+      selectedSubIndex = Number(row.dataset.j);
+      renderMemoList();
+    });
+  });
+  list.querySelectorAll('.memo-item .del, .memo-group .del').forEach((b) => {
     b.addEventListener('click', (e) => {
       e.stopPropagation();
-      sections.splice(Number(b.closest('.memo-item').dataset.i), 1);
+      sections.splice(Number(b.closest('[data-i]').dataset.i), 1);
+      selectedSubIndex = -1;
+      renderMemoList();
+    });
+  });
+  list.querySelectorAll('.memo-sub .del').forEach((b) => {
+    b.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const i = Number(b.dataset.i);
+      const j = Number(b.dataset.j);
+      const sec = sections[i];
+      if (sec && Array.isArray(sec.subs)) sec.subs.splice(j, 1);
+      if (selectedSubIndex >= (sec.subs ? sec.subs.length : 0)) selectedSubIndex = -1;
       renderMemoList();
     });
   });
   renderMemoEditor();
 }
 
-/** 右侧编辑面板：## 标题 + 区块长文本（格式原样保留） */
+/** 右侧编辑面板：区块级（## 标题 + 前言）或子区块级（### 标题 + 内容） */
 function renderMemoEditor() {
   const ed = el('memo-editor');
   if (!ed) return;
@@ -245,6 +284,35 @@ function renderMemoEditor() {
     ed.innerHTML = '<div class="sec-empty">点击左侧区块进入编辑，或「＋ 添加区块」新建</div>';
     return;
   }
+  if (selectedSubIndex >= 0) {
+    const sb = s.subs && s.subs[selectedSubIndex];
+    if (!sb) { ed.innerHTML = '<div class="sec-empty">该子区块不存在</div>'; return; }
+    ed.innerHTML = `
+      <div class="memo-editor-head">
+        <span class="hash">###</span>
+        <input class="memo-editor-title" value="${escapeHtml(sb.title)}" placeholder="子区块标题（如：4.1 日常对话）" />
+        <button class="del" title="删除此子区块">✕</button>
+      </div>
+      <div class="memo-editor-field">
+        <div class="memo-editor-label">子区块内容<span class="hint">（长文本 · 格式原样保留）</span></div>
+        <textarea class="memo-editor-body" rows="10" placeholder="此子区块内容…">${escapeHtml(sb.body)}</textarea>
+      </div>`;
+    const title = ed.querySelector('.memo-editor-title');
+    title.addEventListener('input', () => {
+      s.subs[selectedSubIndex].title = title.value;
+      const item = document.querySelector(`.memo-sub[data-i="${selectedSectionIndex}"][data-j="${selectedSubIndex}"] .memo-sub-name`);
+      if (item) item.textContent = title.value || '（未命名）';
+    });
+    ed.querySelector('.memo-editor .del').addEventListener('click', () => {
+      s.subs.splice(selectedSubIndex, 1);
+      selectedSubIndex = -1;
+      renderMemoList();
+    });
+    ed.querySelector('.memo-editor-body').addEventListener('input', (e) => { s.subs[selectedSubIndex].body = e.target.value; });
+    return;
+  }
+  // 区块级：## 标题 + 前言内容；已含子区块时提供「＋ 添加子区块」
+  const addSubBtn = (Array.isArray(s.subs) && s.subs.length) ? '<button id="btn-add-sub" class="add-field">＋ 添加子区块</button>' : '';
   ed.innerHTML = `
     <div class="memo-editor-head">
       <span class="hash">##</span>
@@ -254,19 +322,17 @@ function renderMemoEditor() {
     <div class="memo-editor-field">
       <div class="memo-editor-label">区块内容<span class="hint">（长文本 · 格式原样保留）</span></div>
       <textarea class="memo-editor-body" rows="10" placeholder="此区块内容…">${escapeHtml(s.body)}</textarea>
-    </div>`;
+    </div>${addSubBtn}`;
   const title = ed.querySelector('.memo-editor-title');
   title.addEventListener('input', () => {
-    sections[selectedSectionIndex].title = title.value;
-    // 实时同步列表里的标题显示
-    const item = document.querySelector(`.memo-item[data-i="${selectedSectionIndex}"] .memo-item-name`);
+    s.title = title.value;
+    const item = document.querySelector(`.memo-item[data-i="${selectedSectionIndex}"] .memo-item-name, .memo-group[data-i="${selectedSectionIndex}"] .memo-group-name`);
     if (item) item.textContent = title.value || '（未命名）';
   });
-  const del = ed.querySelector('.memo-editor .del');
-  if (del) del.addEventListener('click', () => { sections.splice(selectedSectionIndex, 1); renderMemoList(); });
-  ed.querySelector('.memo-editor-body').addEventListener('input', (e) => {
-    sections[selectedSectionIndex].body = e.target.value;
-  });
+  ed.querySelector('.memo-editor .del').addEventListener('click', () => { sections.splice(selectedSectionIndex, 1); selectedSubIndex = -1; renderMemoList(); });
+  ed.querySelector('.memo-editor-body').addEventListener('input', (e) => { s.body = e.target.value; });
+  const addSubBtnEl = el('btn-add-sub');
+  if (addSubBtnEl) addSubBtnEl.addEventListener('click', addSub);
 }
 
 /** 「＋ 添加区块」：界面内新建（不用 prompt —— 沙箱渲染进程禁用 window.prompt） */
@@ -274,8 +340,22 @@ function addSection() {
   let name = '新区块';
   let i = 1;
   while (sections.some((s) => s.title === name)) { i++; name = `新区块${i}`; }
-  sections.push({ title: name, body: '' });
+  sections.push({ title: name, body: '', subs: [] });
   selectedSectionIndex = sections.length - 1;
+  selectedSubIndex = -1;
+  renderMemoList();
+  const t = document.querySelector('.memo-editor-title');
+  if (t) { t.focus(); t.select(); }
+}
+
+/** 「＋ 添加子区块」：给当前含子区块的 ## 追加一个 ### 子区块 */
+function addSub() {
+  const s = sections[selectedSectionIndex];
+  if (!s) return;
+  if (!Array.isArray(s.subs)) s.subs = [];
+  const n = s.subs.length + 1;
+  s.subs.push({ title: `场景 ${n}`, body: '' });
+  selectedSubIndex = s.subs.length - 1;
   renderMemoList();
   const t = document.querySelector('.memo-editor-title');
   if (t) { t.focus(); t.select(); }
@@ -379,7 +459,13 @@ function collectPayload() {
     .filter((it) => it.name !== '');
   const seen = new Set();
   const cleanSections = sections
-    .map((s) => ({ title: String(s.title || '').trim(), body: s.body }))
+    .map((s) => ({
+      title: String(s.title || '').trim(),
+      body: s.body,
+      subs: (Array.isArray(s.subs) && s.subs.length)
+        ? s.subs.map((sb) => ({ title: String(sb.title || '').trim(), body: sb.body })).filter((sb) => sb.title !== '')
+        : undefined,
+    }))
     .filter((s) => {
       if (!s.title || seen.has(s.title)) return false;
       seen.add(s.title);
@@ -510,10 +596,15 @@ async function loadData() {
   if (selectedRoleIndex >= roleFields.length) selectedRoleIndex = roleFields.length - 1;
   sections = list
     .filter((s) => s.kind === 'long')
-    .map((s) => ({ title: s.title, body: (s.body || []).join('\n') }));
-  // v1.2.3（用户指令）：区块改为左列表+右编辑，选中下标越界时回落到第一个
+    .map((s) => ({
+      title: s.title,
+      body: (s.body || []).join('\n'),
+      subs: (Array.isArray(s.subs) && s.subs.length) ? s.subs.map((sb) => ({ title: sb.title, body: (sb.body || []).join('\n') })) : [],
+    }));
+  // v1.2.3（用户指令）：区块左列表+右编辑（支持 ### 子区块），选中下标越界时回落到第一个
   if (sections.length === 0) selectedSectionIndex = -1;
   else if (selectedSectionIndex < 0 || selectedSectionIndex >= sections.length) selectedSectionIndex = 0;
+  if (selectedSubIndex !== -1 && !(sections[selectedSectionIndex] && sections[selectedSectionIndex].subs && sections[selectedSectionIndex].subs[selectedSubIndex])) selectedSubIndex = -1;
   // v1.0.1（用户指令）：左下角不再显示双路径（按钮直达目录即可）
   el('path').textContent = filePath;
 }

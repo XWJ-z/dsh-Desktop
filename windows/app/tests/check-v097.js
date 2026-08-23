@@ -376,7 +376,7 @@ function testGlobalMemory() {
   ok(gms.includes('kind: \'roles\''), 'DSH 角色独立 kind（与用户/我的设定同级）');
   ok(gms.includes('ROLES_DIR') && gms.includes('roleFile'), '角色文件目录 ~/.dsh/roles/（AGENTS.md 只记定位+文件名）');
   ok(gms.includes('ensureRoleFiles'), '保存时自动建立角色文件');
-  ok(gms.includes('DEFAULT_ROLES') && gms.includes('\'角色 3\''), '内置默认角色 1/2/3');
+  ok(gms.includes('DEFAULT_ROLES') && gms.includes('\'全栈工程师\''), '内置默认角色（日常助理/嵌入式开发工程师/全栈工程师，v1.2.3）');
   ok(gms.includes('LEGACY_SECTION'), '兼容旧「基础设定」容器（迁移为独立区块）');
   ok(gms.includes('LEGACY_ROLE_TITLE'), '兼容旧「角色设定」子组（归入 DSH 设定）');
   ok(gms.includes('kind: \'users\'') && gms.includes('kind: \'dsh\''), '用户/我的设定各自独立 kind');
@@ -476,7 +476,7 @@ function testGlobalMemory() {
   const html0 = read('renderer/global-memory.html');
   ok(html0.includes('id="cats"') && html0.includes('id="right-body"'), '左右分栏布局（左类别 / 右内容）');
   ok(html0.includes('参考提示词库') || html0.includes('左边'), '布局说明');
-  ok(html0.includes('全局记忆区块') && html0.includes('文件全文'), '窗口说明：全局记忆区块汇总 ## 区块、DSH 角色输入框即文件全文（v1.0.2）');
+  ok(html0.includes('全局记忆区块') && html0.includes('memo-layout'), '窗口说明：全局记忆区块汇总 ## 区块、左侧列表 + 右侧编辑（v1.2.3）');
   ok(html0.includes('tidy-bar'), 'html 有整理记忆确认条容器');
   const loadHtml = read('renderer/loading.html');
   ok(loadHtml.includes('① 检查 DSH 组件'), '启动阶段①文案：检查 DSH 组件（用户反馈：运行时表述不清）');
@@ -506,7 +506,7 @@ async function testGlobalMemoryBehavior() {
   // 1) 首次：data 返回 exists=false + 默认字段；save 自动创建模板
   const d0 = api.data();
   ok(d0.exists === false, '首次 data.exists=false');
-  ok(Array.isArray(d0.defaultFields) && d0.defaultFields.includes('用户的称呼'), 'data 带默认字段');
+  ok(Array.isArray(d0.defaultFields) && d0.defaultFields.includes('称呼'), 'data 带默认字段（称呼/身份角色/当前项目，v1.2.3）');
   // v1.0.5（删除生效语义）：模拟窗口流程 —— 首次先加载模板 long 区块（含「其他记忆」）再提交，避免误删模板区块
   const tplLongs = (d0.sections || []).filter((s) => s.kind === 'long')
     .map((s) => ({ title: s.title, body: (s.body || []).join('\n') }));
@@ -514,8 +514,8 @@ async function testGlobalMemoryBehavior() {
   ok(r1.ok === true && fs.existsSync(target), 'save 自动创建 AGENTS.md');
   const raw1 = fs.readFileSync(target, 'utf8');
   ok(raw1.includes('# AGENTS.md（全局记忆）'), '模板头部正确');
-  ok(raw1.includes('## 用户设定') && raw1.includes('- 用户的称呼：小六'), '用户设定独立区块写入');
-  ok(raw1.includes('## 其他记忆'), '模板含其他记忆区');
+  ok(raw1.includes('## 一、用户设定') && raw1.includes('- 用户的称呼：小六'), '用户设定独立区块写入（编号标题保留，v1.2.3）');
+  ok(raw1.includes('## 四、各场景角色与工作区对照'), '模板含「各场景角色与工作区对照」区（v1.2.3 最佳实践模板）');
   ok(!raw1.includes('基础设定（DSH-Desktop 图形化编辑）'), '模板无旧「基础设定」容器');
   // 2) 自动识别：模拟用户式多区块 AGENTS.md（含列表/代码块/空行），parse 全识别
   const rich = `# AGENTS.md（全局记忆）
@@ -709,8 +709,8 @@ $env:PATH = "..."
   });
   ok(r9.ok === true, '含角色保存成功');
   const raw9 = fs.readFileSync(target, 'utf8');
-  ok(raw9.includes('## DSH 角色') && raw9.includes('- 角色 1：工作编程助手（文件：~/.dsh/roles/角色 1.md）'),
-    'v1.0.2：AGENTS.md 角色行只存定位（从全文 ## 定位 节提取，不写全文）');
+  ok(raw9.includes('## 三、DSH 角色体系') && raw9.includes('- 角色 1：工作编程助手（文件：~/.dsh/roles/角色 1.md）'),
+    'v1.0.2/v1.2.3：AGENTS.md 角色行只存定位（从全文 ## 定位 节提取，不写全文；标题保留编号）');
   const roleFile1 = path.join(tmp, '.dsh', 'roles', '角色-1.md'); // 文件名安全化：空格 → -
   const roleFile2 = path.join(tmp, '.dsh', 'roles', '角色-2.md');
   ok(fs.existsSync(roleFile1) && fs.existsSync(roleFile2), '角色文件自动建立（~/.dsh/roles/）');
@@ -833,8 +833,8 @@ function testV105() {
   // 问题③：角色记忆说明句
   ok(gm.includes('ROLE_NOTE_FIELD') && gm.includes('ROLE_NOTE_TEXT') && gm.includes('roleNote'),
     'global-memory：角色记忆说明句常量 + roleNote 标记');
-  ok(gm.includes('name === ROLE_NOTE_FIELD') && gm.includes('cur.roleNote = true'),
-    'parse：说明句识别为 roleNote（不算角色字段，防重复累积）');
+  ok(gm.includes('isRoleNote(name)') && gm.includes('cur.roleNote = true'),
+    'parse：说明句识别为 roleNote（角色记忆/加粗写法均识别，不算角色字段，防重复累积）');
   ok(gm.includes('if (roleNote) lines.push'), 'renderRoles：roleNote=true 时输出说明句');
   ok(gm.includes('ROLE_NOTE_FIELD}：${ROLE_NOTE_TEXT}'), 'TEMPLATE：角色记忆说明句（新用户首次创建即含）');
   // 问题④：备份 / 一键恢复

@@ -184,7 +184,7 @@ h2 { font-size: 15px; font-weight: 680; letter-spacing: -0.2px; line-height: 1.3
 }
 /* 常见可点击元素统一微交互；各弹窗私有类在对应 html 内单独补充 :active */
 .btn, .tab, .cat, .cat-head, .item, .act, .search, 
-.plugin-card, .category-item, .role-item, .memo-item,
+.plugin-card, .category-item, .role-item, .memo-item, .memo-group, .memo-sub,
 .page-head .title, .modal-actions button, .modal-mask button {
   transition: transform .16s var(--spring), box-shadow .18s ease, 
               border-color .16s ease, background .14s ease, color .14s ease;
@@ -192,14 +192,14 @@ h2 { font-size: 15px; font-weight: 680; letter-spacing: -0.2px; line-height: 1.3
 .btn:active, .tab:active, .cat:active, .cat-head:active,
 .item:active, .act:active, .search:active,
 .plugin-card:active, .category-item:active, .role-item:active,
-.memo-item:active,
+.memo-item:active, .memo-group:active, .memo-sub:active,
 .modal-actions button:active, .modal-mask button:active {
   transform: scale(var(--press-scale)) translateY(1px);
   transition-duration: .08s;
 }
 .btn:hover, .tab:hover, .cat:hover, .cat-head:hover, .item:hover,
 .plugin-card:hover, .category-item:hover, .role-item:hover,
-.memo-item:hover {
+.memo-item:hover, .memo-group:hover, .memo-sub:hover {
   transition-duration: .18s;
 }
 /* 取消过度缩放：输入框/文本域保持静止，仅聚焦态反馈 */
@@ -215,7 +215,7 @@ h2 { font-size: 15px; font-weight: 680; letter-spacing: -0.2px; line-height: 1.3
   }
   .btn:active, .tab:active, .cat:active, .cat-head:active,
   .item:active, .act:active, .plugin-card:active, .category-item:active,
-  .role-item:active, .memo-item:active,
+  .role-item:active, .memo-item:active, .memo-group:active, .memo-sub:active,
   .modal-actions button:active, .modal-mask button:active {
     transform: none;
   }

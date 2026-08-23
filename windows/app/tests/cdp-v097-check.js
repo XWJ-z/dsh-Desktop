@@ -298,8 +298,8 @@ async function main() {
           && fv.catTexts.some((t) => t.includes('全局记忆区块')) && fv.catTexts.some((t) => t.includes('DSH 角色')),
           `左侧 4 个固定类别：用户设定/我的设定/全局记忆区块/DSH 角色（v1.0.2 用户指令，实际 ${fv && fv.catTexts.join(' | ')}）`);
         ok(!!fv && !fv.catTexts.some((t) => t.includes('其他记忆')), '其他 ## 区块不再各自显示为左侧类别（合并进「全局记忆区块」，v1.0.2）');
-        ok(!!fv && fv.rowCount >= 4 && fv.names.includes('用户的称呼'),
-          `用户设定字段列表默认显示（含用户的称呼，实际 rowCount=${fv && fv.rowCount} names=[${fv && fv.names.join(',')}]）`);
+        ok(!!fv && fv.rowCount >= 4 && fv.names.includes('称呼'),
+          `用户设定字段列表默认显示（含称呼，实际 rowCount=${fv && fv.rowCount} names=[${fv && fv.names.join(',')}]）`);
         ok(!!fv && fv.hasAddField, `有「＋ 添加字段」按钮（实际 ${fv && fv.hasAddField}，rowCount=${fv && fv.rowCount}）`);
         ok(!!fv && fv.hasGuideTip, '未配置引导提示条显示（引导用户配置全局记忆）');
         // 点击「我的设定」类别 → 右侧显示 我的设定 字段列表（含默认角色下拉）
@@ -339,7 +339,7 @@ async function main() {
           await sleep(400);
         }
         ok(!!dv && dv.hasDshFields && dv.dshCount >= 1, `我的设定独立区块视图（${dv && dv.dshCount} 个字段）`);
-        ok(!!dv && dv.dshNames.includes('我的名字') && dv.dshNames.includes('默认角色'), '我的设定默认字段（我的名字/默认角色）');
+        ok(!!dv && dv.dshNames.includes('名字') && dv.dshNames.includes('默认角色'), '我的设定默认字段（名字/默认角色）');
         ok(!!dv && dv.hasDefaultRoleSelect, '默认角色为下拉选择（select）');
         ok(!!dv && dv.roleRowHasNoDel === true && dv.otherRowsHaveDel === true, '「默认角色」行无删除按钮、其他字段行有（v1.0.2c 用户反馈）');
         ok(!!dv && dv.hasAddDsh, '有「＋ 添加 DSH 设定」按钮');
@@ -383,7 +383,7 @@ async function main() {
           await sleep(400);
         }
         ok(!!rv && rv.hasRoleList && rv.roleCount >= 1, `DSH 角色列表视图（${rv && rv.roleCount} 个角色，v1.0.3）`);
-        ok(!!rv && rv.roleNames.includes('角色 1') && rv.roleNames.includes('角色 3'), '默认角色列表：角色 1/2/3');
+        ok(!!rv && rv.roleNames.includes('日常助理') && rv.roleNames.includes('全栈工程师'), '默认角色列表：日常助理/嵌入式开发工程师/全栈工程师（v1.2.3）');
         ok(!!rv && rv.hasAddRole, '有「＋ 添加角色」按钮');
         ok(!!rv && rv.hasRoleEditor && rv.hasEditorName && rv.hasRoleFields && rv.hasRoleLabels,
           '点击角色进入编辑：编辑面板含角色名 + 定位/详细记忆固定字段（v1.0.3 用户反馈 2/4）');

@@ -212,6 +212,30 @@
     .memo-item-name { font-size: 12.5px; font-weight: 590; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .memo-item .del { width: 22px; height: 22px; flex-shrink: 0; border: none; background: transparent; cursor: pointer; color: var(--text-quaternary); font-size: 12px; border-radius: 6px; }
     .memo-item .del:hover { color: #ff6b6b; background: rgba(255,107,107,.12); }
+    /* v1.2.3：## 组头 + 缩进 ### 子项 */
+    .memo-group {
+      display: flex; align-items: center; gap: 7px;
+      padding: 9px 10px; margin-top: 2px; border-radius: var(--radius-btn);
+      cursor: pointer; color: var(--text-secondary); font-weight: 590;
+      background: transparent; border: 1px solid var(--border-subtle);
+      flex-shrink: 0;
+    }
+    .memo-group:hover { border-color: rgba(94,106,210,.5); }
+    .memo-group.active { background: linear-gradient(90deg, rgba(124,120,255,0.16), rgba(124,120,255,0.04)); border-color: rgba(124,120,255,0.55); color: var(--text-primary); }
+    .memo-group-name { font-size: 12.5px; font-weight: 590; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .memo-sub {
+      display: flex; align-items: center; gap: 7px;
+      padding: 6px 10px 6px 24px; margin-left: 14px;
+      border-left: 2px solid var(--border-subtle);
+      border-radius: calc(var(--radius-btn) - 2px);
+      cursor: pointer; color: var(--text-secondary); flex-shrink: 0;
+    }
+    .memo-sub:hover { background: var(--bg-hover); }
+    .memo-sub.active { background: linear-gradient(90deg, rgba(124,120,255,0.14), rgba(124,120,255,0.03)); color: var(--text-primary); }
+    .memo-sub-icon { color: var(--brand); opacity: .85; }
+    .memo-sub-name { font-size: 12px; font-weight: 500; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .memo-group .del, .memo-sub .del { width: 22px; height: 22px; flex-shrink: 0; border: none; background: transparent; cursor: pointer; color: var(--text-quaternary); font-size: 12px; border-radius: 6px; }
+    .memo-group .del:hover, .memo-sub .del:hover { color: #ff6b6b; background: rgba(255,107,107,.12); }
     .memo-editor {
       flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px;
       background: var(--bg-input); border: 1px solid var(--border-standard);

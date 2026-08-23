@@ -96,17 +96,17 @@ function run() {
     const { gm } = e;
     // TEMPLATE 含说明句
     const { TEMPLATE } = require('../modules/global-memory');
-    ok(TEMPLATE.includes('**角色记忆**') && TEMPLATE.includes('`~/.dsh/roles/`'), 'TEMPLATE 含「角色记忆」说明句');
+    ok(TEMPLATE.includes('角色记忆') && TEMPLATE.includes('`~/.dsh/roles/`'), 'TEMPLATE 含「角色记忆」说明句');
     // 首次保存 → 文件必含说明句
     gm.save({ users: [{ name: '用户的称呼', value: '用户' }] });
     let raw = fs.readFileSync(e.file(), 'utf8');
-    const noteLine = '- **角色记忆**：各角色的详细记忆写入 `~/.dsh/roles/` 下对应角色文件。';
+    const noteLine = '- 角色记忆：各角色的详细记忆写入 `~/.dsh/roles/` 下对应角色文件。';
     ok(raw.includes(noteLine), '保存后 AGENTS.md 含「角色记忆」说明句');
     // parse：说明句是 roleNote 标记，不是角色字段
     const parsed = gm.parse(raw);
     const rolesSec = parsed.sections.find((s) => s.kind === 'roles');
     ok(!!rolesSec && rolesSec.roleNote === true, 'parse 识别 roleNote=true');
-    ok(!rolesSec.fields.some((f) => f.name === '**角色记忆**'), '说明句不算角色字段（不进 fields）');
+    ok(!rolesSec.fields.some((f) => f.name === '角色记忆'), '说明句不算角色字段（不进 fields）');
     // 连续保存两次 → 说明句不重复累积（只一行）
     gm.save({ users: [{ name: '用户的称呼', value: '用户' }] });
     gm.save({ users: [{ name: '用户的称呼', value: '用户' }] });

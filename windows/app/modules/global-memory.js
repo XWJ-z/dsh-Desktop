@@ -32,6 +32,38 @@ const FILE_NAME = 'AGENTS.md';
 const USER_SECTION = '用户设定';
 const DSH_SECTION = '我的设定';          // v0.9.13：原「DSH 设定」改「我的设定」（DSH 视角）
 const ROLES_SECTION = 'DSH 角色';
+const ROLES_SECTION_2 = 'DSH 角色体系';  // v1.2.3 最佳实践模板：三、DSH 角色体系
+const SCENES_SECTION = '各场景角色与工作区对照'; // v1.2.3 最佳实践模板：四、...（含 ### 子区块）
+
+/**
+ * 标题归一化：去掉序号前缀（一、二、三… 或 1. 2. 3. 等），用于识别带序号的特殊区块标题。
+ * 例：`一、用户设定` → `用户设定`；`4.1 日常对话` → `日常对话`。
+ */
+function normSectionTitle(raw) {
+  return String(raw || '').trim().replace(/^[一二三四五六七八九十百0-9]+(?:[、.][0-9]*)*\s*/, '').trim();
+}
+
+/** 依归一化标题识别特殊区块 kind（users/dsh/roles/long）；保留原标题用于重组，匹配放宽以兼容新旧标题。 */
+function classifySection(title) {
+  const t = String(title || '').trim();
+  const norm = normSectionTitle(t);
+  if (norm === USER_SECTION) return 'users';
+  if (norm === DSH_SECTION || norm === LEGACY_DSH_SECTION) return 'dsh';
+  if (norm === ROLES_SECTION || norm === ROLES_SECTION_2 || norm === '角色体系') return 'roles';
+  return 'long';
+}
+
+/** 角色记忆说明句识别：新模板用「角色记忆」，旧模板用「**角色记忆**」（加粗）。 */
+function isRoleNote(name) {
+  const n = String(name || '').replace(/\*/g, '').trim();
+  return n === ROLE_NOTE_FIELD;
+}
+
+/** 是否「各场景角色与工作区对照」类长区块（用于新标准格式检测）。 */
+function isScenesSection(title) {
+  const norm = normSectionTitle(title);
+  return norm === SCENES_SECTION || norm.includes('各场景');
+}
 
 /** 旧版「DSH 设定」标题（兼容迁移：解析时归入「我的设定」） */
 const LEGACY_DSH_SECTION = 'DSH 设定';
@@ -62,8 +94,9 @@ const ROLES_DIR = 'roles';
 /** 角色名长度上限（v1.0.3 用户反馈 2：不超过 30 字符） */
 const MAX_ROLE_NAME = 30;
 
-/** v1.0.5（用户反馈 3）：DSH 角色区块的「角色记忆」说明句 —— 对话时 DSH 能知道各角色记忆文件的地址 */
-const ROLE_NOTE_FIELD = '**角色记忆**';
+/** v1.0.5（用户反馈 3）：DSH 角色区块的「角色记忆」说明句 —— 对话时 DSH 能知道各角色记忆文件的地址。
+ *  v1.2.3：改为「角色记忆」（对齐最佳实践模板；识别兼容旧「**角色记忆**」加粗写法）。 */
+const ROLE_NOTE_FIELD = '角色记忆';
 const ROLE_NOTE_TEXT = '各角色的详细记忆写入 `~/.dsh/roles/` 下对应角色文件。';
 
 /** v1.0.5（用户反馈 4）：全局记忆备份文件名（保存前自动备份上一次版本，解析异常时可一键恢复） */
@@ -77,67 +110,95 @@ const GUIDE_TEXT = '【请在对话中引导用户点击宠物/工具箱图标 �
  * 标准格式整理提示词（v0.9.13 用户指令）：检测到已存在记忆但不符合标准格式
  * （缺 用户设定 / DSH 设定 区块）→ 注入到聊天窗口，让 DSH 按此格式整理。
  */
-const FORMAT_TIDY_PROMPT = `请按照以下标准格式整理你的全局记忆（~/.dsh/AGENTS.md），不要改变原意，把现有内容归类到对应区块（注意：这是 DSH 的视角，「用户设定」记录用户，「我的设定」记录 DSH 自己）：
+const FORMAT_TIDY_PROMPT = `请按照以下标准格式整理你的全局记忆（~/.dsh/AGENTS.md），不要改变原意，把现有内容归类到对应区块（这是 DSH 的视角：「用户设定」记录用户、「我的设定」记录 DSH 自己、「DSH 角色体系」记录可切换角色、「各场景角色与工作区对照」逐场景记录角色与工作区，场景用「###」三级子区块呈现）：
 
 # AGENTS.md（全局记忆）
 
-## 用户设定
+> 全局长期记忆：角色体系与各项目要点，供各工作区会话继承。
 
-- 用户的称呼：
-- 用户的身份/角色：
-- 当前项目：
-- 常用约定：
+## 一、用户设定
 
-## 我的设定
+- 称呼：
+- 身份/角色：
+- 当前项目 1：
+- 当前项目 2：
 
-- 我的名字：
+## 二、我的设定
+
+- 名字：
 - 语气风格：
 - 输出习惯：
-- 默认角色：角色 1
+- 默认角色：日常助理
 
-## DSH 角色
+## 三、DSH 角色体系
 
 - ${ROLE_NOTE_FIELD}：${ROLE_NOTE_TEXT}
-- 角色 1：角色定位（文件：~/.dsh/roles/角色 1.md）
-- 角色 2：角色定位（文件：~/.dsh/roles/角色 2.md）
-- 角色 3：角色定位（文件：~/.dsh/roles/角色 3.md）
+- 日常助理：
+- 嵌入式开发工程师：
+- 全栈工程师：
 
-## 其他记忆
+## 四、各场景角色与工作区对照
 
-（其他原有内容放在这里；各角色的详细记忆写入 ~/.dsh/roles/ 下对应角色文件）`;
+- （每个场景一个子区块）
 
-/** 内置默认用户设定字段（v0.9.13 方案：DSH 视角 —— "用户的…"） */
-const DEFAULT_FIELDS = ['用户的称呼', '用户的身份/角色', '当前项目', '常用约定'];
+### 4.1 场景一
 
-/** 内置默认 DSH（我的）设定字段（DSH 视角；默认角色为下拉选择） */
-const DEFAULT_DSH_FIELDS = ['我的名字', '语气风格', '输出习惯', '默认角色'];
+- 我的角色：
+- 角色记忆文件：
+- 工作区：`;
 
-/** 内置默认角色字段（v0.9.13：角色 1/2/3，值 = 定位 + 角色文件名；可增删） */
-const DEFAULT_ROLES = ['角色 1', '角色 2', '角色 3'];
+/** 内置默认用户设定字段（v0.9.13 方案：DSH 视角 —— "用户的…"）
+ *  v1.2.3：对齐最佳实践模板 —— 称呼/身份角色/当前项目1/当前项目2（值留空，由用户填写）。 */
+const DEFAULT_FIELDS = ['称呼', '身份/角色', '当前项目 1', '当前项目 2'];
+
+/** 内置默认 DSH（我的）设定字段（DSH 视角；默认角色为下拉选择）
+ *  v1.2.3：对齐最佳实践模板 —— 名字/语气风格/输出习惯/默认角色。 */
+const DEFAULT_DSH_FIELDS = ['名字', '语气风格', '输出习惯', '默认角色'];
+
+/** 内置默认角色字段（v0.9.13：角色 1/2/3；v1.2.3 对齐最佳实践模板 —— 日常助理/嵌入式开发工程师/全栈工程师） */
+const DEFAULT_ROLES = ['日常助理', '嵌入式开发工程师', '全栈工程师'];
 
 /** 首次创建时的模板（头部 + 用户设定 + 我的设定 + DSH 角色 + 其他记忆区；DSH 视角说明） */
 const TEMPLATE = `# AGENTS.md（全局记忆）
 
-> 本文件是 DSH 的全局记忆（DSH 视角）：「用户设定」记录用户是谁、「我的设定」记录 DSH 自己
-> （名字/语气/默认角色）、「DSH 角色」记录可切换的角色（详细记忆在 ~/.dsh/roles/ 角色文件）。
-> 请用 DSH-Desktop「全局记忆」窗口编辑；其他内容可追加到「其他记忆」区。
+> 全局长期记忆：角色体系与各项目要点，供各工作区会话继承。
+> 请用 DSH-Desktop「记忆管理」窗口编辑：「用户设定」记录用户是谁、「我的设定」记录 DSH 自己、
+> 「DSH 角色体系」记录可切换角色、「各场景角色与工作区对照」逐场景记录角色与工作区。
 
-## ${USER_SECTION}
+## 一、用户设定
 
 ${DEFAULT_FIELDS.map((f) => `- ${f}：`).join('\n')}
 
-## ${DSH_SECTION}
+## 二、我的设定
 
 ${DEFAULT_DSH_FIELDS.map((f) => `- ${f}：`).join('\n')}
 
-## ${ROLES_SECTION}
+## 三、DSH 角色体系
 
 - ${ROLE_NOTE_FIELD}：${ROLE_NOTE_TEXT}
 ${DEFAULT_ROLES.map((f) => `- ${f}：`).join('\n')}
 
-## 其他记忆
+## 四、各场景角色与工作区对照
 
-- （可在此追加你想让 DSH 长期记住的其他内容）
+- （每个场景一个子区块，可在窗口里逐条编辑）
+
+### 4.1 场景一
+
+- 我的角色：
+- 角色记忆文件：
+- 工作区：
+
+### 4.2 场景二
+
+- 我的角色：
+- 角色记忆文件：
+- 工作区：
+
+### 4.3 场景三
+
+- 我的角色：
+- 角色记忆文件：
+- 工作区：
 `;
 
 /** 模板的头部文本（第一个 ## 之前），供创建/重组用 */
@@ -173,7 +234,8 @@ function createGlobalMemory(deps) {
   function parse(content) {
     const head = [];
     const sections = [];
-    let cur = null;
+    let cur = null;          // 当前 ## 区块 { title, kind, fields?|body?|subs?, roleNote? }
+    let curSub = null;       // 当前 ### 子区块（仅 long 区块内）{ title, body }
     let legacy = null; // 旧容器缓冲区 { u, d, group }
     let seenSection = false;
     const lines = String(content || '').split(/\r?\n/);
@@ -185,23 +247,23 @@ function createGlobalMemory(deps) {
         legacy = null;
       }
     };
+    /** 新开一个 ## 区块（v1.2.3 起按归一化标题识别特殊/长区块，保留原标题） */
+    const startSection = (title) => {
+      const kind = classifySection(title);
+      if (kind === 'users') sections.push({ title, kind: 'users', fields: [], guide: false });
+      else if (kind === 'dsh') sections.push({ title: title === LEGACY_DSH_SECTION ? DSH_SECTION : title, kind: 'dsh', fields: [] });
+      else if (kind === 'roles') sections.push({ title, kind: 'roles', fields: [], roleNote: false });
+      else sections.push({ title, kind: 'long', body: [], subs: [] });
+      cur = sections[sections.length - 1];
+      curSub = null;
+    };
     for (const line of lines) {
       const t = /^##\s+(.+)$/.exec(line);
       if (t) {
         flushLegacy();
         seenSection = true;
         const title = t[1].trim();
-        if (title === USER_SECTION) {
-          sections.push({ title, kind: 'users', fields: [], guide: false });
-          cur = sections[sections.length - 1];
-        } else if (title === DSH_SECTION || title === LEGACY_DSH_SECTION) {
-          // v0.9.13：旧「DSH 设定」→ 归入「我的设定」（kind dsh）
-          sections.push({ title: DSH_SECTION, kind: 'dsh', fields: [] });
-          cur = sections[sections.length - 1];
-        } else if (title === ROLES_SECTION) {
-          sections.push({ title, kind: 'roles', fields: [] });
-          cur = sections[sections.length - 1];
-        } else if (title === LEGACY_SECTION) {
+        if (title === LEGACY_SECTION) {
           // 旧容器：拆成 用户设定 + DSH 设定 两个独立区块（内部 ### 子组路由）
           legacy = {
             u: { title: USER_SECTION, kind: 'users', fields: [], guide: false },
@@ -210,8 +272,7 @@ function createGlobalMemory(deps) {
           };
           cur = legacy.u;
         } else {
-          sections.push({ title, kind: 'long', body: [] });
-          cur = sections[sections.length - 1];
+          startSection(title);
         }
         continue;
       }
@@ -243,11 +304,19 @@ function createGlobalMemory(deps) {
             const name = m[1].trim();
             if (name === GUIDE_FIELD) { cur.guide = true; continue; }
             // v1.0.5（用户反馈 3）：「角色记忆」说明句是固定引导行，不算字段（防保存时重复累积）
-            if (cur.kind === 'roles' && name === ROLE_NOTE_FIELD) { cur.roleNote = true; continue; }
+            if (cur.kind === 'roles' && isRoleNote(name)) { cur.roleNote = true; continue; }
             cur.fields.push({ name: migrateName(name), value: m[2].trim() });
           }
         } else {
-          cur.body.push(line);
+          // v1.2.3：长区块支持 ### 三级子区块（图形化界面可单独选中/编辑）
+          const sub = /^###\s+(.+)$/.exec(line);
+          if (sub) {
+            curSub = { title: sub[1].trim(), body: [] };
+            cur.subs.push(curSub);
+            continue;
+          }
+          if (curSub) curSub.body.push(line);
+          else cur.body.push(line);
         }
       } else if (!seenSection) {
         head.push(line);
@@ -260,9 +329,10 @@ function createGlobalMemory(deps) {
     return { head: headText, sections };
   }
 
-  /** 渲染用户设定区块（字段行；guide=true 时带未配置引导句） */
-  function renderUsers(fields, guide) {
-    const lines = [`## ${USER_SECTION}`, ''];
+  /** 渲染用户设定区块（字段行；guide=true 时带未配置引导句）
+   *  v1.2.3：标题用实际原标题（支持「一、用户设定」等带序号写法），缺省回落常量。 */
+  function renderUsers(title, fields, guide) {
+    const lines = [`## ${title || USER_SECTION}`, ''];
     if (guide) lines.push(`- ${GUIDE_FIELD}：${GUIDE_TEXT}`);
     (fields || []).forEach((it) => {
       const name = String(it.name || '').trim();
@@ -272,11 +342,11 @@ function createGlobalMemory(deps) {
     return lines.join('\n');
   }
 
-  /** 渲染 DSH 设定区块（字段行） */
-  function renderDsh(fields) {
+  /** 渲染 DSH 设定区块（字段行；v1.2.3 标题用实际原标题） */
+  function renderDsh(title, fields) {
     const ds = (fields || []).filter((it) => String(it.name || '').trim() !== '');
     if (ds.length === 0) return null; // 空则不输出（保持简洁）
-    const lines = [`## ${DSH_SECTION}`, ''];
+    const lines = [`## ${title || DSH_SECTION}`, ''];
     ds.forEach((it) => {
       lines.push(`- ${it.name.trim()}：${String(it.value || '').trim()}`);
     });
@@ -284,9 +354,10 @@ function createGlobalMemory(deps) {
   }
 
   /** 渲染 DSH 角色区块（字段行；始终输出区块标题，保证标准格式完整）
-   *  v1.0.5（用户反馈 3）：roleNote=true 时固定输出「角色记忆」说明句（DSH 对话时知道角色记忆文件地址） */
-  function renderRoles(fields, roleNote) {
-    const lines = [`## ${ROLES_SECTION}`, ''];
+   *  v1.0.5（用户反馈 3）：roleNote=true 时固定输出「角色记忆」说明句（DSH 对话时知道角色记忆文件地址）
+   *  v1.2.3：标题用实际原标题（支持「三、DSH 角色体系」等带序号写法）。 */
+  function renderRoles(title, fields, roleNote) {
+    const lines = [`## ${title || ROLES_SECTION}`, ''];
     if (roleNote) lines.push(`- ${ROLE_NOTE_FIELD}：${ROLE_NOTE_TEXT}`);
     (fields || []).forEach((it) => {
       const name = String(it.name || '').trim();
@@ -425,18 +496,28 @@ function createGlobalMemory(deps) {
     syncRoleFiles([], roles);
   }
 
-  /** 渲染长文本区块（## 标题 + 原格式内容） */
-  function renderLong(title, body) {
+  /** 渲染长文本区块（## 标题 + 原格式内容；v1.2.3 支持 ### 三级子区块） */
+  function renderLong(title, body, subs) {
     // 防御：body 可能是数组（解析产物）或字符串（窗口提交），统一为字符串
     const raw = Array.isArray(body) ? body.join('\n') : String(body || '');
     const b = raw.replace(/^\s*\n+|\s+$/g, ''); // 去首尾多余空行
-    return `## ${title}${b ? `\n\n${b}` : ''}`;
+    const subBlocks = (Array.isArray(subs) && subs.length)
+      ? subs.map((sb) => {
+          const sbRaw = Array.isArray(sb.body) ? sb.body.join('\n') : String(sb.body || '');
+          const sbBody = sbRaw.replace(/^\s*\n+|\s+$/g, '');
+          return `### ${sb.title}${sbBody ? `\n\n${sbBody}` : ''}`;
+        }).join('\n\n')
+      : '';
+    let out = `## ${title}`;
+    if (b) out += `\n\n${b}`;
+    if (subBlocks) out += `\n\n${subBlocks}`;
+    return out;
   }
 
   /**
    * 重组完整文件：head + 用户设定 + DSH 设定 + DSH 角色 + 其他区块（按序）。
    * @param {string} head
-   * @param {Array} sections [{ title, kind: 'users'|'dsh'|'roles'|'long', fields?|guide?|body? }]
+   * @param {Array} sections [{ title, kind: 'users'|'dsh'|'roles'|'long', fields?|guide?|body?|subs? }]
    */
   function render(head, sections) {
     const blocks = [];
@@ -445,13 +526,13 @@ function createGlobalMemory(deps) {
     let rolesBlock = null;
     const others = [];
     for (const s of sections) {
-      if (s.kind === 'users') usersBlock = renderUsers(s.fields || [], !!s.guide);
-      else if (s.kind === 'dsh') dshBlock = renderDsh(s.fields || []);
-      else if (s.kind === 'roles') rolesBlock = renderRoles(s.fields || [], !!s.roleNote);
-      else if (s.kind === 'long') others.push(renderLong(s.title, s.body));
+      if (s.kind === 'users') usersBlock = renderUsers(s.title, s.fields || [], !!s.guide);
+      else if (s.kind === 'dsh') dshBlock = renderDsh(s.title, s.fields || []);
+      else if (s.kind === 'roles') rolesBlock = renderRoles(s.title, s.fields || [], !!s.roleNote);
+      else if (s.kind === 'long') others.push(renderLong(s.title, s.body, s.subs));
     }
-    if (usersBlock === null) usersBlock = renderUsers([], false);
-    if (rolesBlock === null) rolesBlock = renderRoles([]); // 角色区块始终输出（标准格式完整）
+    if (usersBlock === null) usersBlock = renderUsers(USER_SECTION, [], false);
+    if (rolesBlock === null) rolesBlock = renderRoles(ROLES_SECTION, []); // 角色区块始终输出（标准格式完整）
     const headText = String(head || '').trim() || templateHead().trim();
     blocks.push(headText, usersBlock);
     if (dshBlock) blocks.push(dshBlock);
@@ -509,9 +590,13 @@ function createGlobalMemory(deps) {
     // 配置完成判定：用户设定有非空值 → 不输出引导句
     const configured = users.some((it) => it.value !== '');
     const guide = !configured;
-    // 其他长文本区块（窗口顺序；标题非空才保留）
+    // 其他长文本区块（窗口顺序；标题非空才保留；v1.2.3 携带 ### 三级子区块）
     const longSections = (Array.isArray(p.sections) ? p.sections : [])
-      .map((s) => ({ title: String((s && s.title) || '').trim(), body: String((s && s.body) || '') }))
+      .map((s) => ({
+        title: String((s && s.title) || '').trim(),
+        body: String((s && s.body) || ''),
+        subs: Array.isArray(s.subs) ? s.subs.map((sb) => ({ title: String((sb && sb.title) || '').trim(), body: String((sb && sb.body) || '') })).filter((sb) => sb.title !== '') : undefined,
+      }))
       .filter((s) => s.title !== '');
     const raw = readRaw();
     // v1.0.5（用户反馈 4）：保存前自动备份上一次版本（.bak；有旧内容才备份，首次保存无需）
@@ -538,19 +623,20 @@ function createGlobalMemory(deps) {
     const usedTitles = new Set();
     for (const s of sections) {
       if (s.kind === 'users') {
-        merged.push({ title: USER_SECTION, kind: 'users', fields: users, guide });
+        // v1.2.3：标题用原标题（支持带序号写法，如「一、用户设定」）
+        merged.push({ title: s.title, kind: 'users', fields: users, guide });
         usersPlaced = true;
       } else if (s.kind === 'dsh') {
-        merged.push({ title: DSH_SECTION, kind: 'dsh', fields: dsh });
+        merged.push({ title: s.title, kind: 'dsh', fields: dsh });
         dshPlaced = true;
       } else if (s.kind === 'roles') {
-        merged.push({ title: ROLES_SECTION, kind: 'roles', fields: roleLines, roleNote: true });
+        merged.push({ title: s.title, kind: 'roles', fields: roleLines, roleNote: true });
         rolesPlaced = true;
       } else {
         const idx = submittedLongs.findIndex((it) => it.title === s.title && !usedTitles.has(it.title));
         if (idx >= 0) {
           usedTitles.add(submittedLongs[idx].title);
-          merged.push({ title: submittedLongs[idx].title, kind: 'long', body: submittedLongs[idx].body });
+          merged.push({ title: submittedLongs[idx].title, kind: 'long', body: submittedLongs[idx].body, subs: submittedLongs[idx].subs });
         }
         // 原文件有、窗口未提交 → 不 push（删除生效）
       }
@@ -558,9 +644,9 @@ function createGlobalMemory(deps) {
     if (!usersPlaced) merged.unshift({ title: USER_SECTION, kind: 'users', fields: users, guide });
     if (!rolesPlaced) merged.push({ title: ROLES_SECTION, kind: 'roles', fields: roleLines, roleNote: true });
     if (!dshPlaced) merged.splice(merged.findIndex((s) => s.kind === 'users') + 1, 0, { title: DSH_SECTION, kind: 'dsh', fields: dsh });
-    // 窗口新增的 ## 区块（原文件没有的标题）追加末尾
+    // 窗口新增的 ## 区块（原文件没有的标题）追加末尾；携带 ### 子区块
     submittedLongs.forEach((it) => {
-      if (!usedTitles.has(it.title)) merged.push({ title: it.title, kind: 'long', body: it.body });
+      if (!usedTitles.has(it.title)) merged.push({ title: it.title, kind: 'long', body: it.body, subs: it.subs });
     });
     const content = render(head, merged);
     try {
@@ -600,8 +686,11 @@ function createGlobalMemory(deps) {
         const { head, sections } = parse(raw);
         const usersSec = sections.find((s) => s.kind === 'users');
         const dshSec = sections.find((s) => s.kind === 'dsh');
-        // v0.9.13：格式检测 —— 标准格式 = 同时存在 用户设定 + DSH 设定 区块
-        formatMismatch = !usersSec || !dshSec;
+        const rolesSec = sections.find((s) => s.kind === 'roles');
+        const scenesSec = sections.find((s) => s.kind === 'long' && isScenesSection(s.title));
+        // v1.2.3（最佳实践模板）：标准格式 = 用户设定 + 我的设定 + DSH 角色体系 + 各场景角色与工作区对照。
+        // 已有记忆不符合 → formatMismatch（不删用户记忆，main.js 注入 FORMAT_TIDY_PROMPT 让 DSH 适配）。
+        formatMismatch = !usersSec || !dshSec || !rolesSec || !scenesSec;
         const configured = usersSec && usersSec.fields.some((it) => it.value !== '');
         if (!configured && usersSec && !usersSec.guide) {
           // 未配置且无引导句 → 插入
@@ -747,6 +836,7 @@ function createGlobalMemory(deps) {
     GUIDE_FIELD, GUIDE_TEXT, FORMAT_TIDY_PROMPT,
     MAX_ROLE_NAME, // v1.0.3：角色名长度上限（30）
     ROLE_NOTE_FIELD, ROLE_NOTE_TEXT, // v1.0.5：DSH 角色区块「角色记忆」说明句
+    SCENES_SECTION, ROLES_SECTION_2, normSectionTitle, classifySection, isScenesSection, // v1.2.3：最佳实践模板标题识别
   };
 }
 
@@ -754,5 +844,6 @@ module.exports = {
   createGlobalMemory, FILE_NAME, USER_SECTION, DSH_SECTION, ROLES_SECTION, LEGACY_SECTION, LEGACY_DSH_SECTION, LEGACY_ROLE_TITLE,
   GUIDE_FIELD, GUIDE_TEXT, FORMAT_TIDY_PROMPT, DEFAULT_FIELDS, DEFAULT_DSH_FIELDS, DEFAULT_ROLES, TEMPLATE,
   MAX_ROLE_NAME, // v1.0.3：角色名长度上限（30）
+  SCENES_SECTION, ROLES_SECTION_2, normSectionTitle, classifySection, isScenesSection, // v1.2.3：最佳实践模板标题识别
   ROLE_NOTE_FIELD, ROLE_NOTE_TEXT, BACKUP_NAME, // v1.0.5：角色记忆说明句 / 备份文件名
 };

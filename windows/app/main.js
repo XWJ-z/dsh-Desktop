@@ -1384,7 +1384,8 @@ if (!gotLock) {
         // v0.9.13（用户指令）：记忆格式不符标准 → 主窗口加载完成后注入整理提示词
         // （让 DSH 按标准格式整理现有记忆，不改变原意）
         // v0.9.16（外审 zx(9) 复核 N3）：仅首次启动注入 —— 标记文件防每次启动重复覆盖输入框
-        const tidyMarker = path.join(os.homedir(), '.dsh', '.format-tidy-injected');
+        // v1.2.3：最佳实践模板升级 —— 换用 -v2 标记，让「现有记忆与新模板冲突」的记忆至少再注入一次新格式整理提示
+        const tidyMarker = path.join(os.homedir(), '.dsh', '.format-tidy-injected-v2');
         if (memoryFormatMismatch && !fs.existsSync(tidyMarker)) {
           setTimeout(() => {
             const mw = mainWindow;
