@@ -229,11 +229,13 @@
     .memo-item-name { font-size: 12.5px; font-weight: 590; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .memo-item .del { width: 22px; height: 22px; flex-shrink: 0; border: none; background: transparent; cursor: pointer; color: var(--text-quaternary); font-size: 12px; border-radius: 6px; }
     .memo-item .del:hover { color: #ff6b6b; background: rgba(255,107,107,.12); }
-    /* v1.2.3（用户指令）：底部「＋ 添加子区块 / ＋ 添加区块」两按钮并排，统一实底样式（比页面背景更显眼） */
-    .memo-addbar { display: flex; gap: 8px; margin-top: 10px; }
+    /* v1.2.5（用户指令）：添加按钮放进左栏、竖着排（对齐项目记忆）—— 左栏 = 列表 + 两个添加按钮 */
+    .memo-left { width: 210px; flex-shrink: 0; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+    #memo-list { flex: 1; min-height: 0; width: 100%; }
+    .memo-addbar { display: flex; flex-direction: column; gap: 6px; }
     .memo-addbar .add-sec-btn,
     .memo-addbar #btn-add-sec {
-      flex: 1; align-self: stretch; display: flex; align-items: center; justify-content: center;
+      align-self: stretch; display: flex; align-items: center; justify-content: center;
       padding: 10px 14px; font-size: 13px; font-weight: 700;
       background: rgba(124,120,255,.12); border-color: rgba(124,120,255,.5); color: var(--text-primary);
     }

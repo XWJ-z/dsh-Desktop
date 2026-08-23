@@ -122,12 +122,14 @@ function renderRight() {
     body.innerHTML = `
       <div class="guide-tip">💡 这里汇总 AGENTS.md 里除 用户设定 / 我的设定 / DSH 角色 外的全部 ## 区块，各自独立保存，内容格式原样保留。</div>
       <div class="memo-layout">
-        <div class="memo-list" id="memo-list"></div>
+        <div class="memo-left">
+          <div class="memo-list" id="memo-list"></div>
+          <div class="memo-addbar">
+            <button id="btn-add-sec" class="add-field add-sec-btn" title="新建一个 ## 区块">＋ 添加区块</button>
+            <button id="btn-add-sub-sec" class="add-field add-sec-btn" title="给左侧选中的区块添加一个 ### 子区块">＋ 添加子区块</button>
+          </div>
+        </div>
         <div class="memo-editor" id="memo-editor"></div>
-      </div>
-      <div class="memo-addbar">
-        <button id="btn-add-sub-sec" class="add-field add-sec-btn add-sec-sub" title="给左侧选中的区块添加一个 ### 子区块">＋ 添加子区块</button>
-        <button id="btn-add-sec" class="add-field add-sec-btn" title="新建一个 ## 区块">＋ 添加区块</button>
       </div>`;
     renderMemoList();
     const addBtn = el('btn-add-sec');
