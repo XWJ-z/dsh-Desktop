@@ -177,6 +177,29 @@ async function run() {
     e.restore();
   }
 
+  console.log('[T4] 技能市场 parseMarketList 携带 install_req');
+  {
+    const listRaw = JSON.stringify({ version: 2, skills: [
+      { name: 'skill-a', description: 'desc a', category: '开发', repo: 'r/a', file: 'skills/a/SKILL.md', install_req: '需 Python + Playwright' },
+      { name: 'skill-b', description: 'desc b', category: '办公', repo: 'r/b', file: 'skills/b/SKILL.md' },
+    ] });
+    const routes = {
+      'https://cdn.jsdelivr.net/gh/XWJ-z/dsh-Desktop@main/skills-list.json': listRaw,
+      'https://api.github.com/repos/XWJ-z/dsh-Desktop/contents/skills-list.json?ref=main': listRaw,
+      'https://raw.githubusercontent.com/XWJ-z/dsh-Desktop/main/skills-list.json': listRaw,
+    };
+    const e = makeEnv(routes);
+    const { sk } = e;
+    // 通过 getMarketList 触发 fetchMarketList（缓存空 → 拉取）→ parseMarketList
+    const list = await sk.getMarketList();
+    const a = list.find((s) => s.name === 'skill-a');
+    const b = list.find((s) => s.name === 'skill-b');
+    ok(!!a && a.installReq === '需 Python + Playwright', 'install_req 透传到 installReq');
+    ok(!!b && !b.installReq, '无 install_req 时 installReq 为空');
+    ok(list.length === 2, 'market 列表解析出 2 条');
+    e.restore();
+  }
+
   console.log(`\n${passed} 通过, ${failed} 失败`);
   process.exit(failed === 0 ? 0 : 1);
 }

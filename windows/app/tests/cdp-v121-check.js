@@ -202,6 +202,22 @@ async function main() {
     } catch (e) { console.log('  [debug] targets err:', e.message); }
   }
   ok(!!skWin, '打开技能库窗口（skill-library.html）');
+  // [6b] 技能市场列表经 IPC 拉取（真实源）→ 含 installReq 字段
+  console.log('[6b] 技能市场（真实源）');
+  const mkt = await cdp.eval(`(async () => {
+    if (!window.dshDesktop || !window.dshDesktop.getSkillMarket) return { ok:false, reason:'no api' };
+    try {
+      const list = await window.dshDesktop.getSkillMarket();
+      return { ok:true, count: (list||[]).length, names:(list||[]).map((s)=>s.name).slice(0,12),
+        hasReq: (list||[]).some((s)=>s.installReq), repos:(list||[]).map((s)=>s.repo).filter((r,_,a)=>a.indexOf(r)===0) };
+    } catch (e) { return { ok:false, err:String(e) }; }
+  })()`);
+  console.log('  mkt:', JSON.stringify(mkt));
+  ok(!!mkt && mkt.ok && mkt.count >= 6, '技能市场拉取 ≥ 6 条（count=' + (mkt && mkt.count) + '）');
+  ok(!!mkt && mkt.ok && mkt.hasReq === true, '市场条目含安装要求 installReq');
+  ok(!!mkt && mkt.ok && mkt.repos.some((r) => r === 'anthropics/skills'), '市场含 Anthropic 官方来源（多来源）');
+  ok(!!mkt && mkt.ok && mkt.names.includes('skill-creator'), '市场含 skill-creator（官方真实技能）');
+
 
   // ⑥ 设置默认（settings.json 落盘）
   console.log('[7] 设置默认值');

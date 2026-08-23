@@ -27,6 +27,8 @@
     .skill-card-name { font-size: 14px; font-weight: 600; color: var(--text-primary); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .skill-card .tag { font-size: 10.5px; color: var(--text-quaternary); background: var(--bg-hover); border-radius: 999px; padding: 1px 8px; flex-shrink: 0; }
     .skill-card-desc { font-size: 12.5px; color: var(--text-secondary); line-height: 1.6; }
+    .skill-card-req { font-size: 11.5px; color: var(--text-quaternary); line-height: 1.6; background: var(--bg-hover); border-radius: var(--radius-btn); padding: 6px 9px; }
+    .skill-card-req .req-label { color: var(--warn); font-weight: 590; margin-right: 6px; flex-shrink: 0; }
     .skill-card-actions { display: flex; gap: 8px; }
     .btn.sm { padding: 6px 14px; font-size: 12.5px; }
     .btn.ghost { background: transparent; color: var(--text-secondary); border: 1px solid var(--border-standard); }
@@ -103,7 +105,7 @@
   <!-- 技能市场 -->
   <div id="panel-market" class="panel" hidden>
     <div id="market-banner" class="banner"></div>
-    <div class="market-secure">⚠️ 技能市场 = 我们维护的精选列表（skills-list.json）。安装会从对应 GitHub 仓库拉取 SKILL.md 写入本地。技能是纯文本指令（无代码执行风险），但<b>内容会注入模型</b>，请确认来源可信。</div>
+    <div class="market-secure">⚠️ 技能市场 = 多来源精选列表（skills-list.json，含 Anthropic 官方 anthropics/skills 等）。安装会从对应 GitHub 仓库拉取 SKILL.md 写入本地。技能是纯文本指令（无代码执行风险），但<b>内容会注入模型</b>，请确认来源可信；每项已标注<b>安装要求</b>，可用「复制安装指令」留存待办。</div>
     <div class="market-bar">
       <input id="market-search" placeholder="搜索技能…" />
       <button id="market-refresh" class="btn ghost" style="padding:8px 16px;">刷新</button>

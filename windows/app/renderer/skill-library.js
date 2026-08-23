@@ -218,17 +218,35 @@
     shown.forEach((s) => {
       const card = document.createElement('div');
       card.className = 'skill-card';
+      const reqHtml = s.installReq
+        ? '<div class="skill-card-req"><span class="req-label">安装要求</span>' + escapeHtml(s.installReq) + '</div>'
+        : '<div class="skill-card-req"><span class="req-label">安装要求</span>自包含纯文本，安装后直接可用</div>';
       card.innerHTML =
         '<div class="skill-card-head"><span class="skill-card-name">' + escapeHtml(s.name) + '</span>' +
         '<span class="tag">' + escapeHtml(s.category || '其他') + '</span></div>' +
         '<div class="skill-card-desc">' + escapeHtml(s.description || '') + '</div>' +
+        reqHtml +
         '<div class="skill-card-actions"><button class="btn sm act-install">安装</button>' +
+        '<button class="btn sm ghost act-copy-req">复制安装指令</button>' +
         '<button class="btn sm ghost act-src">查看来源</button></div>';
       card.querySelector('.act-install').addEventListener('click', async () => {
-        if (!confirm('确定安装技能「' + s.name + '」？\n\n技能内容会注入模型上下文，请确认来源可信。')) return;
+        if (!confirm('确定安装技能「' + s.name + '」？\n\n技能内容会注入模型上下文，请确认来源可信。\n\n安装要求：' + (s.installReq || '自包含纯文本'))) return;
         const r = await window.dshDesktop.installSkill({ name: s.name, repo: s.repo, file: s.file });
         if (r && r.ok) { showBanner('market-banner', '技能「' + s.name + '」安装成功 ✓（可在已装技能中查看）', true); }
         else showBanner('market-banner', '安装失败：' + ((r && r.message) || '未知'), false);
+      });
+      card.querySelector('.act-copy-req').addEventListener('click', () => {
+        // 复制安装指令：来源仓库 + 安装要求 + 指引（简单可复制）
+        const txt =
+          '技能：' + s.name + '\n' +
+          '来源：' + s.repo + ' @ ' + s.file + '\n' +
+          '安装要求：' + (s.installReq || '自包含纯文本') + '\n' +
+          '安装方式：技能库窗口 → 技能市场 → 点「安装」（安装器拉取 SKILL.md 写入本地）';
+        if (window.dshDesktop.copyText) {
+          window.dshDesktop.copyText(txt).then((r) => showBanner('market-banner', r && r.ok ? '安装指令已复制 ✓' : '复制失败', !!r && r.ok));
+        } else {
+          showBanner('market-banner', '当前环境不支持复制', false);
+        }
       });
       card.querySelector('.act-src').addEventListener('click', () => {
         if (s.repo) window.dshDesktop.openExternal('https://github.com/' + s.repo);
