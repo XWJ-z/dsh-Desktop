@@ -215,11 +215,14 @@ function renderMemoList() {
   else if (selectedSectionIndex < 0 || selectedSectionIndex >= sections.length) { selectedSectionIndex = sections.length - 1; selectedSubIndex = -1; }
   const hasSubs = (s) => Array.isArray(s.subs) && s.subs.length > 0;
   list.innerHTML = sections.map((s, i) => {
+    // v1.2.3（用户指令）：每个区块行右侧都放一个「＋ 添加子区块」快捷按钮（导航区也可加子区块）
+    const addSubNavBtn = `<button class="add-sub-nav" data-i="${i}" title="添加子区块">＋</button>`;
     if (!hasSubs(s)) {
       // 无子区块 → 普通项（编辑 ## 标题 + 内容）
       return `<div class="memo-item${i === selectedSectionIndex && selectedSubIndex === -1 ? ' active' : ''}" data-i="${i}" title="点击编辑此区块">
         <span class="memo-item-icon">##</span>
         <span class="memo-item-name">${escapeHtml(s.title || '（未命名）')}</span>
+        ${addSubNavBtn}
         <button class="del" data-i="${i}" title="删除此区块">✕</button>
       </div>`;
     }
@@ -227,6 +230,7 @@ function renderMemoList() {
     const group = `<div class="memo-group${i === selectedSectionIndex && selectedSubIndex === -1 ? ' active' : ''}" data-i="${i}" title="点击编辑此区块标题/前言">
       <span class="memo-item-icon">##</span>
       <span class="memo-group-name">${escapeHtml(s.title || '（未命名）')}</span>
+      ${addSubNavBtn}
       <button class="del" data-i="${i}" title="删除此区块（含子区块）">✕</button>
     </div>`;
     const subs = s.subs.map((sb, j) => `
@@ -240,10 +244,18 @@ function renderMemoList() {
     + (sections.length === 0 ? '<div class="sec-empty">还没有 ## 区块 —— 点下方「＋ 添加区块」新建，或直接编辑保存后自动识别</div>' : '');
   list.querySelectorAll('.memo-item, .memo-group').forEach((row) => {
     row.addEventListener('click', (e) => {
-      if (e.target.closest('.del')) return;
+      if (e.target.closest('.del') || e.target.closest('.add-sub-nav')) return;
       selectedSectionIndex = Number(row.dataset.i);
       selectedSubIndex = -1;
       renderMemoList();
+    });
+  });
+  list.querySelectorAll('.add-sub-nav').forEach((b) => {
+    b.addEventListener('click', (e) => {
+      e.stopPropagation();
+      selectedSectionIndex = Number(b.dataset.i);
+      selectedSubIndex = -1;
+      addSub();
     });
   });
   list.querySelectorAll('.memo-sub').forEach((row) => {
@@ -430,12 +442,17 @@ function addSection() {
 }
 
 /** 「＋ 添加子区块」：给当前 ## 追加一个 ### 子区块
- *  v1.2.3（用户指令 3）：自动编号 —— 沿用现有「n.m」规律（如 4.1/4.2/4.3 → 4.4）。 */
+ *  v1.2.3（用户指令 3）：自动编号 —— 沿用现有「n.m」规律（如 4.1/4.2/4.3 → 4.4）；
+ *  无编号规律时若区块标题带序号（如「五、…」），则子区块从 5.1 开始。 */
 function addSub() {
   const s = sections[selectedSectionIndex];
   if (!s) return;
   if (!Array.isArray(s.subs)) s.subs = [];
-  const num = nextSubNum(s.subs);
+  let num = nextSubNum(s.subs);
+  if (!num) {
+    const sn = numFromTitle(s.title);
+    if (sn != null && sn >= 1) num = `${sn}.${s.subs.length + 1}`;
+  }
   const title = num ? `${num} 新区块` : `场景 ${s.subs.length + 1}`;
   s.subs.push({ title, body: '' });
   selectedSubIndex = s.subs.length - 1;
