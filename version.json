@@ -5,7 +5,7 @@
   "author": "zx(xwj)",
   "release_notes": "🎉 v1.2.2 —— 记忆管理 + 技能库 + 局域网扫码访问 + 任务完成通知 + 质量修复\n🔹 新增：\n· 记忆管理 —— 「🧠 全局记忆」升级为「🧠 记忆管理」：Tab 1 全局记忆（原功能保留）+ Tab 2 项目记忆（编辑当前工作区 AGENTS.md，支持工作区定位、历史项目切换、手动输入新建、删除）\n· 技能库 —— 宠物/工具箱菜单新增「🛠️ 技能库」：已装技能扫描（用户级 + 项目级）、自建技能（表单自动生成 frontmatter）、技能市场（官方 skills-list.json 三源拉取，7 天缓存，安全提示常驻）\n· 局域网扫码访问 —— 设置菜单「局域网访问」开关：开启后壳反向代理暴露本机 DSH 并弹二维码，手机同一 WiFi 扫码即开界面（多网卡显示、防火墙引导、仅限信任 WiFi 提示）\n· 任务完成通知 —— 设置菜单「任务完成通知」开关：DSH 输出空闲判定为任务完成后弹系统通知，点击回到主窗口\n· 备份扩展 —— 备份/恢复纳入项目记忆（项目索引 + 各项目 AGENTS.md），技能目录随 ~/.dsh 整目录备份\n🔹 修复：\n· 技能目录扫描顺序对齐 DSH 官方 —— 用户级 ~/.dsh/skills 在前、~/.agents/skills 在后（先扫描者优先）\n· 任务完成通知 —— 移除 feed() 未使用的参数（ESLint no-unused-vars 清零）\n· 项目记忆 —— 修正 readProjectMemory 说明注释（保存前自动备份 .bak；读取失败返回 null）\n🔹 优化：\n· 记忆安全 —— 项目记忆对齐全局记忆标准：路径校验、1MB 上限、原子写盘、保存前自动 .bak 备份\n· 技能安全 —— 技能名 kebab-case 严格校验防路径穿越、正文 500KB 上限、市场安装校验 repo/file 白名单\n· 记忆/技能窗口统一接入共享暗色主题（shared.css token）\n· 技能库 —— 用户级目录扫描顺序对齐官方顺序\n❤️ 喜欢 DSH-Desktop？加入 QQ 群 916607090——你的反馈决定下一个功能！",
   "force": false,
-  "hash": "4ff1f50ac62dd975ef821a754c4891d34ca927b8d6d86dfe1164bc867ff881c4",
+  "hash": "0d4a2a25f7ffa0432b4954abb8691c08abb5620605e9bf143453c066b1c7bc6d",
   "download_urls": [
     "https://ghfast.top/https://github.com/XWJ-z/dsh-Desktop/releases/download/v1.2.2/DSH-Desktop-Setup-1.2.2.exe",
     "https://gh-proxy.com/https://github.com/XWJ-z/dsh-Desktop/releases/download/v1.2.2/DSH-Desktop-Setup-1.2.2.exe"
