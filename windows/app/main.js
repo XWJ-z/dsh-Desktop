@@ -787,7 +787,8 @@ const settingsApi = createSettings({
 // v1.2.1 T7：手机访问 —— TCP 反向代理（DSH 保持 127.0.0.1，壳在 0.0.0.0 暴露）
 const lanApi = createLanAccess({
   os,
-  net, // node:net（TCP 反向代理，转发到本机 DSH 端口）
+  net, // node:net（WebSocket 升级裸管道）
+  http, // node:http（HTTP 转发 + HTML 注入 crypto.randomUUID polyfill）
   appendLog,
   getSettings: () => settings,
   saveSettings: () => settingsApi.saveSettings(),

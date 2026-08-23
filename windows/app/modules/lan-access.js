@@ -30,7 +30,7 @@
  */
 
 function createLanAccess(deps) {
-  const { os, net, appendLog, getSettings, saveSettings, getResolvedPort, openQrWindow } = deps;
+  const { os, net, http, appendLog, getSettings, saveSettings, getResolvedPort, openQrWindow } = deps;
 
   let proxyServer = null; // 局域网 TCP 反向代理
   let proxyPort = 0;      // 代理监听端口（QR 用）
@@ -82,18 +82,64 @@ function createLanAccess(deps) {
     });
   }
 
-  /** 处理代理连接：把 socket 管道到 127.0.0.1:<targetPort>（裸 TCP，WS/HTTP 原样转发） */
-  function handleProxy(socket, targetPort) {
+  /** crypto.randomUUID polyfill（手机经 http 局域网访问 = 非安全上下文，`crypto.randomUUID` 不存在） */
+  const CRYPTO_UID_POLYFILL = '<scr' + 'ipt>(function(){try{var c=globalThis.crypto||(globalThis.crypto={});if(typeof c.randomUUID!=="function"){c.randomUUID=function(){return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,function(a){var b=Math.random()*16|0,d=a==="x"?b:(b&3|8);return d.toString(16)})}}}catch(e){}})();</scr' + 'ipt>';
+
+  /** 转发普通 HTTP 请求到 127.0.0.1:<targetPort>（不改写 Host/Origin，trusted-host 已放行）；HTML 响应注入 crypto.randomUUID polyfill */
+  function forwardHttp(req, res, targetPort) {
+    const up = http.request({
+      host: '127.0.0.1',
+      port: targetPort,
+      method: req.method,
+      path: req.url,
+      headers: req.headers,
+    }, (upRes) => {
+      const ct = String(upRes.headers['content-type'] || '');
+      if (upRes.statusCode === 200 && /text\/html/i.test(ct)) {
+        let body = '';
+        upRes.setEncoding('utf8');
+        upRes.on('data', (c) => { body += c; });
+        upRes.on('end', () => {
+          const injected = body.replace(/<head([^>]*)>/i, '<head$1>' + CRYPTO_UID_POLYFILL);
+          const h = { ...upRes.headers };
+          delete h['content-length']; delete h['transfer-encoding']; delete h.connection; delete h['keep-alive'];
+          res.writeHead(upRes.statusCode, h);
+          res.end(injected);
+        });
+      } else {
+        const h = { ...upRes.headers };
+        delete h.connection; delete h['keep-alive']; delete h['proxy-connection']; delete h['transfer-encoding'];
+        res.writeHead(upRes.statusCode, h);
+        upRes.pipe(res);
+      }
+    });
+    up.on('error', () => { try { res.writeHead(502); res.end(); } catch { /* ignore */ } });
+    req.on('error', () => { try { up.destroy(); } catch { /* ignore */ } });
+    req.pipe(up);
+  }
+
+  /** 转发 WebSocket / HTTP Upgrade（不改写 Host/Origin，裸管道双向——trusted-host 已放行） */
+  function forwardUpgrade(req, socket, head, targetPort) {
     const upstream = net.connect(targetPort, '127.0.0.1');
     socket.on('error', () => { try { upstream.destroy(); } catch { /* ignore */ } });
     upstream.on('error', () => { try { socket.destroy(); } catch { /* ignore */ } });
-    socket.pipe(upstream).pipe(socket);
+    upstream.on('connect', () => {
+      let headStr = `${req.method} ${req.url} HTTP/1.1\r\n`;
+      for (const [k, v] of Object.entries(req.headers)) {
+        if (v === undefined || v === null) continue;
+        headStr += `${k}: ${Array.isArray(v) ? v.join(', ') : v}\r\n`;
+      }
+      headStr += '\r\n';
+      upstream.write(headStr);
+      if (head && head.length) upstream.write(head);
+      upstream.pipe(socket).pipe(upstream);
+    });
   }
 
   /**
    * 启动局域网反向代理（绑定 0.0.0.0:<dshPort+offset> → 127.0.0.1:<dshPort>）。
-   * 裸 TCP 转发。需要 DSH 以 `--trusted-host <局域网IP>` 启动（见 serverLifecycle.js），
-   * 使 DSH 的 /api browser-trust fence 信任局域网 Host，否则手机请求会 403。
+   * HTTP 请求转发 + HTML 注入 crypto.randomUUID polyfill（手机非安全上下文）+ WebSocket 裸管道。
+   * 需 DSH 以 `--trusted-host <局域网IP>` 启动（见 serverLifecycle.js），否则非 localhost 请求 403。
    */
   async function startProxy() {
     if (proxyServer) return true;
@@ -102,7 +148,8 @@ function createLanAccess(deps) {
       const want = targetPort + off;
       try {
         const srv = await new Promise((resolve, reject) => {
-          const s = net.createServer((socket) => handleProxy(socket, targetPort));
+          const s = http.createServer((req, res) => forwardHttp(req, res, targetPort));
+          s.on('upgrade', (req, socket, head) => forwardUpgrade(req, socket, head, targetPort));
           s.on('error', (err) => {
             if (err && err.code === 'EADDRINUSE') reject(err);
             else { appendLog('warn', `局域网代理错误：${err.message}`); }
