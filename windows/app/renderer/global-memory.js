@@ -313,6 +313,17 @@ function renderMemoEditor() {
   }
   // 区块级：## 标题 + 前言内容；已含子区块时提供「＋ 添加子区块」
   const hasSubs = Array.isArray(s.subs) && s.subs.length > 0;
+  const hasIntro = String(s.body || '').trim() !== '';
+  // 区块内容（前言）：有子区块且前言为空时不再展示空占位框（如「## 四」这种内容全在 ### 子区块的）；
+  // 有子区块且有前言时，标签右侧提供「✕ 删除前言」（只删前言、不删子区块）。
+  let introField = '';
+  if (!hasSubs || hasIntro) {
+    introField = `
+    <div class="memo-editor-field">
+      <div class="memo-editor-label${hasSubs ? ' with-del' : ''}">区块内容<span class="hint">（长文本 · 格式原样保留）</span>${hasSubs ? '<button class="del intro-del" title="删除此区块的前言内容">✕</button>' : ''}</div>
+      <textarea class="memo-editor-body${hasSubs ? ' compact' : ''}" rows="10" placeholder="此区块内容…">${escapeHtml(s.body)}</textarea>
+    </div>`;
+  }
   const addSubBtn = hasSubs ? '<button id="btn-add-sub" class="add-field">＋ 添加子区块</button>' : '';
   // v1.2.3（用户修复）：该 ## 下所有 ### 子区块内容汇总（只读预览；编辑请在左侧点 ### 子项）——
   // 解决「点 ## 组头显示空白」。# # 本身可能没有前言，内容都收在 ### 子区块里。
@@ -330,19 +341,18 @@ function renderMemoEditor() {
       <span class="hash">##</span>
       <input class="memo-editor-title" value="${escapeHtml(s.title)}" placeholder="区块标题（如：项目备忘）" />
       <button class="del" title="删除此区块">✕</button>
-    </div>
-    <div class="memo-editor-field">
-      <div class="memo-editor-label">区块内容<span class="hint">（长文本 · 格式原样保留）</span></div>
-      <textarea class="memo-editor-body${hasSubs ? ' compact' : ''}" rows="10" placeholder="此区块内容…">${escapeHtml(s.body)}</textarea>
-    </div>${addSubBtn}${subPreview}`;
+    </div>${introField}${addSubBtn}${subPreview}`;
   const title = ed.querySelector('.memo-editor-title');
   title.addEventListener('input', () => {
     s.title = title.value;
     const item = document.querySelector(`.memo-item[data-i="${selectedSectionIndex}"] .memo-item-name, .memo-group[data-i="${selectedSectionIndex}"] .memo-group-name`);
     if (item) item.textContent = title.value || '（未命名）';
   });
-  ed.querySelector('.memo-editor .del').addEventListener('click', () => { sections.splice(selectedSectionIndex, 1); selectedSubIndex = -1; renderMemoList(); });
-  ed.querySelector('.memo-editor-body').addEventListener('input', (e) => { s.body = e.target.value; });
+  ed.querySelector('.memo-editor-head .del').addEventListener('click', () => { sections.splice(selectedSectionIndex, 1); selectedSubIndex = -1; renderMemoList(); });
+  const introDel = ed.querySelector('.intro-del');
+  if (introDel) introDel.addEventListener('click', () => { s.body = ''; renderMemoList(); });
+  const introBody = ed.querySelector('.memo-editor-body');
+  if (introBody) introBody.addEventListener('input', (e) => { s.body = e.target.value; });
   const addSubBtnEl = el('btn-add-sub');
   if (addSubBtnEl) addSubBtnEl.addEventListener('click', addSub);
 }
