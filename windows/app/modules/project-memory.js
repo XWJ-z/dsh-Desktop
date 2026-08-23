@@ -9,7 +9,7 @@
  *
  * 本模块只做持久化 + 索引，不做注入：
  *  - getProjectMemoryPath(workspacePath) → <workspacePath>/AGENTS.md
- *  - readProjectMemory(workspacePath)    读原始内容（含损坏回退 .bak）
+ *  - readProjectMemory(workspacePath)    读原始内容（保存前自动备份 .bak；读取失败返回 null）
  *  - parseProjectMemory / renderProjectMemory  区块化解析/重组（复用全局记忆思路）
  *  - saveProjectMemory(workspacePath, content)  原子写盘 + 更新索引
  *  - deleteProjectMemory(workspacePath)  删除文件 + 移出索引

@@ -34,7 +34,7 @@ function createTaskNotify(deps) {
   let idleTimer = null;
 
   /** 收到 DSH 输出行：刷新活动时间 + 武装 + 重置空闲计时 */
-  function feed(text) {
+  function feed() {
     lastActivity = Date.now();
     if (!getSettings().taskNotify) return; // 开关关闭：完全静默（不武装不通知）
     // 新一轮活动（上一轮已通知过）→ 重新武装；否则首次活动也武装
@@ -71,8 +71,8 @@ function createTaskNotify(deps) {
     if (!child || child === watchedChild) return;
     watchedChild = child;
     try {
-      child.stdout && child.stdout.on('data', (chunk) => feed(chunk.toString()));
-      child.stderr && child.stderr.on('data', (chunk) => feed(chunk.toString()));
+      child.stdout && child.stdout.on('data', () => feed());
+      child.stderr && child.stderr.on('data', () => feed());
       appendLog('info', '任务完成通知：已监听 DSH 服务输出（空闲判定）');
     } catch (err) {
       appendLog('warn', `任务完成通知监听失败：${err.message}`);

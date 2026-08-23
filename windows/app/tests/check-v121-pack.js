@@ -19,11 +19,15 @@ function run() {
   const pet = read('modules/pet.js');
   const menu = read('modules/menu.js');
   const qrhtml = read('renderer/lan-qr.html');
+  // skills-list.json 在仓库根（远程三源下发，不进安装包）—— 从仓库根读
+  const skillsList = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', '..', 'skills-list.json'), 'utf8'));
+  const skrender = read('renderer/skill-library.js');
+  const skillmodule = read('modules/skill-library.js');
 
   console.log('[版本一致]');
-  ok(pkg.version === '1.2.1', 'package.json version = 1.2.1（实际 ' + pkg.version + '）');
-  ok(rootV.version === '1.2.1', 'version.json version = 1.2.1（实际 ' + rootV.version + '）');
-  ok(changelog.versions[0].version === '1.2.1', 'CHANGELOG 首条 = 1.2.1');
+  ok(pkg.version === '1.2.2', 'package.json version = 1.2.2（实际 ' + pkg.version + '）');
+  ok(rootV.version === '1.2.2', 'version.json version = 1.2.2（实际 ' + rootV.version + '）');
+  ok(changelog.versions[0].version === '1.2.2', 'CHANGELOG 首条 = 1.2.2');
 
   console.log('[新模块/渲染器进包]');
   ['modules/project-memory.js', 'modules/skill-library.js', 'modules/lan-access.js', 'modules/task-notify.js'].forEach((f) => ok(exists(f), f + ' 进包'));
@@ -53,6 +57,16 @@ function run() {
   ok(menu.includes("label: '任务完成通知'"), '设置菜单「任务完成通知」');
   ok(qrhtml.includes('id="lan-switch"'), '手机访问弹窗含药丸开关');
   ok(qrhtml.includes('overflow: hidden'), '手机访问弹窗禁止滚动（说明完整展示）');
+
+  console.log('[技能市场]');
+  ok(skillsList.version === 2, 'skills-list.json version=2');
+  ok(Array.isArray(skillsList.skills) && skillsList.skills.length >= 6, '技能市场 ≥ 6 条');
+  ok(skillsList.skills.every((s) => s.repo && s.file), '每条含 repo + file');
+  ok(skillsList.skills.some((s) => s.repo === 'anthropics/skills'), '含 Anthropic 官方来源（多来源）');
+  ok(skillsList.skills.some((s) => s.install_req), '含安装要求 install_req 字段');
+  ok(skrender.includes('skill-card-req'), '市场 UI 展示安装要求区');
+  ok(skrender.includes('act-copy-req') && skrender.includes('安装指令已复制'), '市场 UI 含「复制安装指令」');
+  ok(skillmodule.includes('installReq'), 'skill-library 透传 installReq');
 
   console.log('[' + (failed ? 'FAIL' : 'OK') + ']');
   process.exit(failed ? 1 : 0);

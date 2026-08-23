@@ -1,13 +1,13 @@
 {
   "_comment": "自动更新版本清单（updater.js 三源拉取）：version / hash / download_urls 必须一致（hash=安装包实测 SHA256，NSIS 非确定性，重打包须重取）；release_notes 展示给用户，force=true 强制更新，minVersion 为最低支持版本",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "minVersion": "0.7.4",
   "author": "zx(xwj)",
-  "release_notes": "🎉 v1.2.1 —— 记忆管理 + 技能库 + 局域网扫码访问 + 任务完成通知\n🔹 新增：\n· 记忆管理 —— 「🧠 全局记忆」升级为「🧠 记忆管理」（宠物/工具箱菜单）：Tab 1 全局记忆（原有功能原样保留）+ Tab 2 项目记忆（编辑当前工作区 <工作区>/AGENTS.md，DSH 启动自动读取；支持当前工作区定位、历史项目列表切换、手动输入路径新建、确认删除）\n· 技能库 —— 宠物/工具箱菜单新增「🛠️ 技能库」：已装技能扫描（用户级 ~/.dsh/skills + 项目级 .dsh/skills/.agents，读取 SKILL.md frontmatter）、自建技能（结构化表单自动生成 SKILL.md frontmatter）、技能市场（我们仓库维护的 skills-list.json 三源拉取 + GitHub raw 安装，7 天缓存，安全提示常驻）\n· 局域网扫码访问 —— 设置菜单「局域网访问」开关（默认关）：开启后由壳在 0.0.0.0 起反向代理暴露本机 DSH（DSH 保持绑定 127.0.0.1，安全不触发运行时拒绝）并弹出二维码窗口，手机连同一 WiFi 扫码即开 DSH 界面（多网卡全部显示、防火墙引导、仅限信任 WiFi 提示）\n· 任务完成通知 —— 设置菜单「任务完成通知」开关（默认开）：DSH 输出空闲判定为任务完成后弹系统通知，点击回到主窗口\n· 备份扩展 —— 备份/恢复纳入项目记忆（用户项目索引 + 各项目 AGENTS.md）；技能目录随 ~/.dsh 整目录备份\n🔹 优化：\n· 记忆安全 —— 项目记忆对齐全局记忆标准：路径校验（仅已存在目录）、1MB 内容上限、原子写盘、保存前自动 .bak 备份\n· 技能安全 —— 技能名 kebab-case 严格校验防路径穿越、正文 500KB 上限、市场安装校验 repo/file 白名单\n· 记忆/技能窗口统一接入共享暗色主题（shared.css token）\n❤️ 喜欢 DSH-Desktop？加入 QQ 群 916607090——你的反馈决定下一个功能！",
+  "release_notes": "🎉 v1.2.2 —— 质量修复：技能目录扫描对齐官方 + 任务通知参数清理 + 项目记忆注释一致\n🔹 修复：\n· 技能目录扫描顺序对齐 DSH 官方 —— 用户级扫描调整为 ~/.dsh/skills 在前、~/.agents/skills 在后（先扫描者优先，dedup 保持先到先得）\n· 任务完成通知 —— 移除 feed() 未使用的参数（ESLint no-unused-vars 清零），DSH 输出空闲判定逻辑不变\n· 项目记忆 —— 修正 readProjectMemory 说明注释（保存前自动备份 .bak；读取失败返回 null），注释与实现一致\n🔹 优化：\n· 技能库 —— 用户级目录扫描顺序对齐官方顺序\n❤️ 喜欢 DSH-Desktop？加入 QQ 群 916607090——你的反馈决定下一个功能！",
   "force": false,
-  "hash": "205f633c9063400efafea2dd114a500deda10021aaa979860a0cf19bb5e1b9fe",
+  "hash": "1fd03b64db54414a4a55372d7cfe3a83e6ed109ec4242a21e3d6c9bb713051ad",
   "download_urls": [
-    "https://ghfast.top/https://github.com/XWJ-z/dsh-Desktop/releases/download/v1.1.6/DSH-Desktop-Setup-1.1.6.exe",
-    "https://gh-proxy.com/https://github.com/XWJ-z/dsh-Desktop/releases/download/v1.1.6/DSH-Desktop-Setup-1.1.6.exe"
+    "https://ghfast.top/https://github.com/XWJ-z/dsh-Desktop/releases/download/v1.2.2/DSH-Desktop-Setup-1.2.2.exe",
+    "https://gh-proxy.com/https://github.com/XWJ-z/dsh-Desktop/releases/download/v1.2.2/DSH-Desktop-Setup-1.2.2.exe"
   ]
 }

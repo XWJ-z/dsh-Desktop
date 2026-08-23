@@ -38,7 +38,7 @@ async function run() {
   {
     const e = makeEnv();
     e.state.taskNotify = false;
-    e.tn.feed('some output');
+    e.tn.feed();
     ok(e.tn.notifyNow() === false, '开关关 → notifyNow 不通知');
     ok(e.calls.notify === 0, '开关关 → 零通知');
   }
@@ -46,7 +46,7 @@ async function run() {
   console.log('[T8] 空闲判定触发一次 + 重新武装');
   {
     const e = makeEnv();
-    e.tn.feed('task start');
+    e.tn.feed();
     ok(e.tn.getState().armed === true, 'feed 后 armed = true（任务进行中）');
     await new Promise((r) => setTimeout(r, 100)); // 超过 idleMs(60)
     ok(e.calls.notify === 1, '空闲超时 → 弹一次通知');
@@ -55,7 +55,7 @@ async function run() {
     await new Promise((r) => setTimeout(r, 100));
     ok(e.calls.notify === 1, '无新活动 → 不重复通知');
     // 新一轮活动 → 重新武装 → 空闲后再通知一次
-    e.tn.feed('new task');
+    e.tn.feed();
     ok(e.tn.getState().armed === true && e.tn.getState().notified === false, '新一轮活动重新武装');
     await new Promise((r) => setTimeout(r, 100));
     ok(e.calls.notify === 2, '新一轮空闲 → 再通知一次');
@@ -75,7 +75,7 @@ async function run() {
     const child1 = new EventEmitter(); child1.stdout = new EventEmitter(); child1.stderr = new EventEmitter();
     e.setChild(child1);
     e.tn.watchServer();
-    e.tn.feed('a'); // 直接 feed 计入活动（getState 不依赖输出流）
+    e.tn.feed(); // 直接 feed 计入活动（getState 不依赖输出流）
     // 再次 watch 同一 child：不应重复失败
     e.tn.watchServer();
     ok(true, '重复 watchServer 不抛错（幂等）');

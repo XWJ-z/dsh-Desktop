@@ -10,6 +10,8 @@
  *  - deleteSkill(name)：删目录（kebab-case 校验）
  *  - 技能市场：三源拉取 skills-list.json（复用 remote-sources.buildSources + Electron net，
  *    7 天缓存 userData/skills-market-cache.json）→ 安装 = GitHub raw 拉 SKILL.md 写本地。
+ *    技能条目含 install_req（安装要求）：纯文本直接可用 / 需配套资源仅拉正文（前端展示，
+ *    复制安装指令）。市场列表为多来源精选（Anthropic 官方 anthropics/skills 等）。
  *
  * 技能 = 纯文本指令（YAML + Markdown），本地写入无代码执行风险；但内容会注入模型上下文，
  * 安装时提示来源（前端展示安全提示常驻）。
@@ -133,8 +135,8 @@ function createSkillLibrary(deps) {
   /** 待扫描目录（项目级优先；dedup 后项目覆盖用户） */
   async function scanDirs() {
     const dirs = [
-      { dir: path.join(os.homedir(), '.agents', 'skills'), level: 'user' },
       { dir: userSkillDir(), level: 'user' },
+      { dir: path.join(os.homedir(), '.agents', 'skills'), level: 'user' },
     ];
     try {
       const ws = getWorkspacePath ? await getWorkspacePath() : null;
@@ -316,9 +318,37 @@ function createSkillLibrary(deps) {
           category: String((s && s.category) || '').trim(),
           repo: String((s && s.repo) || '').trim(),
           file: String((s && s.file) || '').trim(),
+          installReq: String((s && (s.install_req || s.installReq)) || '').trim(),
         }))
         .filter((s) => s.name && s.repo && s.file);
     } catch {
+      return [];
+    }
+  }
+
+  /**
+   * 本地回退：三源全失败时读随包分发的 skills-list.json。
+   * 路径 path.join(app.getAppPath(), 'skills-list.json') —— 打包后为 resources/app/skills-list.json，
+   * 由 electron-builder files 的包含规则默认拷入（未排除该文件）。读到有效列表则写缓存；
+   * 文件缺失/解析失败返回 []。
+   */
+  function loadLocalMarketList() {
+    try {
+      const localFile = path.join(app.getAppPath(), 'skills-list.json');
+      if (!fs.existsSync(localFile)) {
+        appendLog('warn', `技能市场拉取全部失败，且无随包本地清单：${localFile}`);
+        return [];
+      }
+      const list = parseMarketList(fs.readFileSync(localFile, 'utf8'));
+      if (list.length > 0) {
+        marketCache = list;
+        marketTs = Date.now();
+        writeMarketCache(list);
+        appendLog('info', `技能市场使用随包本地清单：${list.length} 个技能`);
+      }
+      return list;
+    } catch (err) {
+      appendLog('warn', `技能市场本地清单读取失败：${err.message}`);
       return [];
     }
   }
@@ -331,8 +361,8 @@ function createSkillLibrary(deps) {
     );
     const valid = results.filter((r) => r && r.length > 0);
     if (valid.length === 0) {
-      appendLog('warn', `技能市场拉取全部失败（沿用缓存）`);
-      return loadMarketCache() || [];
+      appendLog('warn', `技能市场拉取全部失败，回退随包本地清单`);
+      return loadLocalMarketList();
     }
     // 各源取技能数最多者（最完整的列表）
     const best = valid.reduce((a, b) => (b.length > a.length ? b : a));
