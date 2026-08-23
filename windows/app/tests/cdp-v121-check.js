@@ -243,30 +243,48 @@ async function main() {
   })()`);
   ok(!!lanOff && lanOff.ok, '关闭局域网访问成功');
 
-  // [10] 局域网二维码窗口真实渲染 —— 补齐此前从未测试的「QR <img> 是否真的画出」
-  console.log('[10] 局域网二维码窗口真实渲染');
-  const lanOn2 = await cdp.eval(`(async () => { try { const r = await window.dshDesktop.setLanAccess(true); return { ok: !!r && r.ok !== false }; } catch (e) { return { ok:false, err:String(e) }; } })()`);
-  ok(!!lanOn2 && lanOn2.ok === true, '再次开启局域网访问');
+  // [10] 手机访问弹窗药丸开关：真实用户流程 —— 拨动开关开→二维码渲染；关→窗口保持打开 + 未开启态
+  console.log('[10] 手机访问弹窗药丸开关真实渲染');
   const qrWin = await waitTarget(SIM_DEBUG_PORT, (t) => /lan-qr\.html/.test(t.url), 20000);
-  ok(!!qrWin, '局域网二维码窗口（lan-qr.html）打开');
+  ok(!!qrWin, '手机访问弹窗（lan-qr.html）存在');
   if (qrWin) {
     const qc = cdpConnect(qrWin.webSocketDebuggerUrl);
-    await sleep(900);
-    const qrState = await qc.eval(`(() => {
+    await sleep(800);
+    // 拨动药丸 → 开（on），走 change 事件 → setLanAccess(true) + refresh → 画二维码
+    const qrState = await qc.eval(`(async () => {
+      const sw = document.getElementById('lan-switch');
+      if (!sw) return { ok:false, reason:'no switch' };
+      sw.checked = true;
+      sw.dispatchEvent(new Event('change', { bubbles: true }));
+      await new Promise((r) => setTimeout(r, 1200));
       const imgs = Array.from(document.querySelectorAll('#qr-box .qrcode img'));
-      const firstSrc = (imgs[0] && imgs[0].getAttribute('src')) || null;
-      const n = document.querySelectorAll('#qr-box .qrcode').length;
-      const empty = !!document.querySelector('#qr-box .empty');
-      const failTxt = !!document.querySelector('#qr-box .empty');
-      return { count: n, imgCount: imgs.length, firstSrc: firstSrc ? firstSrc.slice(0, 24) : null, empty, failTxt };
+      return { ok:true, on: sw.checked, imgCount: imgs.length,
+        firstSrc: (imgs[0] && imgs[0].getAttribute('src')) ? imgs[0].getAttribute('src').slice(0,24) : null,
+        empty: !!document.querySelector('#qr-box .empty') };
     })()`);
-    console.log('  qrState:', JSON.stringify(qrState));
-    ok(!!qrState && qrState.imgCount > 0 && /^data:image\/png;base64,/.test(qrState.firstSrc || ''), '二维码 img 真实渲染（data:image/png;base64）');
-    ok(!!qrState && qrState.count === qrState.imgCount && !qrState.empty, '每个局域网地址都生成二维码（无空态）');
+    console.log('  qrOn:', JSON.stringify(qrState));
+    ok(!!qrState && qrState.ok && qrState.on === true, '药丸拨到开（on）');
+    ok(!!qrState && qrState.imgCount > 0 && /^data:image\/png;base64,/.test(qrState.firstSrc || ''), '开 → 二维码 img 真实渲染（data:image/png;base64）');
+    ok(!!qrState && !qrState.empty, '开 → 无空态（每个地址都生成二维码）');
+    // 拨动药丸 → 关（off）→ 窗口保持打开 + 显示未开启
+    const qrOff = await qc.eval(`(async () => {
+      const sw = document.getElementById('lan-switch');
+      sw.checked = false;
+      sw.dispatchEvent(new Event('change', { bubbles: true }));
+      await new Promise((r) => setTimeout(r, 1000));
+      const st = document.getElementById('switch-state');
+      return { ok:true, on: sw.checked, state: st ? st.textContent.trim() : null,
+        qrOffHint: /未开启/.test((document.getElementById('qr-box') || {}).textContent || '') };
+    })()`);
+    console.log('  qrOff:', JSON.stringify(qrOff));
+    ok(!!qrOff && qrOff.ok && qrOff.on === false, '药丸拨到关（off）');
+    ok(!!qrOff && /未开启/.test(qrOff.state || ''), '关 → 显示「未开启」');
+    ok(!!qrOff && qrOff.qrOffHint === true, '关 → 弹窗保持打开 + 显示未开启（未关闭）');
     qc.close();
   }
-  const lanOff2 = await cdp.eval(`(async () => { try { const r = await window.dshDesktop.setLanAccess(false); return { ok: !!r && r.ok !== false }; } catch (e) { return { ok:false, err:String(e) }; } })()`);
-  ok(!!lanOff2 && lanOff2.ok, '再次关闭局域网访问');
+  // 弹窗应仍存在（关闭开关不关弹窗）
+  const lanWinAfter = await waitTarget(SIM_DEBUG_PORT, (t) => /lan-qr\.html/.test(t.url), 8000);
+  ok(!!lanWinAfter, '关闭后弹窗仍打开（未被关闭）');
 
   killSim();
   console.log(`\nRESULT: ${passed} PASS / ${failed} FAIL`);

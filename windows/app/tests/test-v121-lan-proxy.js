@@ -81,9 +81,10 @@ async function run() {
   // 未开启后端绑定 0.0.0.0；后端仍在 127.0.0.1
   ok(lan.isEnabled() === true, 'isEnabled()=true');
 
-  // 关闭局域网访问 → 停代理 + 关窗口
+  // 关闭局域网访问 → 停代理；弹窗保持打开（用户指令：不因关闭而关弹窗）
   await lan.setLanMode(false);
-  ok(state.lanAccess === false && calls.closeQr >= 1, '关闭时停代理 + 关窗口');
+  ok(state.lanAccess === false, '关闭时 settings.lanAccess=false');
+  ok(calls.closeQr === 0, '关闭时不关二维码窗口（弹窗保持打开，由用户手动关闭）');
   ok(lan.getQrData().port === dshPort + 1, '关闭后 QR 端口回占位');
   // 关闭后再 probe 代理端口：应连不上（代理已停）
   const afterClose = await probe(proxyPort, 'ping', 5);

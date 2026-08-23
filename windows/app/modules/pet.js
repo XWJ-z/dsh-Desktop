@@ -67,7 +67,6 @@ function createPet(deps) {
     if (!win || win.isDestroyed()) return;
     const saved = getSettings().webOpenBtnPos;
     const petHidden = !!getSettings().petHidden;
-    const lanOn = !!getSettings().lanAccess; // v1.2.1 T7：局域网访问（宠物菜单开关，反映当前状态）
     const petSvg = petSvgText();
     const toolboxSvg = toolboxSvgText();
     win.webContents
@@ -94,7 +93,6 @@ function createPet(deps) {
         const petSvg = ${JSON.stringify(petSvg)};
         const toolboxSvg = ${JSON.stringify(toolboxSvg)};
         const petHidden = ${petHidden};
-        const lanOn = ${lanOn};
 
         // ── 创建/重建函数（SPA 清除后由 observer 调用；可见则不动）──
         window.__dshEnsurePet = function ensurePet() {
@@ -160,7 +158,7 @@ function createPet(deps) {
           // v1.2.1 T5：技能库入口（技能 = 纯文本指令，本地写入无执行风险）
           +   '<div class="pet-item" data-action="skilllib">🛠️ 技能库</div>'
           // v1.2.1 T7：手机访问入口（宠物菜单）—— 打开弹窗，开关在弹窗内（药丸开关）
-          +   '<div class="pet-item" data-action="lan">📱 手机访问' + (lanOn ? '（已开）' : '') + '</div>'
+          +   '<div class="pet-item" data-action="lan">📱 手机访问</div>'
           +   '<div class="pet-item" data-action="webopen">🌐 网页打开</div>'
           +   (petHidden
               ? '<div class="pet-item" data-action="showpet">🐋 显示宠物</div>'

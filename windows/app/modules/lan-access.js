@@ -1,22 +1,23 @@
 'use strict';
 
 /**
- * DSH-Desktop — 局域网扫码访问模块（v1.2.1 T7，2026-08-23 修复版）
+ * DSH-Desktop — 手机访问模块（v1.2.1 T7，2026-08-23 修复版）
  *
  * ⚠️ 关键修正：DSH 运行时（@deepseek-ai/dsh）**出于安全明确拒绝 `--host 0.0.0.0`**
  * （`error: --host 0.0.0.0 is intentionally not supported yet for safety...`），
  * 让 DSH 绑定 0.0.0.0 会导致它退出码 1 → 壳反复重试 → 启动超时失败。
  *
- * 因此改为：**DSH 永远绑定 127.0.0.1:<port>（不变），由壳在局域网开启时启动一个
+ * 因此改为：**DSH 永远绑定 127.0.0.1:<port>（不变），由壳在手机访问开启时启动一个
  * TCP 反向代理**，监听 0.0.0.0:<proxyPort>，把局域网进来的连接转发到本机
  * 127.0.0.1:<dshPort>。这样：
  *  - 不触发 DSH 的 0.0.0.0 拒绝；
- *  - 局域网开关**不再重启 DSH**（只启/停代理，零干扰）；
+ *  - 手机访问开关**不再重启 DSH**（只启/停代理，零干扰）；
  *  - 二维码指向 http://<lanIP>:<proxyPort>（走代理）。
  *
  * 职责：
  *  - getLanIps()：os.networkInterfaces() 过滤 IPv4 非 internal
- *  - isEnabled / setLanMode(on)：读写 settings.lanAccess；开=起代理+弹二维码，关=停代理+关窗口
+ *  - isEnabled / setLanMode(on)：读写 settings.lanAccess；开=起代理+确保弹窗开，关=停代理；
+ *    **关闭不收起二维码窗口**（用户指令：弹窗内关闭开关后弹窗保持打开，由用户手动关）
  *  - ensureRunning()：启动时若 lanAccess 已开则恢复代理（供 main.js 调用）
  *  - getQrData()：{ enabled, port: proxyPort, ips: [{ip,url}] }
  *  - qrFor()：qrcode.toDataURL
@@ -25,11 +26,11 @@
  *  - os / net              Node 模块（net 用于 TCP 代理）
  *  - appendLog / getSettings / saveSettings
  *  - getResolvedPort       当前 DSH 端口（127.0.0.1）
- *  - openQrWindow / closeQrWindow
+ *  - openQrWindow          确保手机访问弹窗打开
  */
 
 function createLanAccess(deps) {
-  const { os, net, appendLog, getSettings, saveSettings, getResolvedPort, openQrWindow, closeQrWindow } = deps;
+  const { os, net, appendLog, getSettings, saveSettings, getResolvedPort, openQrWindow } = deps;
 
   let proxyServer = null; // 局域网 TCP 反向代理
   let proxyPort = 0;      // 代理监听端口（QR 用）
@@ -129,9 +130,10 @@ function createLanAccess(deps) {
   }
 
   /**
-   * 开启/关闭局域网访问。
-   *  - 开：起代理(0.0.0.0:proxyPort) + 弹二维码窗口；不动 DSH
-   *  - 关：停代理 + 关二维码窗口；不动 DSH
+   * 开启/关闭手机访问。
+   *  - 开：起代理(0.0.0.0:proxyPort)；成功则确保二维码窗口打开；不动 DSH
+   *  - 关：停代理；**不关闭二维码窗口**（用户指令：在弹窗里关闭开关后弹窗保持打开，
+   *    由弹窗渲染进程刷新为"未开启"态，开关复用）—— 弹窗由用户手动关闭。
    */
   async function setLanMode(enabled) {
     const s = getSettings();
@@ -144,11 +146,10 @@ function createLanAccess(deps) {
         appendLog('info', '手机访问已开启（基于反向代理，DSH 保持 127.0.0.1 绑定）');
         return { ok: true };
       }
-      closeQrWindow();
+      appendLog('warn', '手机访问代理启动失败（端口不可用），弹窗保持打开供重试');
       return { ok: false, message: '手机访问代理启动失败（端口不可用），请稍后重试' };
     }
     stopProxy();
-    closeQrWindow();
     appendLog('info', '手机访问已关闭');
     return { ok: true };
   }

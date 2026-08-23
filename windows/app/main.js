@@ -657,8 +657,7 @@ const {
   openPluginMarketWindow, // v1.1.1：插件市场窗口
   openHelpDocWindow, // v1.1.1 二轮：帮助文档窗口
   openSkillLibraryWindow, // v1.2.1 T5：技能库窗口
-  openLanQrWindow, // v1.2.1 T7：局域网扫码窗口
-  closeLanQrWindow,
+  openLanQrWindow, // v1.2.1 T7：手机访问窗口
   openCloseChoiceWindow,
   openBackupProgress,
   updateBackupProgress,
@@ -784,7 +783,7 @@ const settingsApi = createSettings({
   refreshMenus: () => refreshMenusRef(), // v0.8.12：menuApi 晚绑定（避免循环依赖）
 });
 
-// v1.2.1 T7：局域网扫码访问 —— TCP 反向代理（DSH 保持 127.0.0.1，壳在 0.0.0.0 暴露）
+// v1.2.1 T7：手机访问 —— TCP 反向代理（DSH 保持 127.0.0.1，壳在 0.0.0.0 暴露）
 const lanApi = createLanAccess({
   os,
   net, // node:net（TCP 反向代理，转发到本机 DSH 端口）
@@ -793,7 +792,6 @@ const lanApi = createLanAccess({
   saveSettings: () => settingsApi.saveSettings(),
   getResolvedPort: () => resolvedPort,
   openQrWindow: () => openLanQrWindow(),
-  closeQrWindow: () => closeLanQrWindow(),
 });
 
 // v1.2.1 T8：任务完成通知 —— 监听 DSH 输出空闲 N 分钟 → 弹系统通知（点击回主窗口）
