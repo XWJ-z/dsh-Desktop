@@ -340,7 +340,7 @@ function renderMemoEditor() {
   const subPreview = hasSubs ? `
     <div class="memo-sub-preview">
       <div class="memo-editor-label">本区块全部内容<span class="hint">（只读汇总 · 编辑请在左侧点 ### 子项）</span></div>
-      ${s.subs.map((sb, j) => `
+      ${s.subs.map((sb) => `
         <div class="memo-sub-preview-item">
           <div class="memo-sub-preview-head"><span class="hash">###</span>${escapeHtml(sb.title || '（未命名）')}</div>
           <pre class="memo-sub-preview-body">${escapeHtml(sb.body || '')}</pre>
