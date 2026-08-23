@@ -264,6 +264,24 @@
       white-space: pre;
     }
     .memo-editor-body:focus { border-color: rgba(94,106,210,.55); }
+    /* v1.2.3（用户修复）：## 组头面板 —— 有子区块时压缩空前言框，避免「大空框」观感 */
+    .memo-editor-body.compact { min-height: 64px; }
+    /* v1.2.3（用户修复）：## 组头面板 —— 本区块全部内容（只读子区块汇总，解决点 ## 显示空白） */
+    .memo-sub-preview { display: flex; flex-direction: column; gap: 8px; margin-top: 2px; }
+    .memo-sub-preview-item {
+      border: 1px solid var(--border-subtle); border-radius: var(--radius-btn);
+      padding: 8px 10px; background: var(--bg-input);
+    }
+    .memo-sub-preview-head {
+      display: flex; align-items: center; gap: 7px; margin-bottom: 4px;
+      font-size: 12.5px; font-weight: 590; color: var(--text-primary);
+    }
+    .memo-sub-preview-head .hash { font: 600 13px Consolas, monospace; color: var(--brand); }
+    .memo-sub-preview-body {
+      font: 12px/1.7 Consolas, "Courier New", "Microsoft YaHei", monospace;
+      color: var(--text-secondary); white-space: pre-wrap; word-break: break-word;
+      margin: 0; max-height: 180px; overflow-y: auto;
+    }
     /* v1.0.3（用户反馈 2）：角色列表 + 点击进入编辑（角色名 ≤30 字符） */
     .role-layout { display: flex; gap: 12px; flex: 1; min-height: 0; }
     .role-list {

@@ -428,11 +428,14 @@ function createGlobalMemory(deps) {
     let c = String(content || '');
     const titleM = /^#\s*角色[：:][^\n]*\n+/.exec(c);
     if (titleM) c = c.slice(titleM[0].length);
+    // 结构化标题（## 详细记忆）由 renderRoleContent 程序生成，
+    // 不该出现在窗口的「详细记忆」编辑框里 → 从正文开头剥掉（与保存端 renderRoleContent 对齐）
+    const stripDetailHead = (s) => s.replace(/^##\s*详细记忆\s*\n+/, '');
     const m = /##\s*定位\s*\n+([\s\S]*?)(?=\n##\s|\s*$)/.exec(c);
-    if (!m) return { desc: '', rest: c.replace(/^\s*\n+|\s*$/g, '') };
+    if (!m) return { desc: '', rest: stripDetailHead(c.replace(/^\s*\n+|\s*$/g, '')) };
     const desc = m[1].replace(/^\s*\n+|\s*$/g, '');
     const rest = (c.slice(0, m.index) + c.slice(m.index + m[0].length)).replace(/^\s*\n+|\s*$/g, '');
-    return { desc, rest };
+    return { desc, rest: stripDetailHead(rest) };
   }
 
   /**

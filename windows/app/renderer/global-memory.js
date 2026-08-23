@@ -312,7 +312,19 @@ function renderMemoEditor() {
     return;
   }
   // 区块级：## 标题 + 前言内容；已含子区块时提供「＋ 添加子区块」
-  const addSubBtn = (Array.isArray(s.subs) && s.subs.length) ? '<button id="btn-add-sub" class="add-field">＋ 添加子区块</button>' : '';
+  const hasSubs = Array.isArray(s.subs) && s.subs.length > 0;
+  const addSubBtn = hasSubs ? '<button id="btn-add-sub" class="add-field">＋ 添加子区块</button>' : '';
+  // v1.2.3（用户修复）：该 ## 下所有 ### 子区块内容汇总（只读预览；编辑请在左侧点 ### 子项）——
+  // 解决「点 ## 组头显示空白」。# # 本身可能没有前言，内容都收在 ### 子区块里。
+  const subPreview = hasSubs ? `
+    <div class="memo-sub-preview">
+      <div class="memo-editor-label">本区块全部内容<span class="hint">（只读汇总 · 编辑请在左侧点 ### 子项）</span></div>
+      ${s.subs.map((sb, j) => `
+        <div class="memo-sub-preview-item">
+          <div class="memo-sub-preview-head"><span class="hash">###</span>${escapeHtml(sb.title || '（未命名）')}</div>
+          <pre class="memo-sub-preview-body">${escapeHtml(sb.body || '')}</pre>
+        </div>`).join('')}
+    </div>` : '';
   ed.innerHTML = `
     <div class="memo-editor-head">
       <span class="hash">##</span>
@@ -321,8 +333,8 @@ function renderMemoEditor() {
     </div>
     <div class="memo-editor-field">
       <div class="memo-editor-label">区块内容<span class="hint">（长文本 · 格式原样保留）</span></div>
-      <textarea class="memo-editor-body" rows="10" placeholder="此区块内容…">${escapeHtml(s.body)}</textarea>
-    </div>${addSubBtn}`;
+      <textarea class="memo-editor-body${hasSubs ? ' compact' : ''}" rows="10" placeholder="此区块内容…">${escapeHtml(s.body)}</textarea>
+    </div>${addSubBtn}${subPreview}`;
   const title = ed.querySelector('.memo-editor-title');
   title.addEventListener('input', () => {
     s.title = title.value;
