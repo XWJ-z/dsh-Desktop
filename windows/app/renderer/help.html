@@ -1,4 +1,4 @@
-<!--
+﻿<!--
 DSH-Desktop 帮助文档（远程下发 + 打包内置副本）
 - 根目录 help.html = 远程下发源：改内容 push 即生效，无需发版
 - windows/app/renderer/help.html = 打包内置副本（离线兜底），修改后必须同步
@@ -10,15 +10,15 @@ DSH-Desktop 帮助文档（远程下发 + 打包内置副本）
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DSH-Desktop · 帮助与指南</title>
+    <title>DSH-Desktop 路 甯姪涓庢寚鍗?/title>
     <style>
-        /* finesse · register=brand · A=abyssal-navy+ice-blue · B=760/300 · C=sticky-rail
-         * D=canvas-particle · E=deep-sea · SOUL=8 SPECTACLE=6 DENSITY=5 */
+        /* finesse 路 register=brand 路 A=abyssal-navy+ice-blue 路 B=760/300 路 C=sticky-rail
+         * D=canvas-particle 路 E=deep-sea 路 SOUL=8 SPECTACLE=6 DENSITY=5 */
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         :root {
             color-scheme: dark;
-            /* abyssal tinted neutrals — never pure black */
+            /* abyssal tinted neutrals 鈥?never pure black */
             --bg: #070b13;
             --bg-2: #0a101c;
             --surface: rgba(255, 255, 255, .032);
@@ -28,7 +28,7 @@ DSH-Desktop 帮助文档（远程下发 + 打包内置副本）
             --ink: #eef4fd;
             --ink-2: #aab6cf;
             --ink-3: #72809b;
-            /* brand — ice / deepseek blue, tinted */
+            /* brand 鈥?ice / deepseek blue, tinted */
             --brand: #6b96ff;
             --brand-deep: #4d6bfe;
             --brand-glow: rgba(94, 132, 255, .20);
@@ -64,7 +64,7 @@ DSH-Desktop 帮助文档（远程下发 + 打包内置副本）
             text-rendering: optimizeLegibility;
         }
 
-        /* grain + vignette — the brand-only physical layer */
+        /* grain + vignette 鈥?the brand-only physical layer */
         body::before {
             content: '';
             position: fixed; inset: 0;
@@ -85,7 +85,7 @@ DSH-Desktop 帮助文档（远程下发 + 打包内置副本）
         }
         a:focus-visible, button:focus-visible { outline: none; box-shadow: var(--focus); border-radius: 8px; }
 
-        /* ————— HERO ————— */
+        /* 鈥斺€斺€斺€斺€?HERO 鈥斺€斺€斺€斺€?*/
         .hero {
             position: relative;
             min-height: 78vh;
@@ -95,6 +95,7 @@ DSH-Desktop 帮助文档（远程下发 + 打包内置副本）
             align-items: center;
             text-align: center;
             padding: 108px 28px 64px;
+            padding-inline: max(28px, 6vw);
             overflow: hidden;
             isolation: isolate;
         }
@@ -119,16 +120,15 @@ DSH-Desktop 帮助文档（远程下发 + 打包内置副本）
         .badge .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 10px var(--green); }
 
         .hero h1 {
-            font-size: clamp(38px, 6.4vw, 68px);
+            font-size: clamp(24px, 4vw, 42px);
             font-weight: 780;
-            letter-spacing: -.035em;
-            line-height: 1.04;
+            letter-spacing: -.02em;
+            line-height: 1.12;
             color: #eef4fd;
             text-shadow: 0 0 60px rgba(94, 132, 255, .32);
-            max-width: 13ch;
-            overflow-wrap: anywhere;
-            min-width: 0;
+            max-width: 100%;
             margin-bottom: 22px;
+            white-space: nowrap;
         }
         .hero .sub {
             font-size: clamp(15.5px, 2vw, 19px);
@@ -168,7 +168,7 @@ DSH-Desktop 帮助文档（远程下发 + 打包内置副本）
             padding: 8px 15px; border-radius: 999px; backdrop-filter: blur(6px);
         }
 
-        /* ————— SPEC BAND ————— */
+        /* 鈥斺€斺€斺€斺€?SPEC BAND 鈥斺€斺€斺€斺€?*/
         .spec {
             max-width: 1160px; margin: 0 auto; padding: 40px 24px;
             display: grid; grid-template-columns: repeat(4, 1fr);
@@ -179,7 +179,7 @@ DSH-Desktop 帮助文档（远程下发 + 打包内置副本）
         .spec .num em { font-style: normal; color: var(--brand); }
         .spec .lab { margin-top: 6px; font-size: 13px; color: var(--ink-3); letter-spacing: .02em; }
 
-        /* ————— LAYOUT ————— */
+        /* 鈥斺€斺€斺€斺€?LAYOUT 鈥斺€斺€斺€斺€?*/
         .wrap {
             max-width: 1160px; margin: 0 auto; padding: 64px 24px 40px;
             display: grid; grid-template-columns: 232px 1fr; gap: 48px; align-items: start;
@@ -203,7 +203,7 @@ DSH-Desktop 帮助文档（远程下发 + 打包内置副本）
         .toc a.active { background: var(--brand-soft); border-color: var(--brand-glow); color: var(--ink); font-weight: 650; }
         .toc a.active .tno { color: var(--brand); opacity: 1; }
 
-        /* ————— CONTENT ————— */
+        /* 鈥斺€斺€斺€斺€?CONTENT 鈥斺€斺€斺€斺€?*/
         .content { min-width: 0; display: flex; flex-direction: column; gap: 26px; }
 
         .section {
@@ -366,7 +366,7 @@ DSH-Desktop 帮助文档（远程下发 + 打包内置副本）
         @media (max-width: 900px) {
             .spec { grid-template-columns: repeat(2, 1fr); grid-gap: 6px 0; }
         }
-        /* 帮助文档桌面窗口默认 860 宽（minWidth 640）：目录保持左侧双栏，仅真正窄时才折叠 */
+        /* 甯姪鏂囨。妗岄潰绐楀彛榛樿 860 瀹斤紙minWidth 640锛夛細鐩綍淇濇寔宸︿晶鍙屾爮锛屼粎鐪熸绐勬椂鎵嶆姌鍙?*/
         @media (max-width: 620px) {
             .wrap { grid-template-columns: 1fr; gap: 28px; }
             .toc { position: static; order: 2; }
@@ -375,6 +375,7 @@ DSH-Desktop 帮助文档（远程下发 + 打包内置副本）
             .community { flex-direction: column; align-items: center; text-align: center; }
             .section { padding: 30px 24px; }
             .hero { min-height: 64vh; }
+            .hero h1 { white-space: normal; }
         }
     </style>
 </head>
@@ -383,155 +384,155 @@ DSH-Desktop 帮助文档（远程下发 + 打包内置副本）
 
     <header class="hero">
         <canvas id="sea" aria-hidden="true"></canvas>
-        <span class="badge"><span class="dot"></span> DeepSeek Harness · Windows 桌面版</span>
-        <h1>让 DeepSeek 的智慧，常驻你的桌面</h1>
-        <p class="sub">一键安装、自动更新、内置提示词库与插件库。<strong>DSH-Desktop</strong> 把 DeepSeek Harness 装进一个精致的桌面客户端，随时可用，无需折腾。</p>
+        <span class="badge"><span class="dot"></span> DeepSeek Harness 路 Windows 妗岄潰鐗?/span>
+        <h1>璁?DeepSeek 鐨勬櫤鎱э紝甯搁┗浣犵殑妗岄潰</h1>
+        <p class="sub">涓€閿畨瑁呫€佽嚜鍔ㄦ洿鏂般€佸唴缃彁绀鸿瘝搴撲笌鎻掍欢搴撱€?strong>DSH-Desktop</strong> 鎶?DeepSeek Harness 瑁呰繘涓€涓簿鑷寸殑妗岄潰瀹㈡埛绔紝闅忔椂鍙敤锛屾棤闇€鎶樿吘銆?/p>
         <div class="hero-actions">
-            <a href="#baidu" class="btn primary"><span class="ic">⬇</span> 下载安装</a>
-            <a href="https://github.com/XWJ-z/dsh-Desktop" class="btn ghost" target="_blank" rel="noopener"><span class="ic">⋯</span> GitHub 仓库</a>
+            <a href="#baidu" class="btn primary"><span class="ic">猬?/span> 涓嬭浇瀹夎</a>
+            <a href="https://github.com/XWJ-z/dsh-Desktop" class="btn ghost" target="_blank" rel="noopener"><span class="ic">鈰?/span> GitHub 浠撳簱</a>
         </div>
         <div class="meta">
-            <span>🪟 Windows · 桌面版</span>
-            <span>🔄 远程自动更新</span>
-            <span>🐳 桌面鲸鱼宠物</span>
+            <span>Windows 路 妗岄潰鐗?/span>
+            <span>杩滅▼鑷姩鏇存柊</span>
+            <span>妗岄潰椴搁奔瀹犵墿</span>
         </div>
     </header>
 
     <div class="spec" role="list">
-        <div class="stat" role="listitem"><div class="num">200<em>+</em></div><div class="lab">精选提示词模板</div></div>
-        <div class="stat" role="listitem"><div class="num">1<em>键</em></div><div class="lab">安装即用 · 自带环境</div></div>
-        <div class="stat" role="listitem"><div class="num">7<em>×24</em></div><div class="lab">稳定在线 · 自动更新</div></div>
-        <div class="stat" role="listitem"><div class="num">0<em>丢失</em></div><div class="lab">我的提示词持久保存</div></div>
+        <div class="stat" role="listitem"><div class="num">200<em>+</em></div><div class="lab">绮鹃€夋彁绀鸿瘝妯℃澘</div></div>
+        <div class="stat" role="listitem"><div class="num">1<em>閿?/em></div><div class="lab">瀹夎鍗崇敤 路 鑷甫鐜</div></div>
+        <div class="stat" role="listitem"><div class="num">7<em>脳24</em></div><div class="lab">绋冲畾鍦ㄧ嚎 路 鑷姩鏇存柊</div></div>
+        <div class="stat" role="listitem"><div class="num">0<em>涓㈠け</em></div><div class="lab">鎴戠殑鎻愮ず璇嶆寔涔呬繚瀛?/div></div>
     </div>
 
     <div class="wrap">
-        <nav class="toc" aria-label="目录">
-            <p class="toc-title">目录</p>
-            <a href="#intro"><span class="tno">01</span> 项目介绍</a>
-            <a href="#guide"><span class="tno">02</span> 使用指南</a>
-            <a href="#community"><span class="tno">03</span> 加入社群</a>
-            <a href="#faq"><span class="tno">04</span> 常见问题</a>
-            <a href="#network"><span class="tno">05</span> 下载 / 更新失败</a>
-            <a href="#baidu"><span class="tno">06</span> 百度网盘下载</a>
-            <a href="#contact"><span class="tno">07</span> 联系我们</a>
+        <nav class="toc" aria-label="鐩綍">
+            <p class="toc-title">鐩綍</p>
+            <a href="#intro"><span class="tno">01</span> 椤圭洰浠嬬粛</a>
+            <a href="#guide"><span class="tno">02</span> 浣跨敤鎸囧崡</a>
+            <a href="#community"><span class="tno">03</span> 鍔犲叆绀剧兢</a>
+            <a href="#faq"><span class="tno">04</span> 甯歌闂</a>
+            <a href="#network"><span class="tno">05</span> 涓嬭浇 / 鏇存柊澶辫触</a>
+            <a href="#baidu"><span class="tno">06</span> 鐧惧害缃戠洏涓嬭浇</a>
+            <a href="#contact"><span class="tno">07</span> 鑱旂郴鎴戜滑</a>
         </nav>
 
         <main class="content">
             <section class="section" id="intro">
                 <div class="kicker"><span class="bar"></span> Overview</div>
-                <h2>项目介绍</h2>
-                <p class="lead">DSH-Desktop 是 DeepSeek Harness 的桌面客户端，为你提供便捷、稳定的 AI 交互体验，基于 Electron 构建，专为 Windows 系统打磨。</p>
-                <p>它把 DeepSeek 强大的模型能力，收进一个你随时能打开的窗口。</p>
+                <h2>椤圭洰浠嬬粛</h2>
+                <p class="lead">DSH-Desktop 鏄?DeepSeek Harness 鐨勬闈㈠鎴风锛屼负浣犳彁渚涗究鎹枫€佺ǔ瀹氱殑 AI 浜や簰浣撻獙锛屽熀浜?Electron 鏋勫缓锛屼笓涓?Windows 绯荤粺鎵撶（銆?/p>
+                <p>瀹冩妸 DeepSeek 寮哄ぇ鐨勬ā鍨嬭兘鍔涳紝鏀惰繘涓€涓綘闅忔椂鑳芥墦寮€鐨勭獥鍙ｃ€?/p>
                 <ul class="feature">
-                    <li><strong>一键安装</strong> — 无需复杂配置，下载即用，自带运行环境</li>
-                    <li><strong>自动更新</strong> — 支持远程下发更新，始终保持在最新版本</li>
-                    <li><strong>内置提示词库</strong> — 200+ 精选模板即取即用，提升效率</li>
-                    <li><strong>桌面宠物</strong> — 可爱的鲸鱼伴侣，支持互动与气泡提示</li>
-                    <li><strong>插件库</strong> — 连接官方社区，按需扩展能力</li>
-                    <li><strong>全局记忆</strong> — 图形化记忆编辑，DSH 自动读取</li>
+                    <li><strong>涓€閿畨瑁?/strong> 鈥?鏃犻渶澶嶆潅閰嶇疆锛屼笅杞藉嵆鐢紝鑷甫杩愯鐜</li>
+                    <li><strong>鑷姩鏇存柊</strong> 鈥?鏀寔杩滅▼涓嬪彂鏇存柊锛屽缁堜繚鎸佸湪鏈€鏂扮増鏈?/li>
+                    <li><strong>鍐呯疆鎻愮ず璇嶅簱</strong> 鈥?200+ 绮鹃€夋ā鏉垮嵆鍙栧嵆鐢紝鎻愬崌鏁堢巼</li>
+                    <li><strong>妗岄潰瀹犵墿</strong> 鈥?鍙埍鐨勯哺楸间即渚ｏ紝鏀寔浜掑姩涓庢皵娉℃彁绀?/li>
+                    <li><strong>鎻掍欢搴?/strong> 鈥?杩炴帴瀹樻柟绀惧尯锛屾寜闇€鎵╁睍鑳藉姏</li>
+                    <li><strong>鍏ㄥ眬璁板繂</strong> 鈥?鍥惧舰鍖栬蹇嗙紪杈戯紝DSH 鑷姩璇诲彇</li>
                 </ul>
-                <p>无论是日常问答、内容创作，还是代码辅助、工作流自动化，DSH-Desktop 都能为你提供稳定的 DeepSeek AI 能力。</p>
+                <p>鏃犺鏄棩甯搁棶绛斻€佸唴瀹瑰垱浣滐紝杩樻槸浠ｇ爜杈呭姪銆佸伐浣滄祦鑷姩鍖栵紝DSH-Desktop 閮借兘涓轰綘鎻愪緵绋冲畾鐨?DeepSeek AI 鑳藉姏銆?/p>
             </section>
 
             <section class="section" id="guide">
                 <div class="kicker"><span class="bar"></span> Features</div>
-                <h2>使用指南</h2>
-                <p class="lead">快速了解常用功能，开箱即用。</p>
+                <h2>浣跨敤鎸囧崡</h2>
+                <p class="lead">蹇€熶簡瑙ｅ父鐢ㄥ姛鑳斤紝寮€绠卞嵆鐢ㄣ€?/p>
                 <div class="guide-grid">
-                    <div class="gcard"><h3><span class="e">🐳</span> 桌面宠物</h3><p>桌面鲸鱼伴侣，可拖拽到任意位置。悬停/点击会切换表情、弹出气泡提示，右键可隐藏或切换工具箱形态。</p></div>
-                    <div class="gcard"><h3><span class="e">📝</span> 提示词库</h3><p>内置 200+ 精选提示词模板，支持搜索、复制与一键注入输入框；「我的提示词」可自建并持久化保存。</p></div>
-                    <div class="gcard"><h3><span class="e">📥</span> 拖文件入工作区</h3><p>把文件拖进窗口，自动复制到当前 DSH 工作区并注入提示词；纯图片（PNG/JPG/WebP/GIF）直接放行显示缩略图附件。</p></div>
-                    <div class="gcard"><h3><span class="e">🧠</span> 全局记忆</h3><p>图形化编辑 AGENTS.md 与各角色记忆文件，让 DSH 记住你的称呼、项目背景与常用约定，无需手动发送。</p></div>
-                    <div class="gcard"><h3><span class="e">🔌</span> 插件库</h3><p>连接官方社区，分类浏览、搜索、一键复制安装命令，按需扩展能力。</p></div>
-                    <div class="gcard"><h3><span class="e">💾</span> 数据备份</h3><p>一键备份 DSH 用户数据（工作区/会话/全局记忆/我的提示词/设置），更换机器或出问题时快速恢复。</p></div>
+                    <div class="gcard"><h3><span class="e">馃惓</span> 妗岄潰瀹犵墿</h3><p>妗岄潰椴搁奔浼翠荆锛屽彲鎷栨嫿鍒颁换鎰忎綅缃€傛偓鍋?鐐瑰嚮浼氬垏鎹㈣〃鎯呫€佸脊鍑烘皵娉℃彁绀猴紝鍙抽敭鍙殣钘忔垨鍒囨崲宸ュ叿绠卞舰鎬併€?/p></div>
+                    <div class="gcard"><h3><span class="e">馃摑</span> 鎻愮ず璇嶅簱</h3><p>鍐呯疆 200+ 绮鹃€夋彁绀鸿瘝妯℃澘锛屾敮鎸佹悳绱€佸鍒朵笌涓€閿敞鍏ヨ緭鍏ユ锛涖€屾垜鐨勬彁绀鸿瘝銆嶅彲鑷缓骞舵寔涔呭寲淇濆瓨銆?/p></div>
+                    <div class="gcard"><h3><span class="e">馃摜</span> 鎷栨枃浠跺叆宸ヤ綔鍖?/h3><p>鎶婃枃浠舵嫋杩涚獥鍙ｏ紝鑷姩澶嶅埗鍒板綋鍓?DSH 宸ヤ綔鍖哄苟娉ㄥ叆鎻愮ず璇嶏紱绾浘鐗囷紙PNG/JPG/WebP/GIF锛夌洿鎺ユ斁琛屾樉绀虹缉鐣ュ浘闄勪欢銆?/p></div>
+                    <div class="gcard"><h3><span class="e">馃</span> 鍏ㄥ眬璁板繂</h3><p>鍥惧舰鍖栫紪杈?AGENTS.md 涓庡悇瑙掕壊璁板繂鏂囦欢锛岃 DSH 璁颁綇浣犵殑绉板懠銆侀」鐩儗鏅笌甯哥敤绾﹀畾锛屾棤闇€鎵嬪姩鍙戦€併€?/p></div>
+                    <div class="gcard"><h3><span class="e">馃攲</span> 鎻掍欢搴?/h3><p>杩炴帴瀹樻柟绀惧尯锛屽垎绫绘祻瑙堛€佹悳绱€佷竴閿鍒跺畨瑁呭懡浠わ紝鎸夐渶鎵╁睍鑳藉姏銆?/p></div>
+                    <div class="gcard"><h3><span class="e">馃捑</span> 鏁版嵁澶囦唤</h3><p>涓€閿浠?DSH 鐢ㄦ埛鏁版嵁锛堝伐浣滃尯/浼氳瘽/鍏ㄥ眬璁板繂/鎴戠殑鎻愮ず璇?璁剧疆锛夛紝鏇存崲鏈哄櫒鎴栧嚭闂鏃跺揩閫熸仮澶嶃€?/p></div>
                 </div>
             </section>
 
             <section class="section" id="community">
                 <div class="kicker"><span class="bar"></span> Community</div>
-                <h2>加入社群</h2>
-                <p class="lead">有任何问题或建议，欢迎加入官方 QQ 群交流反馈。</p>
+                <h2>鍔犲叆绀剧兢</h2>
+                <p class="lead">鏈変换浣曢棶棰樻垨寤鸿锛屾杩庡姞鍏ュ畼鏂?QQ 缇や氦娴佸弽棣堛€?/p>
                 <div class="community">
                     <div class="qr">
-                        <img src="https://cdn.jsdelivr.net/gh/XWJ-z/dsh-Desktop@main/windows/app/assets/qq-group.png" alt="QQ 群二维码" />
+                        <img src="https://cdn.jsdelivr.net/gh/XWJ-z/dsh-Desktop@main/windows/app/assets/qq-group.png" alt="QQ 缇や簩缁寸爜" />
                     </div>
                     <div class="info">
-                        <p class="tt"><span>📌</span> DSH-Desktop 官方交流群</p>
-                        <p>群号：<code>916607090</code> — 扫码或搜索群号加入，遇到问题随时提问，你的建议直接决定下一个功能！</p>
-                        <a href="https://qm.qq.com/cgi-bin/qm/qr?k=916607090" class="btn join" target="_blank" rel="noopener"><span class="ic">💬</span> 一键加群</a>
+                        <p class="tt"><span>馃搶</span> DSH-Desktop 瀹樻柟浜ゆ祦缇?/p>
+                        <p>缇ゅ彿锛?code>916607090</code> 鈥?鎵爜鎴栨悳绱㈢兢鍙峰姞鍏ワ紝閬囧埌闂闅忔椂鎻愰棶锛屼綘鐨勫缓璁洿鎺ュ喅瀹氫笅涓€涓姛鑳斤紒</p>
+                        <a href="https://qm.qq.com/cgi-bin/qm/qr?k=916607090" class="btn join" target="_blank" rel="noopener"><span class="ic">馃挰</span> 涓€閿姞缇?/a>
                     </div>
                 </div>
                 <div class="callout os">
-                    <span class="ic">💡</span>
-                    <div><p><strong>进群能获得什么？</strong></p><p>版本更新提醒 · 使用技巧分享 · 问题快速解答 · 功能建议直达开发者。</p></div>
+                    <span class="ic">馃挕</span>
+                    <div><p><strong>杩涚兢鑳借幏寰椾粈涔堬紵</strong></p><p>鐗堟湰鏇存柊鎻愰啋 路 浣跨敤鎶€宸у垎浜?路 闂蹇€熻В绛?路 鍔熻兘寤鸿鐩磋揪寮€鍙戣€呫€?/p></div>
                 </div>
             </section>
 
             <section class="section" id="faq">
                 <div class="kicker"><span class="bar"></span> FAQ</div>
-                <h2>常见问题</h2>
+                <h2>甯歌闂</h2>
                 <div class="faq">
-                    <div class="faq-item"><h3><span class="q">Q</span> 下载更新失败？</h3><p>多为本地代理环境（科学上网）干扰。关闭代理后重试；仍失败可用「手动下载安装包」或百度网盘备用渠道。</p></div>
-                    <div class="faq-item"><h3><span class="q">Q</span> 提示词或插件描述是乱码？</h3><p>旧版本已修复中文乱码问题。若仍有乱码，请先更新到最新版确认网络拉取正常。</p></div>
-                    <div class="faq-item"><h3><span class="q">Q</span> 我的提示词会丢失吗？</h3><p>不会。「我的提示词」持久化保存在本地，重启不丢，并通过「数据备份」随包备份，恢复可还原。</p></div>
-                    <div class="faq-item"><h3><span class="q">Q</span> 想手动升级 DSH？</h3><p>启动时检测到 DSH 新版会弹窗提示「立即升级」；也可在「检查更新」窗口查看并一键升级。</p></div>
-                    <div class="faq-item"><h3><span class="q">Q</span> 找不到答案？</h3><p>加入上方 QQ 群，或到 GitHub 提 issue，我们会尽快响应。</p></div>
+                    <div class="faq-item"><h3><span class="q">Q</span> 涓嬭浇鏇存柊澶辫触锛?/h3><p>澶氫负鏈湴浠ｇ悊鐜锛堢瀛︿笂缃戯級骞叉壈銆傚叧闂唬鐞嗗悗閲嶈瘯锛涗粛澶辫触鍙敤銆屾墜鍔ㄤ笅杞藉畨瑁呭寘銆嶆垨鐧惧害缃戠洏澶囩敤娓犻亾銆?/p></div>
+                    <div class="faq-item"><h3><span class="q">Q</span> 鎻愮ず璇嶆垨鎻掍欢鎻忚堪鏄贡鐮侊紵</h3><p>鏃х増鏈凡淇涓枃涔辩爜闂銆傝嫢浠嶆湁涔辩爜锛岃鍏堟洿鏂板埌鏈€鏂扮増纭缃戠粶鎷夊彇姝ｅ父銆?/p></div>
+                    <div class="faq-item"><h3><span class="q">Q</span> 鎴戠殑鎻愮ず璇嶄細涓㈠け鍚楋紵</h3><p>涓嶄細銆傘€屾垜鐨勬彁绀鸿瘝銆嶆寔涔呭寲淇濆瓨鍦ㄦ湰鍦帮紝閲嶅惎涓嶄涪锛屽苟閫氳繃銆屾暟鎹浠姐€嶉殢鍖呭浠斤紝鎭㈠鍙繕鍘熴€?/p></div>
+                    <div class="faq-item"><h3><span class="q">Q</span> 鎯虫墜鍔ㄥ崌绾?DSH锛?/h3><p>鍚姩鏃舵娴嬪埌 DSH 鏂扮増浼氬脊绐楁彁绀恒€岀珛鍗冲崌绾с€嶏紱涔熷彲鍦ㄣ€屾鏌ユ洿鏂般€嶇獥鍙ｆ煡鐪嬪苟涓€閿崌绾с€?/p></div>
+                    <div class="faq-item"><h3><span class="q">Q</span> 鎵句笉鍒扮瓟妗堬紵</h3><p>鍔犲叆涓婃柟 QQ 缇わ紝鎴栧埌 GitHub 鎻?issue锛屾垜浠細灏藉揩鍝嶅簲銆?/p></div>
                 </div>
             </section>
 
             <section class="section" id="network">
                 <div class="kicker"><span class="bar"></span> Troubleshooting</div>
-                <h2>下载 / 更新失败？请关闭科学上网</h2>
-                <p class="lead">DSH-Desktop 的下载与更新依赖 GitHub CDN。若下载失败或更新卡顿，多为本地代理环境所致。</p>
+                <h2>涓嬭浇 / 鏇存柊澶辫触锛熻鍏抽棴绉戝涓婄綉</h2>
+                <p class="lead">DSH-Desktop 鐨勪笅杞戒笌鏇存柊渚濊禆 GitHub CDN銆傝嫢涓嬭浇澶辫触鎴栨洿鏂板崱椤匡紝澶氫负鏈湴浠ｇ悊鐜鎵€鑷淬€?/p>
                 <div class="callout">
-                    <span class="ic">💡</span>
+                    <span class="ic">馃挕</span>
                     <div>
-                        <p><strong>解决方案：</strong></p>
-                        <p class="steps-inline"><b>1.</b> 暂时关闭代理软件（Clash、V2Ray、Shadowsocks 等）<br><b>2.</b> 关闭 VPN 连接<br><b>3.</b> 重新尝试下载或更新</p>
+                        <p><strong>瑙ｅ喅鏂规锛?/strong></p>
+                        <p class="steps-inline"><b>1.</b> 鏆傛椂鍏抽棴浠ｇ悊杞欢锛圕lash銆乂2Ray銆丼hadowsocks 绛夛級<br><b>2.</b> 鍏抽棴 VPN 杩炴帴<br><b>3.</b> 閲嶆柊灏濊瘯涓嬭浇鎴栨洿鏂?/p>
                     </div>
                 </div>
-                <p>关闭代理后，可直连 GitHub 服务器，获得更快的速度与更稳定的连接。</p>
+                <p>鍏抽棴浠ｇ悊鍚庯紝鍙洿杩?GitHub 鏈嶅姟鍣紝鑾峰緱鏇村揩鐨勯€熷害涓庢洿绋冲畾鐨勮繛鎺ャ€?/p>
             </section>
 
             <section class="section" id="baidu">
                 <div class="kicker"><span class="bar"></span> Download</div>
-                <h2>百度网盘下载</h2>
-                <p class="lead">无法访问 GitHub 或下载较慢时，可使用百度网盘作为备用渠道。</p>
+                <h2>鐧惧害缃戠洏涓嬭浇</h2>
+                <p class="lead">鏃犳硶璁块棶 GitHub 鎴栦笅杞借緝鎱㈡椂锛屽彲浣跨敤鐧惧害缃戠洏浣滀负澶囩敤娓犻亾銆?/p>
                 <div class="actions">
-                    <a href="https://pan.baidu.com/s/1Y9CSRXKZ48cQYNi60ozBmA?pwd=8yh8" class="btn baidu" target="_blank" rel="noopener"><span class="ic">📥</span> 百度网盘下载</a>
+                    <a href="https://pan.baidu.com/s/1Y9CSRXKZ48cQYNi60ozBmA?pwd=8yh8" class="btn baidu" target="_blank" rel="noopener"><span class="ic">馃摜</span> 鐧惧害缃戠洏涓嬭浇</a>
                 </div>
-                <div class="pwd"><span class="label">提取码</span><code>8yh8</code></div>
+                <div class="pwd"><span class="label">鎻愬彇鐮?/span><code>8yh8</code></div>
                 <div class="steps">
-                    <div class="step"><div class="n">1</div><p>点击上方链接，打开百度网盘页面</p></div>
-                    <div class="step"><div class="n">2</div><p>输入提取码 <code>8yh8</code></p></div>
-                    <div class="step"><div class="n">3</div><p>下载安装包到本地</p></div>
-                    <div class="step"><div class="n">4</div><p>双击运行安装程序</p></div>
+                    <div class="step"><div class="n">1</div><p>鐐瑰嚮涓婃柟閾炬帴锛屾墦寮€鐧惧害缃戠洏椤甸潰</p></div>
+                    <div class="step"><div class="n">2</div><p>杈撳叆鎻愬彇鐮?<code>8yh8</code></p></div>
+                    <div class="step"><div class="n">3</div><p>涓嬭浇瀹夎鍖呭埌鏈湴</p></div>
+                    <div class="step"><div class="n">4</div><p>鍙屽嚮杩愯瀹夎绋嬪簭</p></div>
                 </div>
-                <p>链接会定期更新，请确保下载的是最新版本。</p>
+                <p>閾炬帴浼氬畾鏈熸洿鏂帮紝璇风‘淇濅笅杞界殑鏄渶鏂扮増鏈€?/p>
             </section>
 
             <section class="section" id="contact">
                 <div class="kicker"><span class="bar"></span> Contact</div>
-                <h2>联系我们</h2>
-                <p class="lead">使用中遇到问题，欢迎通过以下方式联系我们。</p>
+                <h2>鑱旂郴鎴戜滑</h2>
+                <p class="lead">浣跨敤涓亣鍒伴棶棰橈紝娆㈣繋閫氳繃浠ヤ笅鏂瑰紡鑱旂郴鎴戜滑銆?/p>
                 <ul class="contact-list">
-                    <li><span class="e">💬</span><span class="lab">QQ 群</span><span><code>916607090</code>（扫码/搜索进群，见"加入社群"）</span></li>
-                    <li><span class="e">🐙</span><span class="lab">GitHub</span><span><a class="inline" href="https://github.com/XWJ-z/dsh-Desktop" target="_blank" rel="noopener">XWJ-z/dsh-Desktop</a></span></li>
+                    <li><span class="e">馃挰</span><span class="lab">QQ 缇?/span><span><code>916607090</code>锛堟壂鐮?鎼滅储杩涚兢锛岃"鍔犲叆绀剧兢"锛?/span></li>
+                    <li><span class="e">馃悪</span><span class="lab">GitHub</span><span><a class="inline" href="https://github.com/XWJ-z/dsh-Desktop" target="_blank" rel="noopener">XWJ-z/dsh-Desktop</a></span></li>
                 </ul>
             </section>
         </main>
     </div>
 
     <footer class="footer">
-        <div class="mark">🐳</div>
-        <p>© 2024 DSH-Desktop · Powered by DeepSeek Harness · All rights reserved.</p>
+        <div class="mark">馃惓</div>
+        <p>漏 2024 DSH-Desktop 路 Powered by DeepSeek Harness 路 All rights reserved.</p>
     </footer>
 
     <script>
         (function () {
             var RM = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-            /* ————— canvas sea — a whisper of the whale's ocean ————— */
+            /* 鈥斺€斺€斺€斺€?canvas sea 鈥?a whisper of the whale's ocean 鈥斺€斺€斺€斺€?*/
             var c = document.getElementById('sea');
             if (c && !RM) {
                 var ctx = c.getContext('2d');
@@ -579,7 +580,7 @@ DSH-Desktop 帮助文档（远程下发 + 打包内置副本）
                 frame();
             }
 
-            /* ————— reveal + scroll-spy ————— */
+            /* 鈥斺€斺€斺€斺€?reveal + scroll-spy 鈥斺€斺€斺€斺€?*/
             var sections = document.querySelectorAll('.section');
             if (RM) { sections.forEach(function (s) { s.classList.add('in'); }); }
             else {

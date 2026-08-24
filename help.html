@@ -88,6 +88,7 @@
             align-items: center;
             text-align: center;
             padding: 108px 28px 64px;
+            padding-inline: max(28px, 6vw);
             overflow: hidden;
             isolation: isolate;
         }
@@ -112,16 +113,15 @@
         .badge .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 10px var(--green); }
 
         .hero h1 {
-            font-size: clamp(38px, 6.4vw, 68px);
+            font-size: clamp(24px, 4vw, 42px);
             font-weight: 780;
-            letter-spacing: -.035em;
-            line-height: 1.04;
+            letter-spacing: -.02em;
+            line-height: 1.12;
             color: #eef4fd;
             text-shadow: 0 0 60px rgba(94, 132, 255, .32);
-            max-width: 13ch;
-            overflow-wrap: anywhere;
-            min-width: 0;
+            max-width: 100%;
             margin-bottom: 22px;
+            white-space: nowrap;
         }
         .hero .sub {
             font-size: clamp(15.5px, 2vw, 19px);
@@ -368,6 +368,7 @@
             .community { flex-direction: column; align-items: center; text-align: center; }
             .section { padding: 30px 24px; }
             .hero { min-height: 64vh; }
+            .hero h1 { white-space: normal; }
         }
     </style>
 </head>
@@ -384,9 +385,9 @@
             <a href="https://github.com/XWJ-z/dsh-Desktop" class="btn ghost" target="_blank" rel="noopener"><span class="ic">⋯</span> GitHub 仓库</a>
         </div>
         <div class="meta">
-            <span>🪟 Windows · 桌面版</span>
-            <span>🔄 远程自动更新</span>
-            <span>🐳 桌面鲸鱼宠物</span>
+            <span>Windows · 桌面版</span>
+            <span>远程自动更新</span>
+            <span>桌面鲸鱼宠物</span>
         </div>
     </header>
 
