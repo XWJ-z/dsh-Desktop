@@ -113,15 +113,17 @@
         .badge .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 10px var(--green); }
 
         .hero h1 {
-            font-size: clamp(24px, 4vw, 42px);
+            font-size: clamp(30px, 5.2vw, 56px);
             font-weight: 780;
-            letter-spacing: -.02em;
-            line-height: 1.12;
+            letter-spacing: -.025em;
+            line-height: 1.1;
             color: #eef4fd;
             text-shadow: 0 0 60px rgba(94, 132, 255, .32);
             max-width: 100%;
             margin-bottom: 22px;
-            white-space: nowrap;
+            white-space: normal;
+            overflow-wrap: anywhere;
+            min-width: 0;
         }
         .hero .sub {
             font-size: clamp(15.5px, 2vw, 19px);
@@ -268,6 +270,17 @@
 
         /* steps */
         .steps { display: grid; grid-template-columns: repeat(auto-fill, minmax(196px, 1fr)); gap: 13px; margin: 24px 0 6px; }
+        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; margin: 20px 0 4px; }
+        .stat-mini {
+            background: var(--surface-2); border: 1px solid var(--line);
+            border-radius: var(--radius-sm); padding: 16px 18px;
+        }
+        .stat-mini strong {
+            display: block; font-size: 12.5px; font-weight: 700;
+            letter-spacing: .05em; color: var(--ink-3);
+            margin-bottom: 7px;
+        }
+        .stat-mini span { font-size: 14px; color: var(--ink); font-weight: 540; }
         .step {
             background: var(--surface-2); border: 1px solid var(--line);
             border-radius: var(--radius-sm); padding: 20px 18px 17px;
@@ -365,10 +378,10 @@
             .toc { position: static; order: 2; }
             .content { order: 1; }
             .guide-grid, ul.feature { grid-template-columns: 1fr; }
+            .stat-grid { grid-template-columns: 1fr; }
             .community { flex-direction: column; align-items: center; text-align: center; }
             .section { padding: 30px 24px; }
             .hero { min-height: 64vh; }
-            .hero h1 { white-space: normal; }
         }
     </style>
 </head>
@@ -377,15 +390,16 @@
 
     <header class="hero">
         <canvas id="sea" aria-hidden="true"></canvas>
-        <span class="badge"><span class="dot"></span> DeepSeek Harness · Windows 桌面版</span>
+        <span class="badge"><span class="dot"></span> DeepSeek Harness · Windows 桌面版 &amp; 飞牛 OS 原生应用</span>
         <h1>让 DeepSeek 的智慧，常驻你的桌面</h1>
-        <p class="sub">一键安装、自动更新、内置提示词库与插件库。<strong>DSH-Desktop</strong> 把 DeepSeek Harness 装进一个精致的桌面客户端，随时可用，无需折腾。</p>
+        <p class="sub">一键安装、自动更新、内置提示词库与插件库。<strong>DSH-Desktop</strong> 把 DeepSeek Harness 装进一个精致的客户端 —— Windows 桌面版开箱即用，飞牛 OS 原生应用跑在你的 NAS 上。</p>
         <div class="hero-actions">
             <a href="#baidu" class="btn primary"><span class="ic">⬇</span> 下载安装</a>
             <a href="https://github.com/XWJ-z/dsh-Desktop" class="btn ghost" target="_blank" rel="noopener"><span class="ic">⋯</span> GitHub 仓库</a>
         </div>
         <div class="meta">
             <span>Windows · 桌面版</span>
+            <span>飞牛 OS (fnOS) · 原生应用</span>
             <span>远程自动更新</span>
             <span>桌面鲸鱼宠物</span>
         </div>
@@ -402,20 +416,21 @@
         <nav class="toc" aria-label="目录">
             <p class="toc-title">目录</p>
             <a href="#intro"><span class="tno">01</span> 项目介绍</a>
-            <a href="#guide"><span class="tno">02</span> 使用指南</a>
-            <a href="#community"><span class="tno">03</span> 加入社群</a>
-            <a href="#faq"><span class="tno">04</span> 常见问题</a>
-            <a href="#network"><span class="tno">05</span> 下载 / 更新失败</a>
-            <a href="#baidu"><span class="tno">06</span> 百度网盘下载</a>
-            <a href="#contact"><span class="tno">07</span> 联系我们</a>
+            <a href="#fnos"><span class="tno">02</span> 飞牛 OS 版本</a>
+            <a href="#guide"><span class="tno">03</span> 使用指南</a>
+            <a href="#community"><span class="tno">04</span> 加入社群</a>
+            <a href="#faq"><span class="tno">05</span> 常见问题</a>
+            <a href="#network"><span class="tno">06</span> 下载 / 更新失败</a>
+            <a href="#baidu"><span class="tno">07</span> 百度网盘下载</a>
+            <a href="#contact"><span class="tno">08</span> 联系我们</a>
         </nav>
 
         <main class="content">
             <section class="section" id="intro">
                 <div class="kicker"><span class="bar"></span> Overview</div>
                 <h2>项目介绍</h2>
-                <p class="lead">DSH-Desktop 是 DeepSeek Harness 的桌面客户端，为你提供便捷、稳定的 AI 交互体验，基于 Electron 构建，专为 Windows 系统打磨。</p>
-                <p>它把 DeepSeek 强大的模型能力，收进一个你随时能打开的窗口。</p>
+                <p class="lead">DSH-Desktop 是 DeepSeek Harness 的客户端，为你提供便捷、稳定的 AI 交互体验，覆盖两大平台：Windows 桌面版（基于 Electron 打磨）与飞牛 OS (fnOS) 原生应用（跑在你的 NAS 上）。</p>
+                <p>它把 DeepSeek 强大的模型能力，收进一个随时能打开的窗口。</p>
                 <ul class="feature">
                     <li><strong>一键安装</strong> — 无需复杂配置，下载即用，自带运行环境</li>
                     <li><strong>自动更新</strong> — 支持远程下发更新，始终保持在最新版本</li>
@@ -425,6 +440,32 @@
                     <li><strong>全局记忆</strong> — 图形化记忆编辑，DSH 自动读取</li>
                 </ul>
                 <p>无论是日常问答、内容创作，还是代码辅助、工作流自动化，DSH-Desktop 都能为你提供稳定的 DeepSeek AI 能力。</p>
+            </section>
+
+            <section class="section" id="fnos">
+                <div class="kicker"><span class="bar"></span> fnOS</div>
+                <h2>飞牛 OS (fnOS) 原生应用</h2>
+                <p class="lead">同样一套 DeepSeek Harness，以飞牛 OS 原生应用的形式跑在你的 NAS 上 —— 应用中心安装即用，开箱即用。</p>
+                <p>安装 <code>.fpk</code> 应用包后，网关把 DSH Web 界面映射到飞牛的应用入口（<code>/app/dsh</code>），运行时由应用首次启动时自动安装到数据目录，与 Windows 版「适配 DSH 套壳、按版本拉取」同机制。</p>
+                <div class="stat-grid">
+                    <div class="stat-mini"><strong>平台要求</strong><span>飞牛 OS (fnOS) v1.1.3100+ · 全平台</span></div>
+                    <div class="stat-mini"><strong>运行依赖</strong><span><code>nodejs_v22</code>（安装时自动关联）</span></div>
+                    <div class="stat-mini"><strong>安装包</strong><span><code>dsh-0.2.5.fpk</code> · 约 0.3MB</span></div>
+                    <div class="stat-mini"><strong>应用入口</strong><span>应用中心 → 打开 <code>dsh</code> 即用</span></div>
+                </div>
+                <div class="actions">
+                    <a href="https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.5.9/dsh-0.2.5.fpk" class="btn ghost" target="_blank" rel="noopener"><span class="ic">📦</span> 下载飞牛应用包 (.fpk)</a>
+                </div>
+                <div class="steps">
+                    <div class="step"><div class="n">1</div><p>下载 <code>dsh-0.2.5.fpk</code> 应用包到本地</p></div>
+                    <div class="step"><div class="n">2</div><p>在飞牛 OS <strong>应用中心 → 手动安装</strong>，选择该 <code>.fpk</code></p></div>
+                    <div class="step"><div class="n">3</div><p>安装后即完成依赖关联（<code>nodejs_v22</code>）</p></div>
+                    <div class="step"><div class="n">4</div><p>在桌面 / 应用中心打开 <code>dsh</code> 应用，进入 DeepSeek Harness</p></div>
+                </div>
+                <div class="callout">
+                    <span class="ic">💡</span>
+                    <div><p><strong>同一套 DSH 能力，多种载体。</strong></p><p>Windows 版与飞牛版共用同一版本命名规则与协议，跨端联动能力已在规划中。</p></div>
+                </div>
             </section>
 
             <section class="section" id="guide">
