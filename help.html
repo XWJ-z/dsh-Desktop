@@ -174,22 +174,22 @@
 
         /* ————— SPEC BAND ————— */
         .spec {
-            max-width: 1160px; margin: 0 auto; padding: 40px 24px;
+            max-width: 1160px; margin: 0 auto; padding: 46px 24px;
             display: grid; grid-template-columns: repeat(6, 1fr);
             border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
         }
-        .spec .stat { text-align: center; padding: 14px 12px; }
+        .spec .stat { text-align: center; padding: 20px 12px; }
         .spec .num { font-size: 30px; font-weight: 760; letter-spacing: -.02em; color: var(--ink); font-variant-numeric: tabular-nums; }
         .spec .num em { font-style: normal; color: var(--ink); }
         .spec .num.count { animation: ncount .7s var(--spring); }
         @keyframes ncount { 0% { opacity: .2; transform: translateY(10px) scale(.85); filter: blur(6px); } 100% { opacity: 1; transform: none; filter: none; } }
         @media (prefers-reduced-motion: reduce) { .spec .num.count { animation: none; } }
-        .spec .lab { margin-top: 6px; font-size: 13px; color: var(--ink-3); letter-spacing: .02em; }
+        .spec .lab { margin-top: 8px; font-size: 13px; color: var(--ink-3); letter-spacing: .02em; }
 
         /* ————— LAYOUT ————— */
         .wrap {
-            max-width: 1160px; margin: 0 auto; padding: 64px 24px 40px;
-            display: grid; grid-template-columns: 232px 1fr; gap: 48px; align-items: start;
+            max-width: 1160px; margin: 0 auto; padding: 70px 24px 46px;
+            display: grid; grid-template-columns: 232px 1fr; gap: 52px; align-items: start;
         }
 
         /* sticky rail */
@@ -211,14 +211,14 @@
         .toc a.active .tno { color: var(--brand); opacity: 1; }
 
         /* ————— CONTENT ————— */
-        .content { min-width: 0; display: flex; flex-direction: column; gap: 22px; }
+        .content { min-width: 0; display: flex; flex-direction: column; gap: 30px; }
 
         .section {
             position: relative;
             background: var(--surface);
             border: 1px solid var(--line);
             border-radius: var(--radius);
-            padding: 38px 40px;
+            padding: 44px 46px;
             box-shadow: var(--shadow-1);
             backdrop-filter: blur(10px);
             overflow: hidden;
@@ -232,12 +232,12 @@
 
         /* 纯净无边框区块 —— 与卡片区块形成节奏对比（FAQ / 排障 / 联系） */
         .section.rule {
-            background: transparent; border: none; box-shadow: none; padding: 34px 6px; backdrop-filter: none;
+            background: transparent; border: none; box-shadow: none; padding: 46px 12px; backdrop-filter: none;
             border-top: 1px solid var(--line); border-radius: 0;
         }
         .section.rule::before { display: none; }
         .section.rule:hover { transform: none; box-shadow: none; }
-        .section.rule h2 { margin-bottom: 6px; }
+        .section.rule h2 { margin-bottom: 10px; }
 
         .kicker {
             display: flex; align-items: center; gap: 11px;
@@ -246,13 +246,13 @@
         }
         .kicker .bar { width: 26px; height: 2px; background: linear-gradient(90deg, var(--brand), transparent); border-radius: 2px; }
 
-        .section h2 { font-size: clamp(22px, 2.6vw, 28px); font-weight: 760; letter-spacing: -.02em; color: var(--ink); line-height: 1.2; margin-bottom: 20px; display: flex; align-items: baseline; gap: 14px; }
+        .section h2 { font-size: clamp(22px, 2.6vw, 28px); font-weight: 760; letter-spacing: -.02em; color: var(--ink); line-height: 1.2; margin-bottom: 26px; display: flex; align-items: baseline; gap: 14px; }
         .section h2 .idx {
             font-size: .62em; font-weight: 700; letter-spacing: .12em; color: var(--brand);
             font-variant-numeric: tabular-nums; opacity: .9;
         }
-        .lead { font-size: 15.5px; color: var(--ink-3); margin-bottom: 10px; }
-        .section.rule .lead { margin-bottom: 22px; }
+        .lead { font-size: 15.5px; color: var(--ink-3); margin-bottom: 14px; }
+        .section.rule .lead { margin-bottom: 24px; }
 
         p { font-size: 15px; margin-bottom: 14px; }
         strong { color: var(--ink); font-weight: 630; }
@@ -261,7 +261,7 @@
         code { background: var(--code-bg); padding: 2.5px 8px; border-radius: 7px; font-family: 'JetBrains Mono', Consolas, monospace; font-size: .86em; color: var(--code-ink); border: 1px solid var(--line); }
 
         /* feature list */
-        ul.feature { margin: 18px 0 6px; list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 12px 26px; }
+        ul.feature { margin: 22px 0 10px; list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 16px 28px; }
         ul.feature li {
             padding-left: 30px; position: relative; margin-bottom: 4px; font-size: 15px; line-height: 1.65; color: var(--ink-2);
         }
@@ -281,7 +281,7 @@
         .callout {
             display: flex; gap: 16px; align-items: flex-start;
             background: var(--amber-soft); border: 1px solid var(--amber-line);
-            border-radius: var(--radius-sm); padding: 22px 24px; margin: 22px 0;
+            border-radius: var(--radius-sm); padding: 26px 28px; margin: 28px 0;
         }
         .callout .ic { font-size: 22px; flex: none; line-height: 1.4; }
         .callout p { color: var(--amber-ink); margin-bottom: 8px; font-size: 14.5px; }
@@ -295,11 +295,11 @@
         .callout .steps-inline b { color: var(--ink); font-weight: 640; }
 
         /* steps */
-        .steps { display: grid; grid-template-columns: repeat(auto-fill, minmax(196px, 1fr)); gap: 13px; margin: 24px 0 6px; }
-        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; margin: 20px 0 4px; }
+        .steps { display: grid; grid-template-columns: repeat(auto-fill, minmax(196px, 1fr)); gap: 16px; margin: 30px 0 10px; }
+        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 26px 0 8px; }
         .stat-mini {
             background: var(--surface-2); border: 1px solid var(--line);
-            border-radius: var(--radius-sm); padding: 16px 18px;
+            border-radius: var(--radius-sm); padding: 18px 20px;
         }
         .stat-mini strong {
             display: block; font-size: 12.5px; font-weight: 700;
@@ -393,7 +393,7 @@
         }
         .lightbox .close:hover { background: rgba(255,255,255,.06); border-color: var(--line-strong); transform: rotate(90deg); }
 
-        .actions { display: flex; flex-wrap: wrap; gap: 14px; margin: 12px 0 6px; justify-content: center; }
+        .actions { display: flex; flex-wrap: wrap; gap: 16px; margin: 16px 0 8px; justify-content: center; }
         /* 统一下载按钮 —— 暖金渐变，非蓝，与品牌蓝形成区分 */
         .btn.dl { color: #05070d; background: linear-gradient(180deg, #ffd8a6 0%, #eea85e 100%); box-shadow: 0 8px 24px rgba(238, 168, 94, .34); }
         .btn.dl:hover { transform: translateY(-2px); box-shadow: 0 14px 38px rgba(238, 168, 94, .46); }
@@ -406,10 +406,10 @@
         .pwd .label { font-size: 14px; color: var(--ink-3); }
 
         /* guide cards — uniform 2-column grid */
-        .guide-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 12px 0 4px; }
+        .guide-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin: 18px 0 8px; }
         .gcard {
             background: var(--surface-2); border: 1px solid var(--line);
-            border-radius: var(--radius-sm); padding: 24px 22px 20px;
+            border-radius: var(--radius-sm); padding: 26px 24px 22px;
             position: relative; overflow: hidden;
             transition: transform .22s var(--spring), border-color .22s ease, box-shadow .22s ease;
         }
@@ -428,17 +428,17 @@
         .gcard p { font-size: 13.5px; color: var(--ink-3); line-height: 1.8; margin: 0; }
 
         /* faq */
-        .faq { margin: 12px 0 4px; }
-        .faq-item { border-bottom: 1px solid var(--line); padding: 20px 2px; }
+        .faq { margin: 14px 0 6px; }
+        .faq-item { border-bottom: 1px solid var(--line); padding: 22px 2px; }
         .faq-item:last-child { border-bottom: none; }
         .faq-item h3 { font-size: 15.5px; font-weight: 640; color: var(--ink); margin-bottom: 8px; display: flex; align-items: center; gap: 10px; }
         .faq-item h3 .q { font-size: 13px; color: var(--brand); font-weight: 760; }
         .faq-item p { font-size: 14px; color: var(--ink-3); margin: 0; line-height: 1.8; }
 
-        .contact-list { list-style: none; margin: 14px 0 4px; }
+        .contact-list { list-style: none; margin: 18px 0 6px; }
         .contact-list li {
             display: flex; align-items: center; gap: 12px;
-            padding: 16px 2px; border-bottom: 1px solid var(--line);
+            padding: 18px 2px; border-bottom: 1px solid var(--line);
             font-size: 15px; color: var(--ink-2);
         }
         .contact-list li:last-child { border-bottom: none; }
@@ -446,7 +446,7 @@
         .contact-list li .lab { color: var(--ink-3); font-size: 14px; min-width: 74px; }
 
         /* footer */
-        .footer { text-align: center; padding: 40px 24px 64px; color: var(--ink-3); font-size: 14px; line-height: 2; }
+        .footer { text-align: center; padding: 52px 24px 76px; color: var(--ink-3); font-size: 14px; line-height: 2; }
         .footer .mark {
             width: 30px; height: 30px; border-radius: 9px; margin: 0 auto 18px;
             background: var(--brand-deep); display: grid; place-items: center;
