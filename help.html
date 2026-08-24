@@ -532,7 +532,7 @@
         <p class="sub">一键安装、自动更新、内置提示词库与插件库。<strong>DSH-Desktop</strong> 把 DeepSeek Harness 装进一个精致的客户端 —— Windows 桌面版开箱即用，飞牛 OS 原生应用跑在你的 NAS 上。</p>
         <div class="hero-actions">
             <a href="#baidu" class="btn dl"><span class="ic">⬇</span> 下载安装</a>
-            <a href="https://www.deepseek.com" class="btn site" target="_blank" rel="noopener"><span class="ic">◈</span> DeepSeek 官网</a>
+            <a href="https://www.deepseek.com/harness/" class="btn site" target="_blank" rel="noopener"><span class="ic">◈</span> DeepSeek 官网</a>
             <a href="https://github.com/XWJ-z/dsh-Desktop" class="btn ghost" target="_blank" rel="noopener"><span class="ic">⋯</span> GitHub 仓库</a>
         </div>
         <div class="meta">
@@ -638,12 +638,12 @@
                 <h2><span class="idx">03</span> 加入社群</h2>
                 <p class="lead">有任何问题或建议，欢迎加入官方 QQ 群交流反馈。</p>
                 <div class="community">
+                    <p class="tt">DSH-Desktop 官方交流群</p>
                     <p class="qdesc">扫码或搜索群号加入，遇到问题随时提问，你的建议直接决定下一个功能！</p>
                     <div class="qr" id="qrZoom" role="button" tabindex="0" aria-label="点击放大二维码">
                         <img src="https://cdn.jsdelivr.net/gh/XWJ-z/dsh-Desktop@main/windows/app/assets/qq-group.png" alt="QQ 群二维码" />
                     </div>
                     <p class="hint">点按二维码可放大查看</p>
-                    <p class="tt">DSH-Desktop 官方交流群</p>
                     <p class="qnum">群号：<strong>916607090</strong></p>
                     <a href="https://qm.qq.com/cgi-bin/qm/qr?k=916607090" class="btn join" target="_blank" rel="noopener">一键加群</a>
                 </div>
@@ -797,15 +797,15 @@
                 }
                 resize();
                 window.addEventListener('resize', resize);
-                // 监听 hero 而非 canvas —— content 盖在 canvas 之上，挂在父级才能实时捕获鼠标
+                // 窗口级监听鼠标 —— 坐标精确相对画布，避免事件目标偏移导致光网偏向上方(11点钟方向)
                 var mx = -9999, my = -9999;
-                var host = c.parentNode;
+                window.addEventListener('mousemove', function (e) {
+                    var r = c.getBoundingClientRect();
+                    mx = e.clientX - r.left; my = e.clientY - r.top;
+                }, { passive: true });
                 if (FINE) {
-                    host.addEventListener('mousemove', function (e) {
-                        var r = c.getBoundingClientRect();
-                        mx = e.clientX - r.left; my = e.clientY - r.top;
-                    });
-                    host.addEventListener('mouseleave', function () { mx = -9999; my = -9999; });
+                    document.documentElement.addEventListener('mouseleave', function () { mx = -9999; my = -9999; });
+                    window.addEventListener('blur', function () { mx = -9999; my = -9999; });
                 }
                 function frame() {
                     ctx.clearRect(0, 0, W, H);
@@ -820,12 +820,12 @@
                         if (mouseOn) {
                             var dx = mx - p.x, dy = my - p.y;
                             var d2 = dx * dx + dy * dy;
-                            var R = 160;
+                            var R = 170;
                             if (d2 < R * R) {
                                 var d = Math.sqrt(d2) || 1;
                                 var f = 1 - d / R;
-                                p.x += (dx / d) * 2.4 * f;
-                                p.y += (dy / d) * 2.4 * f;
+                                p.x += (dx / d) * 3.4 * f;
+                                p.y += (dy / d) * 3.4 * f;
                             }
                         }
                         if (p.x < -20) p.x = W + 20; else if (p.x > W + 20) p.x = -20;
