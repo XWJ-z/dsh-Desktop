@@ -1,5 +1,5 @@
 <!--
-DSH-Desktop 帮助文档（v1.1.1 帮助文档远程下发功能）
+DSH-Desktop 帮助文档（远程下发 + 打包内置副本）
 - 根目录 help.html = 远程下发源：改内容 push 即生效，无需发版
 - windows/app/renderer/help.html = 打包内置副本（离线兜底），修改后必须同步
 - 应用内打开顺序：userData 缓存 > 包内置；后台三源静默同步远程
@@ -10,324 +10,495 @@ DSH-Desktop 帮助文档（v1.1.1 帮助文档远程下发功能）
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DSH-Desktop 帮助文档</title>
+    <title>DSH-Desktop · 帮助与指南</title>
     <style>
-        /* finesse · register=product · 帮助文档阅读页 · 深/浅双主题 + 左侧目录 + 滚动渐显 + 微交互 */
+        /* finesse · register=brand · A=abyssal-navy+ice-blue · B=760/300 · C=sticky-rail
+         * D=canvas-particle · E=deep-sea · SOUL=8 SPECTACLE=6 DENSITY=5 */
         * { margin: 0; padding: 0; box-sizing: border-box; }
+
         :root {
-            --ink: #1f2330;
-            --ink-2: #454b5a;
-            --ink-3: #68707f;
-            --line: #e3e6ec;
-            --line-strong: #d3d7e0;
-            --brand: #4f5bd5;
-            --brand-deep: #3f4ac4;
-            --brand-glow: rgba(79, 91, 213, .16);
-            --brand-soft: rgba(79, 91, 213, .08);
-            --surface: #ffffff;
-            --surface-2: #f7f8fb;
-            --bg: #eef0f5;
-            --bg-hero: #f4f5f9;
-            --amber-bg: #fbf3dd;
-            --amber-border: #ecd9a6;
-            --amber-ink: #7a5d0f;
-            --baidu: #c0392b;
-            --baidu-deep: #a93226;
-            --green: #0d9f6e;
-            --green-bg: rgba(13, 159, 110, .10);
-            --green-border: rgba(13, 159, 110, .32);
-            --code-bg: #eef1f6;
-            --code-ink: #3f4ac4;
-            --shadow-1: 0 1px 2px rgba(20, 24, 40, .04), 0 4px 16px rgba(28, 33, 56, .05);
-            --shadow-2: 0 2px 6px rgba(20, 24, 40, .06), 0 14px 32px rgba(28, 33, 56, .10);
-            --radius: 16px;
-            --radius-sm: 10px;
+            color-scheme: dark;
+            /* abyssal tinted neutrals — never pure black */
+            --bg: #070b13;
+            --bg-2: #0a101c;
+            --surface: rgba(255, 255, 255, .032);
+            --surface-2: rgba(255, 255, 255, .022);
+            --line: rgba(159, 187, 232, .13);
+            --line-strong: rgba(159, 187, 232, .26);
+            --ink: #eef4fd;
+            --ink-2: #aab6cf;
+            --ink-3: #72809b;
+            /* brand — ice / deepseek blue, tinted */
+            --brand: #6b96ff;
+            --brand-deep: #4d6bfe;
+            --brand-glow: rgba(94, 132, 255, .20);
+            --brand-soft: rgba(94, 132, 255, .10);
+            --ice: #9fd4ff;
+            /* positive / caution accents, tinted to the navy family */
+            --green: #4fd2b5;
+            --green-soft: rgba(79, 210, 181, .11);
+            --green-line: rgba(79, 210, 181, .32);
+            --amber: #e6b26a;
+            --amber-soft: rgba(230, 178, 106, .11);
+            --amber-line: rgba(230, 178, 106, .34);
+            --amber-ink: #f2c691;
+            --code-bg: rgba(9, 14, 24, .6);
+            --code-ink: #a9c3ff;
+            --shadow-1: 0 1px 0 rgba(255, 255, 255, .03) inset, 0 18px 44px rgba(2, 6, 14, .55);
+            --shadow-2: 0 1px 0 rgba(255, 255, 255, .05) inset, 0 28px 70px rgba(2, 6, 14, .68);
+            --radius: 18px;
+            --radius-sm: 12px;
             --spring: cubic-bezier(.22, 1.2, .36, 1);
+            --focus: 0 0 0 2px var(--bg), 0 0 0 4px var(--brand);
         }
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --ink: #eef0f5;
-                --ink-2: #c4c9d4;
-                --ink-3: #8a92a1;
-                --line: #2b2f3a;
-                --line-strong: #3a3f4d;
-                --brand: #7c86e8;
-                --brand-deep: #96a0f2;
-                --brand-glow: rgba(124, 134, 232, .22);
-                --brand-soft: rgba(124, 134, 232, .10);
-                --surface: #161820;
-                --surface-2: #1d2029;
-                --bg: #14161d;
-                --bg-hero: #191c24;
-                --amber-bg: rgba(245, 166, 35, .10);
-                --amber-border: rgba(245, 166, 35, .32);
-                --amber-ink: #e6c27a;
-                --baidu: #e2604f;
-                --baidu-deep: #ef7362;
-                --green: #34d399;
-                --green-bg: rgba(52, 211, 153, .10);
-                --green-border: rgba(52, 211, 153, .32);
-                --code-bg: #1d212b;
-                --code-ink: #a0aaf2;
-                --shadow-1: 0 1px 2px rgba(0, 0, 0, .3), 0 4px 16px rgba(0, 0, 0, .2);
-                --shadow-2: 0 2px 6px rgba(0, 0, 0, .35), 0 16px 40px rgba(0, 0, 0, .3);
-            }
-        }
+
         html { scroll-behavior: smooth; }
         body {
             font-family: 'Segoe UI', 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
-            line-height: 1.78;
+            line-height: 1.8;
             color: var(--ink-2);
             background: var(--bg);
             min-height: 100vh;
+            overflow-x: clip;
+            -webkit-font-smoothing: antialiased;
+            text-rendering: optimizeLegibility;
         }
+
+        /* grain + vignette — the brand-only physical layer */
+        body::before {
+            content: '';
+            position: fixed; inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+            opacity: .035;
+            pointer-events: none;
+            z-index: 1;
+        }
+        .vignette {
+            position: fixed; inset: 0;
+            background: radial-gradient(120% 90% at 50% 0%, transparent 40%, rgba(3, 7, 15, .5) 100%);
+            pointer-events: none;
+            z-index: 1;
+        }
+
         @media (prefers-reduced-motion: reduce) {
             * { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
         }
+        a:focus-visible, button:focus-visible { outline: none; box-shadow: var(--focus); border-radius: 8px; }
 
-        /* —— Hero —— */
+        /* ————— HERO ————— */
         .hero {
             position: relative;
-            background: linear-gradient(180deg, var(--bg-hero) 0%, var(--bg) 100%);
+            min-height: 78vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
             text-align: center;
-            padding: 68px 24px 40px;
+            padding: 108px 28px 64px;
             overflow: hidden;
+            isolation: isolate;
         }
-        .hero::before {
+        #sea { position: absolute; inset: 0; z-index: 0; opacity: .85; }
+        .hero::after {
             content: '';
-            position: absolute; inset: 0;
-            background: radial-gradient(720px 320px at 50% -60px, var(--brand-glow), transparent 66%);
+            position: absolute; inset: 0; z-index: 1;
+            background: radial-gradient(760px 480px at 50% 8%, var(--brand-glow), transparent 66%);
             pointer-events: none;
+            mix-blend-mode: screen;
         }
-        .hero .badge {
-            display: inline-flex; align-items: center; gap: 6px;
-            font-size: 12px; font-weight: 620; letter-spacing: .04em; text-transform: uppercase;
-            color: var(--brand); background: var(--brand-soft);
-            padding: 5px 14px; border-radius: 999px; margin-bottom: 22px;
+        .hero > * { position: relative; z-index: 2; }
+
+        .badge {
+            display: inline-flex; align-items: center; gap: 9px;
+            font-size: 12.5px; font-weight: 640; letter-spacing: .14em; text-transform: uppercase;
+            color: var(--ice); background: var(--brand-soft);
+            border: 1px solid var(--brand-glow);
+            padding: 7px 16px; border-radius: 999px; margin-bottom: 30px;
+            backdrop-filter: blur(6px);
         }
-        .hero h1 { font-size: 40px; font-weight: 730; letter-spacing: -1px; color: var(--ink); line-height: 1.15; margin-bottom: 14px; }
-        .hero p.sub { font-size: 16px; color: var(--ink-3); max-width: 580px; margin: 0 auto; }
-        .hero .meta { margin-top: 22px; display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
-        .hero .meta span { font-size: 13px; color: var(--ink-3); background: var(--surface-2); border: 1px solid var(--line); padding: 5px 14px; border-radius: 999px; }
+        .badge .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 10px var(--green); }
 
-        /* —— 布局 —— */
-        .wrap { max-width: 1080px; margin: 0 auto; padding: 40px 24px 72px; display: grid; grid-template-columns: 220px 1fr; gap: 36px; align-items: start; }
+        .hero h1 {
+            font-size: clamp(38px, 6.4vw, 68px);
+            font-weight: 780;
+            letter-spacing: -.035em;
+            line-height: 1.04;
+            color: #eef4fd;
+            text-shadow: 0 0 60px rgba(94, 132, 255, .32);
+            max-width: 13ch;
+            overflow-wrap: anywhere;
+            min-width: 0;
+            margin-bottom: 22px;
+        }
+        .hero .sub {
+            font-size: clamp(15.5px, 2vw, 19px);
+            color: var(--ink-3);
+            max-width: 620px;
+            line-height: 1.8;
+            margin-bottom: 34px;
+        }
+        .hero .sub strong { color: var(--ink); font-weight: 620; }
 
-        /* —— 侧栏目录 —— */
-        .toc { position: sticky; top: 28px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 16px; box-shadow: var(--shadow-1); }
-        .toc .toc-title { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); margin: 4px 10px 12px; }
-        .toc a { display: block; padding: 9px 12px; margin-bottom: 2px; border-radius: var(--radius-sm); color: var(--ink-2); text-decoration: none; font-size: 14px; font-weight: 540; transition: background .16s ease, color .16s ease, transform .16s var(--spring); }
-        .toc a:hover { background: var(--brand-soft); color: var(--brand); transform: translateX(3px); }
-        .toc a.active { background: var(--brand-glow); color: var(--brand); font-weight: 650; }
+        .hero-actions { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; margin-bottom: 40px; }
 
-        /* —— 正文 —— */
-        .content { min-width: 0; display: flex; flex-direction: column; gap: 24px; }
-        .section { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 32px 34px; box-shadow: var(--shadow-1); transition: transform .2s var(--spring), box-shadow .2s ease, border-color .2s ease; }
-        .section:hover { transform: translateY(-2px); box-shadow: var(--shadow-2); border-color: var(--line-strong); }
-        .section h2 { font-size: 20px; font-weight: 680; color: var(--ink); letter-spacing: -.3px; display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
-        .section h2 .num { flex: none; width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; font-size: 13px; font-weight: 760; color: var(--brand); background: var(--brand-soft); border: 1px solid var(--brand-glow); }
-        .section h2 .emoji { font-size: 19px; }
-        .section > p { margin-top: 16px; }
-        .lead { font-size: 15px; color: var(--ink-3); margin-bottom: 6px !important; }
+        .btn {
+            display: inline-flex; align-items: center; gap: 9px;
+            padding: 14px 26px; border-radius: 12px;
+            text-decoration: none; font-size: 15px; font-weight: 640;
+            border: 1px solid transparent; cursor: pointer;
+            transition: transform .14s var(--spring), box-shadow .18s ease, background .18s ease, border-color .18s ease;
+            -webkit-user-select: none; user-select: none;
+        }
+        .btn.primary {
+            color: #05070d; background: linear-gradient(180deg, #8fb2ff 0%, #5f86ff 100%);
+            box-shadow: 0 10px 30px rgba(77, 107, 254, .42), 0 0 0 1px rgba(255, 255, 255, .08) inset;
+        }
+        .btn.primary:hover { transform: translateY(-2px); box-shadow: 0 16px 44px rgba(77, 107, 254, .52), 0 0 0 1px rgba(255, 255, 255, .12) inset; }
+        .btn.ghost {
+            color: var(--ink); background: var(--surface); border-color: var(--line);
+        }
+        .btn.ghost:hover { border-color: var(--line-strong); background: rgba(255, 255, 255, .06); transform: translateY(-2px); }
+        .btn:active { transform: scale(.98); }
+        .btn .ic { font-size: 18px; }
+
+        .meta { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        .meta span {
+            font-size: 13px; color: var(--ink-3);
+            background: var(--surface); border: 1px solid var(--line);
+            padding: 8px 15px; border-radius: 999px; backdrop-filter: blur(6px);
+        }
+
+        /* ————— SPEC BAND ————— */
+        .spec {
+            max-width: 1160px; margin: 0 auto; padding: 40px 24px;
+            display: grid; grid-template-columns: repeat(4, 1fr);
+            border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+        }
+        .spec .stat { text-align: center; padding: 14px 16px; }
+        .spec .num { font-size: 30px; font-weight: 760; letter-spacing: -.02em; color: var(--ink); font-variant-numeric: tabular-nums; }
+        .spec .num em { font-style: normal; color: var(--brand); }
+        .spec .lab { margin-top: 6px; font-size: 13px; color: var(--ink-3); letter-spacing: .02em; }
+
+        /* ————— LAYOUT ————— */
+        .wrap {
+            max-width: 1160px; margin: 0 auto; padding: 64px 24px 40px;
+            display: grid; grid-template-columns: 232px 1fr; gap: 48px; align-items: start;
+        }
+
+        /* sticky rail */
+        .toc { position: sticky; top: 28px; }
+        .toc-title {
+            font-size: 11.5px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase;
+            color: var(--ink-3); margin: 6px 12px 14px;
+        }
+        .toc a {
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 12px; margin-bottom: 3px; border-radius: 11px;
+            color: var(--ink-3); text-decoration: none; font-size: 14.5px; font-weight: 540;
+            border: 1px solid transparent;
+            transition: background .18s ease, color .18s ease, transform .18s var(--spring), border-color .18s ease;
+        }
+        .toc a .tno { font-size: 11px; font-weight: 650; color: var(--ink-3); font-variant-numeric: tabular-nums; min-width: 18px; opacity: .7; }
+        .toc a:hover { background: var(--brand-soft); color: var(--ink); transform: translateX(3px); }
+        .toc a.active { background: var(--brand-soft); border-color: var(--brand-glow); color: var(--ink); font-weight: 650; }
+        .toc a.active .tno { color: var(--brand); opacity: 1; }
+
+        /* ————— CONTENT ————— */
+        .content { min-width: 0; display: flex; flex-direction: column; gap: 26px; }
+
+        .section {
+            position: relative;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            padding: 38px 40px;
+            box-shadow: var(--shadow-1);
+            backdrop-filter: blur(10px);
+            overflow: hidden;
+            transition: transform .24s var(--spring), box-shadow .24s ease, border-color .24s ease;
+        }
+        .section::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(159, 187, 232, .28), transparent);
+        }
+        .section:hover { transform: translateY(-3px); box-shadow: var(--shadow-2); border-color: var(--line-strong); }
+
+        .kicker {
+            display: flex; align-items: center; gap: 11px;
+            font-size: 11.5px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase;
+            color: var(--brand); margin-bottom: 14px;
+        }
+        .kicker .bar { width: 26px; height: 2px; background: linear-gradient(90deg, var(--brand), transparent); border-radius: 2px; }
+
+        .section h2 { font-size: clamp(22px, 2.6vw, 28px); font-weight: 760; letter-spacing: -.02em; color: var(--ink); line-height: 1.2; margin-bottom: 20px; }
+        .lead { font-size: 15.5px; color: var(--ink-3); margin-bottom: 10px; }
 
         p { font-size: 15px; margin-bottom: 14px; }
-        strong { color: var(--ink); font-weight: 650; }
-        code { background: var(--code-bg); padding: 2px 7px; border-radius: 6px; font-family: 'JetBrains Mono', Consolas, monospace; font-size: .86em; color: var(--code-ink); border: 1px solid var(--line); }
+        strong { color: var(--ink); font-weight: 630; }
+        a.inline { color: var(--brand); text-decoration: none; font-weight: 560; border-bottom: 1px solid transparent; transition: color .16s ease, border-color .16s ease; }
+        a.inline:hover { border-color: var(--brand); }
+        code { background: var(--code-bg); padding: 2.5px 8px; border-radius: 7px; font-family: 'JetBrains Mono', Consolas, monospace; font-size: .86em; color: var(--code-ink); border: 1px solid var(--line); }
 
-        ul { margin: 14px 0 6px 8px; list-style: none; }
-        ul li { padding-left: 26px; position: relative; margin-bottom: 11px; font-size: 15px; }
-        ul li::before { content: ''; position: absolute; left: 2px; top: 10px; width: 7px; height: 7px; border-radius: 50%; background: var(--brand); opacity: .55; }
-        ul li strong { color: var(--ink); }
+        /* feature list */
+        ul.feature { margin: 18px 0 6px; list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 12px 26px; }
+        ul.feature li {
+            padding-left: 30px; position: relative; margin-bottom: 4px; font-size: 15px; line-height: 1.65; color: var(--ink-2);
+        }
+        ul.feature li::before {
+            content: ''; position: absolute; left: 2px; top: 9px;
+            width: 14px; height: 14px; border-radius: 5px;
+            background: var(--brand-soft); border: 1px solid var(--brand-glow);
+        }
+        ul.feature li::after {
+            content: ''; position: absolute; left: 6px; top: 13px;
+            width: 6px; height: 3.5px; border-left: 1.5px solid var(--brand); border-bottom: 1.5px solid var(--brand);
+            transform: rotate(-45deg);
+        }
+        ul.feature li strong { color: var(--ink); }
 
-        /* —— 高亮提示 —— */
-        .highlight { display: flex; gap: 14px; align-items: flex-start; background: var(--amber-bg); border: 1px solid var(--amber-border); border-left: 4px solid var(--amber-border); border-radius: var(--radius-sm); padding: 18px 20px; margin: 20px 0; }
-        .highlight .ic { font-size: 22px; flex: none; line-height: 1.3; }
-        .highlight p { color: var(--amber-ink); margin-bottom: 8px; font-size: 14.5px; }
-        .highlight p:last-child { margin-bottom: 0; }
-        .highlight strong { color: var(--amber-ink); }
-        .highlight.green { background: var(--green-bg); border-color: var(--green-border); border-left-color: var(--green-border); }
-        .highlight.green p, .highlight.green strong { color: var(--green); }
+        /* callouts */
+        .callout {
+            display: flex; gap: 16px; align-items: flex-start;
+            background: var(--amber-soft); border: 1px solid var(--amber-line);
+            border-radius: var(--radius-sm); padding: 22px 24px; margin: 22px 0;
+        }
+        .callout .ic { font-size: 22px; flex: none; line-height: 1.4; }
+        .callout p { color: var(--amber-ink); margin-bottom: 8px; font-size: 14.5px; }
+        .callout p:last-child { margin-bottom: 0; }
+        .callout strong { color: var(--amber-ink); }
+        .callout.os {
+            background: var(--green-soft); border-color: var(--green-line);
+        }
+        .callout.os p, .callout.os strong { color: var(--green); }
+        .callout .steps-inline { color: var(--ink-2); font-size: 14.5px; line-height: 1.9; margin: 0; }
+        .callout .steps-inline b { color: var(--ink); font-weight: 640; }
 
-        /* —— 步骤卡 —— */
-        .steps { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin: 20px 0 4px; }
-        .step { background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 16px 16px 14px; }
-        .step .n { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; font-size: 13px; font-weight: 750; color: var(--brand); background: var(--brand-soft); margin-bottom: 10px; }
-        .step p { font-size: 13.5px; color: var(--ink-3); margin: 0; line-height: 1.6; }
+        /* steps */
+        .steps { display: grid; grid-template-columns: repeat(auto-fill, minmax(196px, 1fr)); gap: 13px; margin: 24px 0 6px; }
+        .step {
+            background: var(--surface-2); border: 1px solid var(--line);
+            border-radius: var(--radius-sm); padding: 20px 18px 17px;
+            transition: border-color .2s ease, transform .2s var(--spring), background .2s ease;
+        }
+        .step:hover { border-color: var(--line-strong); transform: translateY(-2px); background: var(--surface); }
+        .step .n {
+            width: 28px; height: 28px; border-radius: 9px; display: grid; place-items: center;
+            font-size: 13px; font-weight: 760; color: var(--brand);
+            background: var(--brand-soft); border: 1px solid var(--brand-glow); margin-bottom: 13px;
+            font-variant-numeric: tabular-nums;
+        }
+        .step p { font-size: 13.5px; color: var(--ink-3); margin: 0; line-height: 1.7; }
 
-        /* —— 下载按钮 —— */
-        .actions { display: flex; flex-wrap: wrap; gap: 14px; margin: 10px 0 4px; }
-        .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; border-radius: 12px; text-decoration: none; font-size: 14.5px; font-weight: 640; color: #fff; background: var(--brand); border: none; cursor: pointer; box-shadow: 0 2px 10px var(--brand-glow); transition: transform .12s var(--spring), box-shadow .16s ease, background .16s ease; }
-        .btn:hover { background: var(--brand-deep); transform: translateY(-1px); box-shadow: 0 6px 20px var(--brand-glow); }
-        .btn:active { transform: translateY(0) scale(.98); }
-        .btn.baidu { background: var(--baidu); box-shadow: 0 2px 10px rgba(192, 57, 43, .24); }
-        .btn.baidu:hover { background: var(--baidu-deep); }
-        .btn.green { background: var(--green); box-shadow: 0 2px 10px rgba(13, 159, 110, .24); }
-        .btn.green:hover { background: #0b9a6a; }
-        .btn .ic { font-size: 17px; }
-        .pwd { display: flex; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+        /* community */
+        .community { display: flex; gap: 26px; align-items: center; flex-wrap: wrap; margin: 10px 0 4px; }
+        .community .qr {
+            flex: none; width: 176px; height: 176px;
+            background: #fff; border-radius: var(--radius-sm);
+            padding: 12px; display: grid; place-items: center;
+            box-shadow: var(--shadow-1);
+        }
+        .community .qr img { width: 100%; height: 100%; object-fit: contain; border-radius: 8px; }
+        .community .info { flex: 1; min-width: 240px; }
+        .community .info .tt { font-size: 18px; font-weight: 680; color: var(--ink); margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+        .community .info p { font-size: 14.5px; color: var(--ink-3); margin-bottom: 10px; }
+        .community .info .btn { margin-top: 8px; }
+
+        .actions { display: flex; flex-wrap: wrap; gap: 14px; margin: 12px 0 6px; }
+        .btn.baidu { color: #05070d; background: linear-gradient(180deg, #ffd8a6 0%, #eea85e 100%); box-shadow: 0 8px 24px rgba(238, 168, 94, .34); }
+        .btn.baidu:hover { transform: translateY(-2px); box-shadow: 0 14px 38px rgba(238, 168, 94, .42); }
+        .btn.join { color: #04120e; background: linear-gradient(180deg, #7ff0dc 0%, #35c9a6 100%); box-shadow: 0 8px 24px rgba(53, 201, 166, .34); }
+        .btn.join:hover { transform: translateY(-2px); box-shadow: 0 14px 38px rgba(53, 201, 166, .44); }
+        .pwd { display: flex; align-items: center; gap: 11px; margin-top: 12px; flex-wrap: wrap; }
         .pwd .label { font-size: 14px; color: var(--ink-3); }
 
-        /* —— 社群卡片 —— */
-        .community { display: flex; gap: 22px; align-items: center; flex-wrap: wrap; margin: 8px 0 4px; }
-        .community .qr { flex: none; width: 168px; height: 168px; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 10px; display: grid; place-items: center; }
-        .community .qr img { width: 100%; height: 100%; object-fit: contain; border-radius: 8px; }
-        .community .info { flex: 1; min-width: 220px; }
-        .community .info .tt { font-size: 17px; font-weight: 680; color: var(--ink); margin-bottom: 8px; }
-        .community .info p { font-size: 14px; color: var(--ink-3); margin-bottom: 8px; }
+        /* guide cards */
+        .guide-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 12px 0 4px; }
+        .gcard {
+            background: var(--surface-2); border: 1px solid var(--line);
+            border-radius: var(--radius-sm); padding: 24px 22px 20px;
+            position: relative; overflow: hidden;
+            transition: transform .22s var(--spring), border-color .22s ease, box-shadow .22s ease;
+        }
+        .gcard::after {
+            content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
+            background: linear-gradient(180deg, var(--brand), transparent);
+            opacity: .7;
+        }
+        .gcard:hover { transform: translateY(-3px); border-color: var(--line-strong); box-shadow: var(--shadow-1); }
+        .gcard h3 { font-size: 15.5px; font-weight: 680; color: var(--ink); margin-bottom: 11px; display: flex; align-items: center; gap: 9px; }
+        .gcard h3 .e { font-size: 17px; }
+        .gcard p { font-size: 13.5px; color: var(--ink-3); line-height: 1.8; margin: 0; }
 
-        /* —— 指南/FAQ —— */
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 18px 0 4px; }
-        .card { background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 18px 18px 16px; }
-        .card h3 { font-size: 15px; font-weight: 680; color: var(--ink); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
-        .card p { font-size: 13.5px; color: var(--ink-3); line-height: 1.7; margin: 0; }
-        .faq { margin: 16px 0 4px; }
-        .faq-item { border-bottom: 1px solid var(--line); padding: 14px 0; }
+        /* faq */
+        .faq { margin: 12px 0 4px; }
+        .faq-item { border-bottom: 1px solid var(--line); padding: 20px 2px; }
         .faq-item:last-child { border-bottom: none; }
-        .faq-item h3 { font-size: 15px; font-weight: 660; color: var(--ink); margin-bottom: 6px; }
-        .faq-item p { font-size: 14px; color: var(--ink-3); margin: 0; }
+        .faq-item h3 { font-size: 15.5px; font-weight: 640; color: var(--ink); margin-bottom: 8px; display: flex; align-items: center; gap: 10px; }
+        .faq-item h3 .q { font-size: 13px; color: var(--brand); font-weight: 760; }
+        .faq-item p { font-size: 14px; color: var(--ink-3); margin: 0; line-height: 1.8; }
 
-        /* —— 滚动渐显 —— */
-        .section { opacity: 0; transform: translateY(18px); }
-        .section.in { opacity: 1; transform: none; transition: opacity .5s ease, transform .5s var(--spring); }
-        @media (prefers-reduced-motion: reduce) { .section { opacity: 1; transform: none; } }
+        .contact-list { list-style: none; margin: 14px 0 4px; }
+        .contact-list li {
+            display: flex; align-items: center; gap: 12px;
+            padding: 16px 2px; border-bottom: 1px solid var(--line);
+            font-size: 15px; color: var(--ink-2);
+        }
+        .contact-list li:last-child { border-bottom: none; }
+        .contact-list li .e { font-size: 18px; }
+        .contact-list li .lab { color: var(--ink-3); font-size: 14px; min-width: 74px; }
 
-        /* —— 页脚 —— */
-        .footer { text-align: center; margin-top: 16px; padding: 28px 24px 48px; color: var(--ink-3); font-size: 14px; line-height: 2; }
+        /* footer */
+        .footer { text-align: center; padding: 40px 24px 64px; color: var(--ink-3); font-size: 14px; line-height: 2; }
+        .footer .mark {
+            width: 30px; height: 30px; border-radius: 9px; margin: 0 auto 18px;
+            background: var(--brand-deep); display: grid; place-items: center;
+            font-size: 15px; color: #eaf1ff; box-shadow: 0 6px 18px var(--brand-glow);
+        }
         .footer a { color: var(--brand); text-decoration: none; font-weight: 560; }
         .footer a:hover { text-decoration: underline; }
-        .footer .divider { width: 44px; height: 2px; background: var(--brand); margin: 0 auto 18px; opacity: .5; }
 
-        /* —— 响应式 —— */
-        /* 帮助文档桌面窗口默认 860 宽（minWidth 640）：目录保持左侧双栏；仅真正窄时才折叠 */
+        /* reveal */
+        .section { opacity: 0; transform: translateY(20px); }
+        .section.in { opacity: 1; transform: none; transition: opacity .6s ease, transform .6s var(--spring); }
+        @media (prefers-reduced-motion: reduce) { .section { opacity: 1; transform: none; } }
+
+        /* responsive */
+        @media (max-width: 900px) {
+            .spec { grid-template-columns: repeat(2, 1fr); grid-gap: 6px 0; }
+        }
+        /* 帮助文档桌面窗口默认 860 宽（minWidth 640）：目录保持左侧双栏，仅真正窄时才折叠 */
         @media (max-width: 620px) {
-            .wrap { grid-template-columns: 1fr; }
+            .wrap { grid-template-columns: 1fr; gap: 28px; }
             .toc { position: static; order: 2; }
             .content { order: 1; }
-            .hero h1 { font-size: 32px; }
-            .grid { grid-template-columns: 1fr; }
+            .guide-grid, ul.feature { grid-template-columns: 1fr; }
             .community { flex-direction: column; align-items: center; text-align: center; }
+            .section { padding: 30px 24px; }
+            .hero { min-height: 64vh; }
         }
     </style>
 </head>
 <body>
+    <div class="vignette" aria-hidden="true"></div>
+
     <header class="hero">
-        <span class="badge">● DeepSeek Harness · 桌面版</span>
-        <h1>DSH-Desktop 帮助文档</h1>
-        <p class="sub">一键安装、自动更新、内置提示词库与插件库，让 DeepSeek 的 AI 能力随时可用。</p>
+        <canvas id="sea" aria-hidden="true"></canvas>
+        <span class="badge"><span class="dot"></span> DeepSeek Harness · Windows 桌面版</span>
+        <h1>让 DeepSeek 的智慧，常驻你的桌面</h1>
+        <p class="sub">一键安装、自动更新、内置提示词库与插件库。<strong>DSH-Desktop</strong> 把 DeepSeek Harness 装进一个精致的桌面客户端，随时可用，无需折腾。</p>
+        <div class="hero-actions">
+            <a href="#baidu" class="btn primary"><span class="ic">⬇</span> 下载安装</a>
+            <a href="https://github.com/XWJ-z/dsh-Desktop" class="btn ghost" target="_blank" rel="noopener"><span class="ic">⋯</span> GitHub 仓库</a>
+        </div>
         <div class="meta">
             <span>🪟 Windows · 桌面版</span>
             <span>🔄 远程自动更新</span>
-            <span>🎨 桌面宠物</span>
+            <span>🐳 桌面鲸鱼宠物</span>
         </div>
     </header>
+
+    <div class="spec" role="list">
+        <div class="stat" role="listitem"><div class="num">200<em>+</em></div><div class="lab">精选提示词模板</div></div>
+        <div class="stat" role="listitem"><div class="num">1<em>键</em></div><div class="lab">安装即用 · 自带环境</div></div>
+        <div class="stat" role="listitem"><div class="num">7<em>×24</em></div><div class="lab">稳定在线 · 自动更新</div></div>
+        <div class="stat" role="listitem"><div class="num">0<em>丢失</em></div><div class="lab">我的提示词持久保存</div></div>
+    </div>
 
     <div class="wrap">
         <nav class="toc" aria-label="目录">
             <p class="toc-title">目录</p>
-            <a href="#intro">项目介绍</a>
-            <a href="#community">加入社群</a>
-            <a href="#guide">使用指南</a>
-            <a href="#faq">常见问题</a>
-            <a href="#network">下载 / 更新失败</a>
-            <a href="#baidu">百度网盘下载</a>
-            <a href="#contact">联系我们</a>
+            <a href="#intro"><span class="tno">01</span> 项目介绍</a>
+            <a href="#guide"><span class="tno">02</span> 使用指南</a>
+            <a href="#community"><span class="tno">03</span> 加入社群</a>
+            <a href="#faq"><span class="tno">04</span> 常见问题</a>
+            <a href="#network"><span class="tno">05</span> 下载 / 更新失败</a>
+            <a href="#baidu"><span class="tno">06</span> 百度网盘下载</a>
+            <a href="#contact"><span class="tno">07</span> 联系我们</a>
         </nav>
 
         <main class="content">
             <section class="section" id="intro">
-                <h2><span class="num">01</span><span class="emoji">📋</span> 项目介绍</h2>
-                <p class="lead">DSH-Desktop 是 DeepSeek Harness 的桌面客户端，为你提供便捷、稳定的 AI 交互体验，基于 Electron 构建，支持 Windows 系统。</p>
-                <p><strong>核心特点：</strong></p>
-                <ul>
+                <div class="kicker"><span class="bar"></span> Overview</div>
+                <h2>项目介绍</h2>
+                <p class="lead">DSH-Desktop 是 DeepSeek Harness 的桌面客户端，为你提供便捷、稳定的 AI 交互体验，基于 Electron 构建，专为 Windows 系统打磨。</p>
+                <p>它把 DeepSeek 强大的模型能力，收进一个你随时能打开的窗口。</p>
+                <ul class="feature">
                     <li><strong>一键安装</strong> — 无需复杂配置，下载即用，自带运行环境</li>
                     <li><strong>自动更新</strong> — 支持远程下发更新，始终保持在最新版本</li>
-                    <li><strong>内置提示词库</strong> — 丰富模板即取即用，提升使用效率</li>
-                    <li><strong>桌面宠物</strong> — 可爱的桌面伴侣，支持互动与气泡提示</li>
-                    <li><strong>插件库</strong> — 连接官方社区，按需扩展功能</li>
+                    <li><strong>内置提示词库</strong> — 200+ 精选模板即取即用，提升效率</li>
+                    <li><strong>桌面宠物</strong> — 可爱的鲸鱼伴侣，支持互动与气泡提示</li>
+                    <li><strong>插件库</strong> — 连接官方社区，按需扩展能力</li>
                     <li><strong>全局记忆</strong> — 图形化记忆编辑，DSH 自动读取</li>
                 </ul>
                 <p>无论是日常问答、内容创作，还是代码辅助、工作流自动化，DSH-Desktop 都能为你提供稳定的 DeepSeek AI 能力。</p>
             </section>
 
+            <section class="section" id="guide">
+                <div class="kicker"><span class="bar"></span> Features</div>
+                <h2>使用指南</h2>
+                <p class="lead">快速了解常用功能，开箱即用。</p>
+                <div class="guide-grid">
+                    <div class="gcard"><h3><span class="e">🐳</span> 桌面宠物</h3><p>桌面鲸鱼伴侣，可拖拽到任意位置。悬停/点击会切换表情、弹出气泡提示，右键可隐藏或切换工具箱形态。</p></div>
+                    <div class="gcard"><h3><span class="e">📝</span> 提示词库</h3><p>内置 200+ 精选提示词模板，支持搜索、复制与一键注入输入框；「我的提示词」可自建并持久化保存。</p></div>
+                    <div class="gcard"><h3><span class="e">📥</span> 拖文件入工作区</h3><p>把文件拖进窗口，自动复制到当前 DSH 工作区并注入提示词；纯图片（PNG/JPG/WebP/GIF）直接放行显示缩略图附件。</p></div>
+                    <div class="gcard"><h3><span class="e">🧠</span> 全局记忆</h3><p>图形化编辑 AGENTS.md 与各角色记忆文件，让 DSH 记住你的称呼、项目背景与常用约定，无需手动发送。</p></div>
+                    <div class="gcard"><h3><span class="e">🔌</span> 插件库</h3><p>连接官方社区，分类浏览、搜索、一键复制安装命令，按需扩展能力。</p></div>
+                    <div class="gcard"><h3><span class="e">💾</span> 数据备份</h3><p>一键备份 DSH 用户数据（工作区/会话/全局记忆/我的提示词/设置），更换机器或出问题时快速恢复。</p></div>
+                </div>
+            </section>
+
             <section class="section" id="community">
-                <h2><span class="num">02</span><span class="emoji">👥</span> 加入社群</h2>
+                <div class="kicker"><span class="bar"></span> Community</div>
+                <h2>加入社群</h2>
                 <p class="lead">有任何问题或建议，欢迎加入官方 QQ 群交流反馈。</p>
                 <div class="community">
                     <div class="qr">
                         <img src="https://cdn.jsdelivr.net/gh/XWJ-z/dsh-Desktop@main/windows/app/assets/qq-group.png" alt="QQ 群二维码" />
                     </div>
                     <div class="info">
-                        <p class="tt">📌 DSH-Desktop 官方交流群</p>
-                        <p>群号：<code>916607090</code></p>
-                        <p>扫码或搜索群号加入，遇到问题随时提问，你的建议直接决定下一个功能！</p>
-                        <a href="https://qm.qq.com/cgi-bin/qm/qr?k=916607090" class="btn green" target="_blank"><span class="ic">💬</span> 一键加群</a>
+                        <p class="tt"><span>📌</span> DSH-Desktop 官方交流群</p>
+                        <p>群号：<code>916607090</code> — 扫码或搜索群号加入，遇到问题随时提问，你的建议直接决定下一个功能！</p>
+                        <a href="https://qm.qq.com/cgi-bin/qm/qr?k=916607090" class="btn join" target="_blank" rel="noopener"><span class="ic">💬</span> 一键加群</a>
                     </div>
                 </div>
-                <div class="highlight green">
+                <div class="callout os">
                     <span class="ic">💡</span>
                     <div><p><strong>进群能获得什么？</strong></p><p>版本更新提醒 · 使用技巧分享 · 问题快速解答 · 功能建议直达开发者。</p></div>
                 </div>
             </section>
 
-            <section class="section" id="guide">
-                <h2><span class="num">03</span><span class="emoji">🧭</span> 使用指南</h2>
-                <p class="lead">快速了解常用功能，开箱即用。</p>
-                <div class="grid">
-                    <div class="card"><h3>🐳 桌面宠物</h3><p>桌面鲸鱼伴侣，可拖拽到任意位置。悬停/点击会切换表情、弹出气泡提示，右键可隐藏或切换工具箱形态。</p></div>
-                    <div class="card"><h3>📝 提示词库</h3><p>内置 200+ 精选提示词模板，支持搜索、复制与一键注入输入框；「我的提示词」可自建并持久化保存。</p></div>
-                    <div class="card"><h3>📥 拖文件入工作区</h3><p>把文件拖进窗口，自动复制到当前 DSH 工作区并注入提示词；纯图片（PNG/JPG/WebP/GIF）直接放行给 DSH 显示缩略图附件。</p></div>
-                    <div class="card"><h3>🧠 全局记忆</h3><p>图形化编辑 ~/.dsh/AGENTS.md 与各角色记忆文件，让 DSH 记住你的称呼、项目背景与常用约定，无需手动发送。</p></div>
-                    <div class="card"><h3>🔌 插件库</h3><p>连接官方社区，分类浏览、搜索、一键复制安装命令，按需扩展能力。</p></div>
-                    <div class="card"><h3>💾 数据备份</h3><p>一键备份 DSH 用户数据（工作区/会话/全局记忆/我的提示词/设置），更换机器或出问题时快速恢复。</p></div>
-                </div>
-            </section>
-
             <section class="section" id="faq">
-                <h2><span class="num">04</span><span class="emoji">❓</span> 常见问题</h2>
+                <div class="kicker"><span class="bar"></span> FAQ</div>
+                <h2>常见问题</h2>
                 <div class="faq">
-                    <div class="faq-item">
-                        <h3>下载更新失败？</h3>
-                        <p>多为本地代理环境（科学上网）干扰。关闭代理后重试；仍失败可用「手动下载安装包」或百度网盘备用渠道。</p>
-                    </div>
-                    <div class="faq-item">
-                        <h3>提示词或插件描述是乱码？</h3>
-                        <p>旧版本已修复中文乱码问题。若仍有乱码，请先更新到最新版确认网络拉取正常。</p>
-                    </div>
-                    <div class="faq-item">
-                        <h3>我的提示词会丢失吗？</h3>
-                        <p>不会。「我的提示词」持久化保存在本地，重启不丢，并通过「数据备份」随包备份，恢复可还原。</p>
-                    </div>
-                    <div class="faq-item">
-                        <h3>想手动升级 DSH？</h3>
-                        <p>启动时检测到 DSH 新版会弹窗提示「立即升级」；也可在「检查更新」窗口查看并一键升级。</p>
-                    </div>
-                    <div class="faq-item">
-                        <h3>找不到答案？</h3>
-                        <p>加入上方 QQ 群，或到 GitHub 提 issue，我们会尽快响应。</p>
-                    </div>
+                    <div class="faq-item"><h3><span class="q">Q</span> 下载更新失败？</h3><p>多为本地代理环境（科学上网）干扰。关闭代理后重试；仍失败可用「手动下载安装包」或百度网盘备用渠道。</p></div>
+                    <div class="faq-item"><h3><span class="q">Q</span> 提示词或插件描述是乱码？</h3><p>旧版本已修复中文乱码问题。若仍有乱码，请先更新到最新版确认网络拉取正常。</p></div>
+                    <div class="faq-item"><h3><span class="q">Q</span> 我的提示词会丢失吗？</h3><p>不会。「我的提示词」持久化保存在本地，重启不丢，并通过「数据备份」随包备份，恢复可还原。</p></div>
+                    <div class="faq-item"><h3><span class="q">Q</span> 想手动升级 DSH？</h3><p>启动时检测到 DSH 新版会弹窗提示「立即升级」；也可在「检查更新」窗口查看并一键升级。</p></div>
+                    <div class="faq-item"><h3><span class="q">Q</span> 找不到答案？</h3><p>加入上方 QQ 群，或到 GitHub 提 issue，我们会尽快响应。</p></div>
                 </div>
             </section>
 
             <section class="section" id="network">
-                <h2><span class="num">05</span><span class="emoji">⚠️</span> 下载 / 更新失败？请关闭科学上网</h2>
+                <div class="kicker"><span class="bar"></span> Troubleshooting</div>
+                <h2>下载 / 更新失败？请关闭科学上网</h2>
                 <p class="lead">DSH-Desktop 的下载与更新依赖 GitHub CDN。若下载失败或更新卡顿，多为本地代理环境所致。</p>
-                <div class="highlight">
+                <div class="callout">
                     <span class="ic">💡</span>
                     <div>
                         <p><strong>解决方案：</strong></p>
-                        <p>1. 暂时关闭代理软件（Clash、V2Ray、Shadowsocks 等）</p>
-                        <p>2. 关闭 VPN 连接</p>
-                        <p>3. 重新尝试下载或更新</p>
+                        <p class="steps-inline"><b>1.</b> 暂时关闭代理软件（Clash、V2Ray、Shadowsocks 等）<br><b>2.</b> 关闭 VPN 连接<br><b>3.</b> 重新尝试下载或更新</p>
                     </div>
                 </div>
                 <p>关闭代理后，可直连 GitHub 服务器，获得更快的速度与更稳定的连接。</p>
             </section>
 
             <section class="section" id="baidu">
-                <h2><span class="num">06</span><span class="emoji">💾</span> 百度网盘下载</h2>
+                <div class="kicker"><span class="bar"></span> Download</div>
+                <h2>百度网盘下载</h2>
                 <p class="lead">无法访问 GitHub 或下载较慢时，可使用百度网盘作为备用渠道。</p>
                 <div class="actions">
-                    <a href="https://pan.baidu.com/s/1Y9CSRXKZ48cQYNi60ozBmA?pwd=8yh8" class="btn baidu" target="_blank"><span class="ic">📥</span> 百度网盘下载</a>
+                    <a href="https://pan.baidu.com/s/1Y9CSRXKZ48cQYNi60ozBmA?pwd=8yh8" class="btn baidu" target="_blank" rel="noopener"><span class="ic">📥</span> 百度网盘下载</a>
                 </div>
                 <div class="pwd"><span class="label">提取码</span><code>8yh8</code></div>
                 <div class="steps">
@@ -340,42 +511,93 @@ DSH-Desktop 帮助文档（v1.1.1 帮助文档远程下发功能）
             </section>
 
             <section class="section" id="contact">
-                <h2><span class="num">07</span><span class="emoji">📧</span> 联系我们</h2>
+                <div class="kicker"><span class="bar"></span> Contact</div>
+                <h2>联系我们</h2>
                 <p class="lead">使用中遇到问题，欢迎通过以下方式联系我们。</p>
-                <ul>
-                    <li><strong>QQ 群</strong> — <code>916607090</code>（扫码/搜索进群，见"加入社群"）</li>
-                    <li><strong>GitHub</strong> — <a href="https://github.com/XWJ-z/dsh-Desktop" target="_blank" style="color:var(--brand);font-weight:560;text-decoration:none;">XWJ-z/dsh-Desktop</a></li>
+                <ul class="contact-list">
+                    <li><span class="e">💬</span><span class="lab">QQ 群</span><span><code>916607090</code>（扫码/搜索进群，见"加入社群"）</span></li>
+                    <li><span class="e">🐙</span><span class="lab">GitHub</span><span><a class="inline" href="https://github.com/XWJ-z/dsh-Desktop" target="_blank" rel="noopener">XWJ-z/dsh-Desktop</a></span></li>
                 </ul>
             </section>
         </main>
     </div>
 
     <footer class="footer">
-        <div class="divider"></div>
-        <p>© 2024 DSH-Desktop · All rights reserved.</p>
+        <div class="mark">🐳</div>
+        <p>© 2024 DSH-Desktop · Powered by DeepSeek Harness · All rights reserved.</p>
     </footer>
 
     <script>
         (function () {
+            var RM = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+            /* ————— canvas sea — a whisper of the whale's ocean ————— */
+            var c = document.getElementById('sea');
+            if (c && !RM) {
+                var ctx = c.getContext('2d');
+                var dpr = Math.min(window.devicePixelRatio || 1, 2);
+                var W = 0, H = 0, pts = [];
+                var N = 64;
+                var T = 0;
+                function resize() {
+                    var r = c.parentNode.getBoundingClientRect();
+                    W = r.width; H = r.height;
+                    c.width = W * dpr; c.height = H * dpr;
+                    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+                    pts = [];
+                    for (var i = 0; i < N; i++) {
+                        pts.push({
+                            x: Math.random() * W,
+                            y: Math.random() * H,
+                            r: .6 + Math.random() * 1.7,
+                            sp: .08 + Math.random() * .22,
+                            ph: Math.random() * Math.PI * 2,
+                            amp: 6 + Math.random() * 26
+                        });
+                    }
+                }
+                resize();
+                window.addEventListener('resize', resize);
+                function frame() {
+                    ctx.clearRect(0, 0, W, H);
+                    T += .006;
+                    for (var i = 0; i < pts.length; i++) {
+                        var p = pts[i];
+                        var sway = Math.sin(T * p.sp * 12 + p.ph) * p.amp;
+                        var y = p.y + Math.sin(T * p.sp * 8 + p.ph) * 5;
+                        var x = p.x + sway;
+                        x = (x + W) % W;
+                        p.x = x; p.y = y;
+                        var a = .10 + .16 * Math.abs(Math.sin(T * .6 + p.ph));
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                        ctx.fillStyle = 'rgba(107,150,255,' + a + ')';
+                        ctx.fill();
+                    }
+                    requestAnimationFrame(frame);
+                }
+                frame();
+            }
+
+            /* ————— reveal + scroll-spy ————— */
             var sections = document.querySelectorAll('.section');
-            var rm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-            if (rm) { sections.forEach(function (s) { s.classList.add('in'); }); return; }
-            var io = new IntersectionObserver(function (entries) {
-                entries.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
-            }, { threshold: 0.12 });
-            sections.forEach(function (s) { io.observe(s); });
+            if (RM) { sections.forEach(function (s) { s.classList.add('in'); }); }
+            else {
+                var io = new IntersectionObserver(function (entries) {
+                    entries.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+                }, { threshold: 0.1 });
+                sections.forEach(function (s) { io.observe(s); });
+            }
 
             var links = document.querySelectorAll('.toc a');
             var byId = {};
             links.forEach(function (a) { byId[a.getAttribute('href').slice(1)] = a; });
+            var best = null;
             var spy = new IntersectionObserver(function (entries) {
-                entries.forEach(function (e) {
-                    if (e.isIntersecting && byId[e.target.id]) {
-                        links.forEach(function (a) { a.classList.remove('active'); });
-                        byId[e.target.id].classList.add('active');
-                    }
-                });
-            }, { rootMargin: '-40% 0px -55% 0px' });
+                entries.forEach(function (e) { if (e.isIntersecting) best = e.target.id; });
+                links.forEach(function (a) { a.classList.remove('active'); });
+                if (best && byId[best]) byId[best].classList.add('active');
+            }, { rootMargin: '-45% 0px -50% 0px' });
             sections.forEach(function (s) { spy.observe(s); });
         })();
     </script>
