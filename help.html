@@ -171,7 +171,6 @@
             color: var(--ink); border-color: var(--brand-glow); transform: translateY(-2px);
             background: var(--brand-soft);
         }
-        .meta .mchip .go { font-size: 11px; color: var(--brand); opacity: .85; }
 
         /* ————— SPEC BAND ————— */
         .spec {
@@ -181,7 +180,7 @@
         }
         .spec .stat { text-align: center; padding: 14px 12px; }
         .spec .num { font-size: 30px; font-weight: 760; letter-spacing: -.02em; color: var(--ink); font-variant-numeric: tabular-nums; }
-        .spec .num em { font-style: normal; color: var(--brand); }
+        .spec .num em { font-style: normal; color: var(--ink); }
         .spec .num.count { animation: ncount .7s var(--spring); }
         @keyframes ncount { 0% { opacity: .2; transform: translateY(10px) scale(.85); filter: blur(6px); } 100% { opacity: 1; transform: none; filter: none; } }
         @media (prefers-reduced-motion: reduce) { .spec .num.count { animation: none; } }
@@ -312,9 +311,9 @@
         /* platform tab switcher */
         .plat-tabs { margin-top: 36px; text-align: center; }
         .tabbar {
-            display: inline-flex; gap: 14px; padding: 7px;
+            display: inline-flex; gap: 20px; padding: 7px;
             background: var(--surface-2); border: 1px solid var(--line);
-            border-radius: 16px; margin: 10px 0 46px;
+            border-radius: 16px; margin: 24px 0 24px;
         }
         .tab {
             appearance: none; border: 1px solid var(--line); background: var(--surface);
@@ -352,30 +351,57 @@
         .step p { font-size: 13.5px; color: var(--ink-3); margin: 0; line-height: 1.7; }
 
         /* community */
-        .community { display: flex; gap: 26px; align-items: center; flex-wrap: wrap; margin: 10px 0 4px; }
+        .community { display: flex; flex-direction: column; align-items: center; gap: 22px; text-align: center; margin: 12px 0 8px; }
         .community .qr {
             flex: none; width: 176px; height: 176px;
             background: #fff; border-radius: var(--radius-sm);
             padding: 12px; display: grid; place-items: center;
-            box-shadow: var(--shadow-1);
+            box-shadow: var(--shadow-1); cursor: zoom-in;
+            transition: transform .22s var(--spring), box-shadow .22s ease;
         }
+        .community .qr:hover { transform: scale(1.04); box-shadow: var(--shadow-2); }
         .community .qr img { width: 100%; height: 100%; object-fit: contain; border-radius: 8px; }
-        .community .info { flex: 1; min-width: 240px; }
-        .community .info .tt { font-size: 18px; font-weight: 680; color: var(--ink); margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
-        .community .info p { font-size: 14.5px; color: var(--ink-3); margin-bottom: 10px; }
-        .community .info .btn { margin-top: 8px; }
+        .community .tt { font-size: 18px; font-weight: 680; color: var(--ink); display: flex; align-items: center; gap: 10px; }
+        .community .qinfo { font-size: 14.5px; color: var(--ink-3); max-width: 460px; }
+        .community .btn { margin-top: 4px; }
+        .community .hint { font-size: 12.5px; color: var(--ink-3); opacity: .8; }
 
-        .actions { display: flex; flex-wrap: wrap; gap: 14px; margin: 12px 0 6px; }
-        .btn.baidu { color: #05070d; background: linear-gradient(180deg, #ffd8a6 0%, #eea85e 100%); box-shadow: 0 8px 24px rgba(238, 168, 94, .34); }
-        .btn.baidu:hover { transform: translateY(-2px); box-shadow: 0 14px 38px rgba(238, 168, 94, .42); }
+        /* 图片放大 lightbox */
+        .lightbox {
+            position: fixed; inset: 0; z-index: 80;
+            display: grid; place-items: center; padding: 32px;
+            background: rgba(4, 8, 16, .86); backdrop-filter: blur(8px);
+            opacity: 0; visibility: hidden; transition: opacity .28s ease, visibility .28s ease;
+        }
+        .lightbox.open { opacity: 1; visibility: visible; }
+        .lightbox figure { max-width: min(520px, 90vw); margin: 0; text-align: center; }
+        .lightbox img {
+            width: 100%; height: auto; border-radius: var(--radius-sm);
+            background: #fff; padding: 16px; box-shadow: var(--shadow-2);
+            transform: scale(.9); transition: transform .3s var(--spring);
+        }
+        .lightbox.open img { transform: scale(1); }
+        .lightbox figcaption { margin-top: 14px; font-size: 13px; color: var(--ink-2); }
+        .lightbox .close {
+            position: absolute; top: 22px; right: 26px;
+            width: 40px; height: 40px; border-radius: 12px; cursor: pointer;
+            background: var(--surface); border: 1px solid var(--line); color: var(--ink);
+            font-size: 20px; display: grid; place-items: center;
+            transition: background .18s ease, border-color .18s ease, transform .16s var(--spring);
+        }
+        .lightbox .close:hover { background: rgba(255,255,255,.06); border-color: var(--line-strong); transform: rotate(90deg); }
+
+        .actions { display: flex; flex-wrap: wrap; gap: 14px; margin: 12px 0 6px; justify-content: center; }
+        /* 统一下载按钮 —— 暖金渐变，非蓝，与品牌蓝形成区分 */
+        .btn.dl { color: #05070d; background: linear-gradient(180deg, #ffd8a6 0%, #eea85e 100%); box-shadow: 0 8px 24px rgba(238, 168, 94, .34); }
+        .btn.dl:hover { transform: translateY(-2px); box-shadow: 0 14px 38px rgba(238, 168, 94, .46); }
         .btn.join { color: #04120e; background: linear-gradient(180deg, #7ff0dc 0%, #35c9a6 100%); box-shadow: 0 8px 24px rgba(53, 201, 166, .34); }
         .btn.join:hover { transform: translateY(-2px); box-shadow: 0 14px 38px rgba(53, 201, 166, .44); }
         .pwd { display: flex; align-items: center; gap: 11px; margin-top: 12px; flex-wrap: wrap; }
         .pwd .label { font-size: 14px; color: var(--ink-3); }
 
-        /* guide cards — asymmetric bento: featured card spans wide */
+        /* guide cards — uniform 2-column grid */
         .guide-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 12px 0 4px; }
-        .guide-grid .gcard:first-child { grid-column: 1 / -1; }
         .gcard {
             background: var(--surface-2); border: 1px solid var(--line);
             border-radius: var(--radius-sm); padding: 24px 22px 20px;
@@ -394,8 +420,6 @@
             background: var(--brand-soft); border: 1px solid var(--brand-glow);
             display: grid; place-items: center; font-size: 14px; color: var(--brand);
         }
-        .guide-grid .gcard:first-child h3 { font-size: 17px; }
-        .guide-grid .gcard:first-child p { font-size: 14px; }
         .gcard p { font-size: 13.5px; color: var(--ink-3); line-height: 1.8; margin: 0; }
 
         /* faq */
@@ -444,7 +468,7 @@
 
         /* 主按钮磁吸 */
         .btn { will-change: transform; }
-        .btn.primary, .btn.ghost, .btn.join, .btn.baidu { transition: transform .18s var(--spring), box-shadow .2s ease, background .2s ease; }
+        .btn.primary, .btn.ghost, .btn.join, .btn.dl { transition: transform .18s var(--spring), box-shadow .2s ease, background .2s ease; }
 
         /* FAQ 手风琴 */
         .faq-item { border-bottom: 1px solid var(--line); }
@@ -502,14 +526,14 @@
         <h1>让 DeepSeek 的智慧，常驻你的桌面</h1>
         <p class="sub">一键安装、自动更新、内置提示词库与插件库。<strong>DSH-Desktop</strong> 把 DeepSeek Harness 装进一个精致的客户端 —— Windows 桌面版开箱即用，飞牛 OS 原生应用跑在你的 NAS 上。</p>
         <div class="hero-actions">
-            <a href="#baidu" class="btn primary"><span class="ic">⬇</span> 下载安装</a>
+            <a href="#baidu" class="btn dl"><span class="ic">⬇</span> 下载安装</a>
             <a href="https://github.com/XWJ-z/dsh-Desktop" class="btn ghost" target="_blank" rel="noopener"><span class="ic">⋯</span> GitHub 仓库</a>
         </div>
         <div class="meta">
-            <a href="#intro" class="mchip" data-goto-tab="win"><span class="go">▸</span> Windows · 桌面版</a>
-            <a href="#intro" class="mchip" data-goto-tab="fnos"><span class="go">▸</span> 飞牛 OS (fnOS) · 原生应用</a>
-            <a href="#network" class="mchip"><span class="go">▸</span> 远程自动更新</a>
-            <a href="#guide" class="mchip"><span class="go">▸</span> 桌面鲸鱼宠物</a>
+            <a href="#intro" class="mchip" data-goto-tab="win">Windows · 桌面版</a>
+            <a href="#intro" class="mchip" data-goto-tab="fnos">飞牛 OS (fnOS) · 原生应用</a>
+            <a href="#network" class="mchip">远程自动更新</a>
+            <a href="#guide" class="mchip">桌面鲸鱼宠物</a>
         </div>
     </header>
 
@@ -528,10 +552,10 @@
             <a href="#intro"><span class="tno">01</span> 项目介绍</a>
             <a href="#guide"><span class="tno">02</span> 使用指南</a>
             <a href="#community"><span class="tno">03</span> 加入社群</a>
-            <a href="#faq"><span class="tno">04</span> 常见问题</a>
-            <a href="#network"><span class="tno">05</span> 下载 / 更新失败</a>
-            <a href="#baidu"><span class="tno">06</span> 百度网盘下载</a>
-            <a href="#contact"><span class="tno">07</span> 联系我们</a>
+            <a href="#network"><span class="tno">04</span> 下载 / 更新失败</a>
+            <a href="#baidu"><span class="tno">05</span> 百度网盘下载</a>
+            <a href="#contact"><span class="tno">06</span> 联系我们</a>
+            <a href="#faq"><span class="tno">07</span> 常见问题</a>
         </nav>
 
         <main class="content">
@@ -562,7 +586,7 @@
                         <li><strong>全局记忆</strong> — 图形化记忆编辑，DSH 自动读取</li>
                     </ul>
                     <div class="actions">
-                        <a href="#baidu" class="btn primary"><span class="ic">⇩</span> 下载 Windows 安装包</a>
+                        <a href="#baidu" class="btn dl"><span class="ic">⇩</span> 下载 Windows 安装包</a>
                     </div>
                 </div>
 
@@ -576,7 +600,7 @@
                         <div class="stat-mini"><strong>应用入口</strong><span>应用中心 → 打开 <code>dsh</code> 即用</span></div>
                     </div>
                     <div class="actions">
-                        <a href="https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.5.9/dsh-0.2.5.fpk" class="btn ghost" target="_blank" rel="noopener"><span class="ic">⇩</span> 下载飞牛应用包 (.fpk)</a>
+                        <a href="https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.5.9/dsh-0.2.5.fpk" class="btn dl" target="_blank" rel="noopener"><span class="ic">⇩</span> 下载飞牛应用包 (.fpk)</a>
                     </div>
                     <div class="steps">
                         <div class="step"><div class="n">1</div><p>下载 <code>dsh-0.2.5.fpk</code> 应用包到本地</p></div>
@@ -608,14 +632,13 @@
                 <h2><span class="idx">03</span> 加入社群</h2>
                 <p class="lead">有任何问题或建议，欢迎加入官方 QQ 群交流反馈。</p>
                 <div class="community">
-                    <div class="qr">
+                    <div class="qr" id="qrZoom" role="button" tabindex="0" aria-label="点击放大二维码">
                         <img src="https://cdn.jsdelivr.net/gh/XWJ-z/dsh-Desktop@main/windows/app/assets/qq-group.png" alt="QQ 群二维码" />
                     </div>
-                    <div class="info">
-                        <p class="tt">DSH-Desktop 官方交流群</p>
-                        <p>群号：<code>916607090</code> — 扫码或搜索群号加入，遇到问题随时提问，你的建议直接决定下一个功能！</p>
-                        <a href="https://qm.qq.com/cgi-bin/qm/qr?k=916607090" class="btn join" target="_blank" rel="noopener"><span class="ic">→</span> 一键加群</a>
-                    </div>
+                    <p class="tt">DSH-Desktop 官方交流群</p>
+                    <p class="qinfo">群号：<code>916607090</code> — 扫码或搜索群号加入，遇到问题随时提问，你的建议直接决定下一个功能！</p>
+                    <a href="https://qm.qq.com/cgi-bin/qm/qr?k=916607090" class="btn join" target="_blank" rel="noopener"><span class="ic">→</span> 一键加群</a>
+                    <p class="hint">点按二维码可放大查看</p>
                 </div>
                 <div class="callout os">
                     <span class="ic">◈</span>
@@ -623,34 +646,8 @@
                 </div>
             </section>
 
-            <section class="section rule" id="faq">
-                <h2><span class="idx">04</span> 常见问题</h2>
-                <div class="faq">
-                    <div class="faq-item">
-                        <button class="faq-q" aria-expanded="false"><span class="qterm"><span class="qmark">Q</span> 下载更新失败？</span><span class="arr">＋</span></button>
-                        <div class="faq-a"><p>多为本地代理环境（科学上网）干扰。关闭代理后重试；仍失败可用「手动下载安装包」或百度网盘备用渠道。</p></div>
-                    </div>
-                    <div class="faq-item">
-                        <button class="faq-q" aria-expanded="false"><span class="qterm"><span class="qmark">Q</span> 提示词或插件描述是乱码？</span><span class="arr">＋</span></button>
-                        <div class="faq-a"><p>旧版本已修复中文乱码问题。若仍有乱码，请先更新到最新版确认网络拉取正常。</p></div>
-                    </div>
-                    <div class="faq-item">
-                        <button class="faq-q" aria-expanded="false"><span class="qterm"><span class="qmark">Q</span> 我的提示词会丢失吗？</span><span class="arr">＋</span></button>
-                        <div class="faq-a"><p>不会。「我的提示词」持久化保存在本地，重启不丢，并通过「数据备份」随包备份，恢复可还原。</p></div>
-                    </div>
-                    <div class="faq-item">
-                        <button class="faq-q" aria-expanded="false"><span class="qterm"><span class="qmark">Q</span> 想手动升级 DSH？</span><span class="arr">＋</span></button>
-                        <div class="faq-a"><p>启动时检测到 DSH 新版会弹窗提示「立即升级」；也可在「检查更新」窗口查看并一键升级。</p></div>
-                    </div>
-                    <div class="faq-item">
-                        <button class="faq-q" aria-expanded="false"><span class="qterm"><span class="qmark">Q</span> 找不到答案？</span><span class="arr">＋</span></button>
-                        <div class="faq-a"><p>加入上方 QQ 群，或到 GitHub 提 issue，我们会尽快响应。</p></div>
-                    </div>
-                </div>
-            </section>
-
             <section class="section rule" id="network">
-                <h2><span class="idx">05</span> 下载 / 更新失败？请关闭科学上网</h2>
+                <h2><span class="idx">04</span> 下载 / 更新失败？请关闭科学上网</h2>
                 <p class="lead">DSH-Desktop 的下载与更新依赖 GitHub CDN。若下载失败或更新卡顿，多为本地代理环境所致。</p>
                 <div class="callout">
                     <span class="ic">◈</span>
@@ -663,10 +660,10 @@
             </section>
 
             <section class="section" id="baidu">
-                <h2><span class="idx">06</span> 百度网盘下载</h2>
+                <h2><span class="idx">05</span> 百度网盘下载</h2>
                 <p class="lead">无法访问 GitHub 或下载较慢时，可使用百度网盘作为备用渠道。</p>
                 <div class="actions">
-                    <a href="https://pan.baidu.com/s/1Y9CSRXKZ48cQYNi60ozBmA?pwd=8yh8" class="btn baidu" target="_blank" rel="noopener"><span class="ic">⇩</span> 百度网盘下载</a>
+                    <a href="https://pan.baidu.com/s/1Y9CSRXKZ48cQYNi60ozBmA?pwd=8yh8" class="btn dl" target="_blank" rel="noopener"><span class="ic">⇩</span> 百度网盘下载</a>
                 </div>
                 <div class="pwd"><span class="label">提取码</span><code>8yh8</code></div>
                 <div class="steps">
@@ -679,12 +676,55 @@
             </section>
 
             <section class="section rule" id="contact">
-                <h2><span class="idx">07</span> 联系我们</h2>
+                <h2><span class="idx">06</span> 联系我们</h2>
                 <p class="lead">使用中遇到问题，欢迎通过以下方式联系我们。</p>
                 <ul class="contact-list">
                     <li><span class="e">◈</span><span class="lab">QQ 群</span><span><code>916607090</code>（扫码/搜索进群，见"加入社群"）</span></li>
                     <li><span class="e">◇</span><span class="lab">GitHub</span><span><a class="inline" href="https://github.com/XWJ-z/dsh-Desktop" target="_blank" rel="noopener">XWJ-z/dsh-Desktop</a></span></li>
                 </ul>
+            </section>
+
+            <section class="section rule" id="faq">
+                <h2><span class="idx">07</span> 常见问题</h2>
+                <p class="lead">使用中遇到的高频问题与解答，帮你快速排障。</p>
+                <div class="faq">
+                    <div class="faq-item">
+                        <button class="faq-q" aria-expanded="false"><span class="qterm"><span class="qmark">Q</span> 支持哪些平台？</span><span class="arr">＋</span></button>
+                        <div class="faq-a"><p>Windows 桌面版可直接下载安装包运行；飞牛 OS (fnOS) 原生应用以 <code>.fpk</code> 形式在飞牛应用中心安装，跑在你的 NAS 上。两者共用同一套 DSH 能力。</p></div>
+                    </div>
+                    <div class="faq-item">
+                        <button class="faq-q" aria-expanded="false"><span class="qterm"><span class="qmark">Q</span> 下载更新失败？</span><span class="arr">＋</span></button>
+                        <div class="faq-a"><p>多为本地代理环境（科学上网）干扰。关闭代理后重试；仍失败可用「下载 / 更新失败」里的手动下载，或百度网盘备用渠道。</p></div>
+                    </div>
+                    <div class="faq-item">
+                        <button class="faq-q" aria-expanded="false"><span class="qterm"><span class="qmark">Q</span> 我的提示词会丢失吗？</span><span class="arr">＋</span></button>
+                        <div class="faq-a"><p>不会。「我的提示词」持久化保存在本地，重启不丢，并通过「数据备份」随包备份，恢复可还原。</p></div>
+                    </div>
+                    <div class="faq-item">
+                        <button class="faq-q" aria-expanded="false"><span class="qterm"><span class="qmark">Q</span> 如何备份与恢复我的数据？</span><span class="arr">＋</span></button>
+                        <div class="faq-a"><p>在应用内使用「数据备份」：一键备份工作区、会话、全局记忆、我的提示词与设置；更换机器或重装后，用备份文件一键恢复。</p></div>
+                    </div>
+                    <div class="faq-item">
+                        <button class="faq-q" aria-expanded="false"><span class="qterm"><span class="qmark">Q</span> 提示词或插件描述是乱码？</span><span class="arr">＋</span></button>
+                        <div class="faq-a"><p>旧版本已修复中文乱码问题。若仍有乱码，请先更新到最新版，确认网络拉取正常后再试。</p></div>
+                    </div>
+                    <div class="faq-item">
+                        <button class="faq-q" aria-expanded="false"><span class="qterm"><span class="qmark">Q</span> 安装时被安全软件拦截怎么办？</span><span class="arr">＋</span></button>
+                        <div class="faq-a"><p>部分安全软件会对未签名安装包弹窗提醒。确认来源为官方 GitHub / 百度网盘后，选择「允许」或将应用加入信任/白名单即可。</p></div>
+                    </div>
+                    <div class="faq-item">
+                        <button class="faq-q" aria-expanded="false"><span class="qterm"><span class="qmark">Q</span> 想手动升级 DSH？</span><span class="arr">＋</span></button>
+                        <div class="faq-a"><p>启动时检测到 DSH 新版会弹窗提示「立即升级」；也可在「检查更新」窗口查看并一键升级。</p></div>
+                    </div>
+                    <div class="faq-item">
+                        <button class="faq-q" aria-expanded="false"><span class="qterm"><span class="qmark">Q</span> 桌面鲸鱼宠物怎么关闭？</span><span class="arr">＋</span></button>
+                        <div class="faq-a"><p>在桌面宠物上右键即可隐藏，或切换到工具箱形态；需要时可在设置中重新开启。</p></div>
+                    </div>
+                    <div class="faq-item">
+                        <button class="faq-q" aria-expanded="false"><span class="qterm"><span class="qmark">Q</span> 找不到答案？</span><span class="arr">＋</span></button>
+                        <div class="faq-a"><p>加入上方 QQ 群，或到 GitHub 提 issue，我们会尽快响应。</p></div>
+                    </div>
+                </div>
             </section>
         </main>
     </div>
@@ -693,6 +733,14 @@
         <div class="mark">🐳</div>
         <p>© 2024–2026 DSH-Desktop · Powered by DeepSeek Harness · All rights reserved.</p>
     </footer>
+
+    <div class="lightbox" id="lightbox" aria-hidden="true">
+        <button class="close" id="lbClose" aria-label="关闭">×</button>
+        <figure>
+            <img id="lbImg" src="https://cdn.jsdelivr.net/gh/XWJ-z/dsh-Desktop@main/windows/app/assets/qq-group.png" alt="QQ 群二维码" />
+            <figcaption>DSH-Desktop 官方交流群 · QQ 群号 <code>916607090</code></figcaption>
+        </figure>
+    </div>
 
     <script>
         (function () {
@@ -884,6 +932,21 @@
                     });
                     btn.addEventListener('mouseleave', function () { btn.style.transform = ''; });
                 });
+            }
+
+            /* ————— 二维码点击放大 lightbox ————— */
+            var zoom = document.getElementById('qrZoom');
+            var lb = document.getElementById('lightbox');
+            var lbImg = document.getElementById('lbImg');
+            var lbClose = document.getElementById('lbClose');
+            function openLb(e) { if (e && e.preventDefault) e.preventDefault(); if (!lb) return; lb.classList.add('open'); lb.setAttribute('aria-hidden', 'false'); }
+            function closeLb() { if (!lb) return; lb.classList.remove('open'); lb.setAttribute('aria-hidden', 'true'); }
+            if (zoom && lb) {
+                zoom.addEventListener('click', openLb);
+                zoom.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') openLb(e); });
+                lb.addEventListener('click', function (e) { if (e.target === lb) closeLb(); });
+                if (lbClose) lbClose.addEventListener('click', function (e) { e.stopPropagation(); closeLb(); });
+                document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeLb(); });
             }
         })();
     </script>
