@@ -292,21 +292,24 @@ DSH-Desktop 帮助文档（远程下发 + 打包内置副本）
         /* platform tab switcher */
         .plat-tabs { margin-top: 26px; }
         .tabbar {
-            display: inline-flex; gap: 6px; padding: 6px;
+            display: inline-flex; gap: 8px; padding: 6px;
             background: var(--surface-2); border: 1px solid var(--line);
             border-radius: 14px; margin-bottom: 24px;
         }
         .tab {
-            appearance: none; border: none; background: transparent;
-            color: var(--ink-3); font: inherit; font-size: 14.5px; font-weight: 620;
-            padding: 10px 22px; border-radius: 9px; cursor: pointer;
-            transition: background .2s ease, color .2s ease, box-shadow .2s ease;
+            appearance: none; border: 1px solid var(--line); background: var(--surface);
+            color: var(--ink-2); font: inherit; font-size: 14.5px; font-weight: 640;
+            padding: 12px 26px; border-radius: 10px; cursor: pointer;
+            transition: background .2s ease, color .2s ease, border-color .2s ease, box-shadow .2s ease, transform .14s var(--spring);
         }
-        .tab:hover { color: var(--ink); }
+        .tab:hover { color: var(--ink); border-color: var(--line-strong); background: rgba(255, 255, 255, .06); transform: translateY(-1px); }
+        .tab:active { transform: scale(.98); }
         .tab.active {
-            background: var(--brand-soft); color: var(--ink);
-            box-shadow: inset 0 0 0 1px var(--brand-glow);
+            background: linear-gradient(180deg, #8fb2ff 0%, #5f86ff 100%);
+            color: #05070d; border-color: transparent; font-weight: 720;
+            box-shadow: 0 6px 20px rgba(94, 132, 255, .42), 0 0 0 1px rgba(255, 255, 255, .08) inset;
         }
+        .tab.active:hover { transform: none; }
         .tab:focus-visible { outline: none; box-shadow: var(--focus); }
         .plat-panel { display: none; }
         .plat-panel.active { display: block; animation: platfade .32s ease; }
