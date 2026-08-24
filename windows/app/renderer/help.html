@@ -164,19 +164,29 @@ DSH-Desktop 帮助文档（远程下发 + 打包内置副本）
         .btn .ic { font-size: 18px; }
 
         .meta { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
-        .meta span {
+        .meta span, .meta .mchip {
+            display: inline-flex; align-items: center; gap: 7px;
             font-size: 13px; color: var(--ink-3);
             background: var(--surface); border: 1px solid var(--line);
             padding: 8px 15px; border-radius: 999px; backdrop-filter: blur(6px);
         }
+        .meta .mchip {
+            text-decoration: none; cursor: pointer;
+            transition: color .18s ease, border-color .18s ease, transform .16s var(--spring), background .18s ease;
+        }
+        .meta .mchip:hover {
+            color: var(--ink); border-color: var(--brand-glow); transform: translateY(-2px);
+            background: var(--brand-soft);
+        }
+        .meta .mchip .go { font-size: 11px; color: var(--brand); opacity: .85; }
 
         /* ————— SPEC BAND ————— */
         .spec {
             max-width: 1160px; margin: 0 auto; padding: 40px 24px;
-            display: grid; grid-template-columns: repeat(4, 1fr);
+            display: grid; grid-template-columns: repeat(6, 1fr);
             border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
         }
-        .spec .stat { text-align: center; padding: 14px 16px; }
+        .spec .stat { text-align: center; padding: 14px 12px; }
         .spec .num { font-size: 30px; font-weight: 760; letter-spacing: -.02em; color: var(--ink); font-variant-numeric: tabular-nums; }
         .spec .num em { font-style: normal; color: var(--brand); }
         .spec .num.count { animation: ncount .7s var(--spring); }
@@ -307,16 +317,16 @@ DSH-Desktop 帮助文档（远程下发 + 打包内置副本）
         .stat-mini span { font-size: 14px; color: var(--ink); font-weight: 540; }
 
         /* platform tab switcher */
-        .plat-tabs { margin-top: 34px; text-align: center; }
+        .plat-tabs { margin-top: 36px; text-align: center; }
         .tabbar {
-            display: inline-flex; gap: 8px; padding: 6px;
+            display: inline-flex; gap: 14px; padding: 7px;
             background: var(--surface-2); border: 1px solid var(--line);
-            border-radius: 14px; margin-bottom: 36px;
+            border-radius: 16px; margin: 10px 0 46px;
         }
         .tab {
             appearance: none; border: 1px solid var(--line); background: var(--surface);
             color: var(--ink-2); font: inherit; font-size: 14.5px; font-weight: 640;
-            padding: 12px 26px; border-radius: 10px; cursor: pointer;
+            padding: 13px 28px; border-radius: 11px; cursor: pointer;
             transition: background .2s ease, color .2s ease, border-color .2s ease, box-shadow .2s ease, transform .14s var(--spring);
         }
         .tab:hover { color: var(--ink); border-color: var(--line-strong); background: rgba(255, 255, 255, .06); transform: translateY(-1px); }
@@ -473,7 +483,7 @@ DSH-Desktop 帮助文档（远程下发 + 打包内置副本）
 
         /* responsive */
         @media (max-width: 900px) {
-            .spec { grid-template-columns: repeat(2, 1fr); grid-gap: 6px 0; }
+            .spec { grid-template-columns: repeat(3, 1fr); grid-gap: 6px 0; }
         }
         /* 帮助文档桌面窗口默认 860 宽（minWidth 640）：目录保持左侧双栏，仅真正窄时才折叠 */
         @media (max-width: 620px) {
@@ -481,6 +491,7 @@ DSH-Desktop 帮助文档（远程下发 + 打包内置副本）
             .toc { position: static; order: 2; }
             .content { order: 1; }
             .guide-grid, ul.feature { grid-template-columns: 1fr; }
+            .spec { grid-template-columns: repeat(2, 1fr); }
             .stat-grid { grid-template-columns: 1fr; }
             .community { flex-direction: column; align-items: center; text-align: center; }
             .section { padding: 30px 24px; }
@@ -502,18 +513,20 @@ DSH-Desktop 帮助文档（远程下发 + 打包内置副本）
             <a href="https://github.com/XWJ-z/dsh-Desktop" class="btn ghost" target="_blank" rel="noopener"><span class="ic">⋯</span> GitHub 仓库</a>
         </div>
         <div class="meta">
-            <span>Windows · 桌面版</span>
-            <span>飞牛 OS (fnOS) · 原生应用</span>
-            <span>远程自动更新</span>
-            <span>桌面鲸鱼宠物</span>
+            <a href="#intro" class="mchip" data-goto-tab="win"><span class="go">▸</span> Windows · 桌面版</a>
+            <a href="#intro" class="mchip" data-goto-tab="fnos"><span class="go">▸</span> 飞牛 OS (fnOS) · 原生应用</a>
+            <a href="#network" class="mchip"><span class="go">▸</span> 远程自动更新</a>
+            <a href="#guide" class="mchip"><span class="go">▸</span> 桌面鲸鱼宠物</a>
         </div>
     </header>
 
     <div class="spec" role="list">
-        <div class="stat" role="listitem"><div class="num">200<em>+</em></div><div class="lab">精选提示词模板</div></div>
-        <div class="stat" role="listitem"><div class="num">1<em>键</em></div><div class="lab">安装即用 · 自带环境</div></div>
-        <div class="stat" role="listitem"><div class="num">7<em>×24</em></div><div class="lab">稳定在线 · 自动更新</div></div>
-        <div class="stat" role="listitem"><div class="num">0<em>丢失</em></div><div class="lab">我的提示词持久保存</div></div>
+        <div class="stat" role="listitem"><div class="num count">1<em>键</em></div><div class="lab">安装即用 · 自带环境</div></div>
+        <div class="stat" role="listitem"><div class="num count">备份</div><div class="lab">一键备份 · 随时恢复</div></div>
+        <div class="stat" role="listitem"><div class="num count">记忆</div><div class="lab">图形化记忆管理</div></div>
+        <div class="stat" role="listitem"><div class="num count">230<em>+</em></div><div class="lab">提示词模板</div></div>
+        <div class="stat" role="listitem"><div class="num count">插件</div><div class="lab">插件与技能库</div></div>
+        <div class="stat" role="listitem"><div class="num count">多端</div><div class="lab">多端同步打开</div></div>
     </div>
 
     <div class="wrap">
@@ -794,17 +807,25 @@ DSH-Desktop 帮助文档（远程下发 + 打包内置副本）
             /* ————— platform tab switcher ————— */
             var tabs = document.querySelectorAll('.plat-tabs .tab');
             var panels = document.querySelectorAll('.plat-panel');
+            function activateTab(name) {
+                tabs.forEach(function (t) {
+                    var on = t.getAttribute('data-tab') === name;
+                    t.classList.toggle('active', on);
+                    t.setAttribute('aria-selected', on ? 'true' : 'false');
+                });
+                panels.forEach(function (p) {
+                    p.classList.toggle('active', p.id === 'panel-' + name);
+                });
+            }
             tabs.forEach(function (tb) {
                 tb.addEventListener('click', function () {
-                    var target = tb.getAttribute('data-tab');
-                    tabs.forEach(function (t) {
-                        var on = t === tb;
-                        t.classList.toggle('active', on);
-                        t.setAttribute('aria-selected', on ? 'true' : 'false');
-                    });
-                    panels.forEach(function (p) {
-                        p.classList.toggle('active', p.id === 'panel-' + target);
-                    });
+                    activateTab(tb.getAttribute('data-tab'));
+                });
+            });
+            // 顶部快捷徽章：跳转对应平台详细介绍并激活相应 tab
+            document.querySelectorAll('.meta .mchip[data-goto-tab]').forEach(function (chip) {
+                chip.addEventListener('click', function () {
+                    activateTab(chip.getAttribute('data-goto-tab'));
                 });
             });
 
