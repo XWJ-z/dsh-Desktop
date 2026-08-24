@@ -199,7 +199,7 @@
         .toc a.active .tno { color: var(--brand); opacity: 1; }
 
         /* ————— CONTENT ————— */
-        .content { min-width: 0; display: flex; flex-direction: column; gap: 26px; }
+        .content { min-width: 0; display: flex; flex-direction: column; gap: 22px; }
 
         .section {
             position: relative;
@@ -218,6 +218,15 @@
         }
         .section:hover { transform: translateY(-3px); box-shadow: var(--shadow-2); border-color: var(--line-strong); }
 
+        /* 纯净无边框区块 —— 与卡片区块形成节奏对比（FAQ / 排障 / 联系） */
+        .section.rule {
+            background: transparent; border: none; box-shadow: none; padding: 34px 6px; backdrop-filter: none;
+            border-top: 1px solid var(--line); border-radius: 0;
+        }
+        .section.rule::before { display: none; }
+        .section.rule:hover { transform: none; box-shadow: none; }
+        .section.rule h2 { margin-bottom: 6px; }
+
         .kicker {
             display: flex; align-items: center; gap: 11px;
             font-size: 11.5px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase;
@@ -225,8 +234,13 @@
         }
         .kicker .bar { width: 26px; height: 2px; background: linear-gradient(90deg, var(--brand), transparent); border-radius: 2px; }
 
-        .section h2 { font-size: clamp(22px, 2.6vw, 28px); font-weight: 760; letter-spacing: -.02em; color: var(--ink); line-height: 1.2; margin-bottom: 20px; }
+        .section h2 { font-size: clamp(22px, 2.6vw, 28px); font-weight: 760; letter-spacing: -.02em; color: var(--ink); line-height: 1.2; margin-bottom: 20px; display: flex; align-items: baseline; gap: 14px; }
+        .section h2 .idx {
+            font-size: .62em; font-weight: 700; letter-spacing: .12em; color: var(--brand);
+            font-variant-numeric: tabular-nums; opacity: .9;
+        }
         .lead { font-size: 15.5px; color: var(--ink-3); margin-bottom: 10px; }
+        .section.rule .lead { margin-bottom: 22px; }
 
         p { font-size: 15px; margin-bottom: 14px; }
         strong { color: var(--ink); font-weight: 630; }
@@ -346,8 +360,9 @@
         .pwd { display: flex; align-items: center; gap: 11px; margin-top: 12px; flex-wrap: wrap; }
         .pwd .label { font-size: 14px; color: var(--ink-3); }
 
-        /* guide cards */
+        /* guide cards — asymmetric bento: featured card spans wide */
         .guide-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 12px 0 4px; }
+        .guide-grid .gcard:first-child { grid-column: 1 / -1; }
         .gcard {
             background: var(--surface-2); border: 1px solid var(--line);
             border-radius: var(--radius-sm); padding: 24px 22px 20px;
@@ -360,8 +375,14 @@
             opacity: .7;
         }
         .gcard:hover { transform: translateY(-3px); border-color: var(--line-strong); box-shadow: var(--shadow-1); }
-        .gcard h3 { font-size: 15.5px; font-weight: 680; color: var(--ink); margin-bottom: 11px; display: flex; align-items: center; gap: 9px; }
-        .gcard h3 .e { font-size: 17px; }
+        .gcard h3 { font-size: 15.5px; font-weight: 680; color: var(--ink); margin-bottom: 11px; display: flex; align-items: center; gap: 10px; }
+        .gcard h3 .chip {
+            flex: none; width: 28px; height: 28px; border-radius: 9px;
+            background: var(--brand-soft); border: 1px solid var(--brand-glow);
+            display: grid; place-items: center; font-size: 14px; color: var(--brand);
+        }
+        .guide-grid .gcard:first-child h3 { font-size: 17px; }
+        .guide-grid .gcard:first-child p { font-size: 14px; }
         .gcard p { font-size: 13.5px; color: var(--ink-3); line-height: 1.8; margin: 0; }
 
         /* faq */
@@ -455,8 +476,7 @@
 
         <main class="content">
             <section class="section" id="intro">
-                <div class="kicker"><span class="bar"></span> Overview</div>
-                <h2>项目介绍</h2>
+                <h2><span class="idx">01</span> 项目介绍</h2>
                 <p class="lead">DSH-Desktop 是 DeepSeek Harness 的客户端，为你提供便捷、稳定的 AI 交互体验。同一套 DSH 能力，两种载体：Windows 桌面版与飞牛 OS 原生应用。点击下方切换，查看各平台详细介绍。</p>
 
                 <div class="plat-tabs" role="tablist">
@@ -482,7 +502,7 @@
                         <li><strong>全局记忆</strong> — 图形化记忆编辑，DSH 自动读取</li>
                     </ul>
                     <div class="actions">
-                        <a href="#baidu" class="btn primary"><span class="ic">⬇</span> 下载 Windows 安装包</a>
+                        <a href="#baidu" class="btn primary"><span class="ic">⇩</span> 下载 Windows 安装包</a>
                     </div>
                 </div>
 
@@ -496,7 +516,7 @@
                         <div class="stat-mini"><strong>应用入口</strong><span>应用中心 → 打开 <code>dsh</code> 即用</span></div>
                     </div>
                     <div class="actions">
-                        <a href="https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.5.9/dsh-0.2.5.fpk" class="btn ghost" target="_blank" rel="noopener"><span class="ic">📦</span> 下载飞牛应用包 (.fpk)</a>
+                        <a href="https://github.com/XWJ-z/dsh-Desktop/releases/download/v0.5.9/dsh-0.2.5.fpk" class="btn ghost" target="_blank" rel="noopener"><span class="ic">⇩</span> 下载飞牛应用包 (.fpk)</a>
                     </div>
                     <div class="steps">
                         <div class="step"><div class="n">1</div><p>下载 <code>dsh-0.2.5.fpk</code> 应用包到本地</p></div>
@@ -505,64 +525,60 @@
                         <div class="step"><div class="n">4</div><p>在桌面 / 应用中心打开 <code>dsh</code> 应用，进入 DeepSeek Harness</p></div>
                     </div>
                     <div class="callout">
-                        <span class="ic">💡</span>
+                        <span class="ic">◈</span>
                         <div><p><strong>同一套 DSH 能力，多种载体。</strong></p><p>Windows 版与飞牛版共用同一版本命名规则与协议，跨端联动能力已在规划中。</p></div>
                     </div>
                 </div>
             </section>
 
             <section class="section" id="guide">
-                <div class="kicker"><span class="bar"></span> Features</div>
-                <h2>使用指南</h2>
+                <h2><span class="idx">02</span> 使用指南</h2>
                 <p class="lead">快速了解常用功能，开箱即用。</p>
                 <div class="guide-grid">
-                    <div class="gcard"><h3><span class="e">🐳</span> 桌面宠物</h3><p>桌面鲸鱼伴侣，可拖拽到任意位置。悬停/点击会切换表情、弹出气泡提示，右键可隐藏或切换工具箱形态。</p></div>
-                    <div class="gcard"><h3><span class="e">📝</span> 提示词库</h3><p>内置 200+ 精选提示词模板，支持搜索、复制与一键注入输入框；「我的提示词」可自建并持久化保存。</p></div>
-                    <div class="gcard"><h3><span class="e">📥</span> 拖文件入工作区</h3><p>把文件拖进窗口，自动复制到当前 DSH 工作区并注入提示词；纯图片（PNG/JPG/WebP/GIF）直接放行显示缩略图附件。</p></div>
-                    <div class="gcard"><h3><span class="e">🧠</span> 全局记忆</h3><p>图形化编辑 AGENTS.md 与各角色记忆文件，让 DSH 记住你的称呼、项目背景与常用约定，无需手动发送。</p></div>
-                    <div class="gcard"><h3><span class="e">🔌</span> 插件库</h3><p>连接官方社区，分类浏览、搜索、一键复制安装命令，按需扩展能力。</p></div>
-                    <div class="gcard"><h3><span class="e">💾</span> 数据备份</h3><p>一键备份 DSH 用户数据（工作区/会话/全局记忆/我的提示词/设置），更换机器或出问题时快速恢复。</p></div>
+                    <div class="gcard"><h3><span class="chip">🖥</span> 桌面鲸鱼宠物</h3><p>桌面鲸鱼伴侣，可拖拽到任意位置。悬停/点击会切换表情、弹出气泡提示，右键可隐藏或切换工具箱形态——在日常使用中始终陪伴，随时唤起。</p></div>
+                    <div class="gcard"><h3><span class="chip">✎</span> 提示词库</h3><p>内置 200+ 精选提示词模板，支持搜索、复制与一键注入输入框；「我的提示词」可自建并持久化保存。</p></div>
+                    <div class="gcard"><h3><span class="chip">⇪</span> 拖文件入工作区</h3><p>把文件拖进窗口，自动复制到当前 DSH 工作区并注入提示词；纯图片（PNG/JPG/WebP/GIF）直接放行显示缩略图附件。</p></div>
+                    <div class="gcard"><h3><span class="chip">◎</span> 全局记忆</h3><p>图形化编辑 AGENTS.md 与各角色记忆文件，让 DSH 记住你的称呼、项目背景与常用约定，无需手动发送。</p></div>
+                    <div class="gcard"><h3><span class="chip">⌘</span> 插件库</h3><p>连接官方社区，分类浏览、搜索、一键复制安装命令，按需扩展能力。</p></div>
+                    <div class="gcard"><h3><span class="chip">⛁</span> 数据备份</h3><p>一键备份 DSH 用户数据（工作区/会话/全局记忆/我的提示词/设置），更换机器或出问题时快速恢复。</p></div>
                 </div>
             </section>
 
             <section class="section" id="community">
-                <div class="kicker"><span class="bar"></span> Community</div>
-                <h2>加入社群</h2>
+                <h2><span class="idx">04</span> 加入社群</h2>
                 <p class="lead">有任何问题或建议，欢迎加入官方 QQ 群交流反馈。</p>
                 <div class="community">
                     <div class="qr">
                         <img src="https://cdn.jsdelivr.net/gh/XWJ-z/dsh-Desktop@main/windows/app/assets/qq-group.png" alt="QQ 群二维码" />
                     </div>
                     <div class="info">
-                        <p class="tt"><span>📌</span> DSH-Desktop 官方交流群</p>
+                        <p class="tt">DSH-Desktop 官方交流群</p>
                         <p>群号：<code>916607090</code> — 扫码或搜索群号加入，遇到问题随时提问，你的建议直接决定下一个功能！</p>
-                        <a href="https://qm.qq.com/cgi-bin/qm/qr?k=916607090" class="btn join" target="_blank" rel="noopener"><span class="ic">💬</span> 一键加群</a>
+                        <a href="https://qm.qq.com/cgi-bin/qm/qr?k=916607090" class="btn join" target="_blank" rel="noopener"><span class="ic">→</span> 一键加群</a>
                     </div>
                 </div>
                 <div class="callout os">
-                    <span class="ic">💡</span>
+                    <span class="ic">◈</span>
                     <div><p><strong>进群能获得什么？</strong></p><p>版本更新提醒 · 使用技巧分享 · 问题快速解答 · 功能建议直达开发者。</p></div>
                 </div>
             </section>
 
-            <section class="section" id="faq">
-                <div class="kicker"><span class="bar"></span> FAQ</div>
-                <h2>常见问题</h2>
+            <section class="section rule" id="faq">
+                <h2><span class="idx">05</span> 常见问题</h2>
                 <div class="faq">
-                    <div class="faq-item"><h3><span class="q">Q</span> 下载更新失败？</h3><p>多为本地代理环境（科学上网）干扰。关闭代理后重试；仍失败可用「手动下载安装包」或百度网盘备用渠道。</p></div>
-                    <div class="faq-item"><h3><span class="q">Q</span> 提示词或插件描述是乱码？</h3><p>旧版本已修复中文乱码问题。若仍有乱码，请先更新到最新版确认网络拉取正常。</p></div>
-                    <div class="faq-item"><h3><span class="q">Q</span> 我的提示词会丢失吗？</h3><p>不会。「我的提示词」持久化保存在本地，重启不丢，并通过「数据备份」随包备份，恢复可还原。</p></div>
-                    <div class="faq-item"><h3><span class="q">Q</span> 想手动升级 DSH？</h3><p>启动时检测到 DSH 新版会弹窗提示「立即升级」；也可在「检查更新」窗口查看并一键升级。</p></div>
-                    <div class="faq-item"><h3><span class="q">Q</span> 找不到答案？</h3><p>加入上方 QQ 群，或到 GitHub 提 issue，我们会尽快响应。</p></div>
+                    <div class="faq-item"><h3>下载更新失败？</h3><p>多为本地代理环境（科学上网）干扰。关闭代理后重试；仍失败可用「手动下载安装包」或百度网盘备用渠道。</p></div>
+                    <div class="faq-item"><h3>提示词或插件描述是乱码？</h3><p>旧版本已修复中文乱码问题。若仍有乱码，请先更新到最新版确认网络拉取正常。</p></div>
+                    <div class="faq-item"><h3>我的提示词会丢失吗？</h3><p>不会。「我的提示词」持久化保存在本地，重启不丢，并通过「数据备份」随包备份，恢复可还原。</p></div>
+                    <div class="faq-item"><h3>想手动升级 DSH？</h3><p>启动时检测到 DSH 新版会弹窗提示「立即升级」；也可在「检查更新」窗口查看并一键升级。</p></div>
+                    <div class="faq-item"><h3>找不到答案？</h3><p>加入上方 QQ 群，或到 GitHub 提 issue，我们会尽快响应。</p></div>
                 </div>
             </section>
 
-            <section class="section" id="network">
-                <div class="kicker"><span class="bar"></span> Troubleshooting</div>
-                <h2>下载 / 更新失败？请关闭科学上网</h2>
+            <section class="section rule" id="network">
+                <h2><span class="idx">06</span> 下载 / 更新失败？请关闭科学上网</h2>
                 <p class="lead">DSH-Desktop 的下载与更新依赖 GitHub CDN。若下载失败或更新卡顿，多为本地代理环境所致。</p>
                 <div class="callout">
-                    <span class="ic">💡</span>
+                    <span class="ic">◈</span>
                     <div>
                         <p><strong>解决方案：</strong></p>
                         <p class="steps-inline"><b>1.</b> 暂时关闭代理软件（Clash、V2Ray、Shadowsocks 等）<br><b>2.</b> 关闭 VPN 连接<br><b>3.</b> 重新尝试下载或更新</p>
@@ -572,11 +588,10 @@
             </section>
 
             <section class="section" id="baidu">
-                <div class="kicker"><span class="bar"></span> Download</div>
-                <h2>百度网盘下载</h2>
+                <h2><span class="idx">07</span> 百度网盘下载</h2>
                 <p class="lead">无法访问 GitHub 或下载较慢时，可使用百度网盘作为备用渠道。</p>
                 <div class="actions">
-                    <a href="https://pan.baidu.com/s/1Y9CSRXKZ48cQYNi60ozBmA?pwd=8yh8" class="btn baidu" target="_blank" rel="noopener"><span class="ic">📥</span> 百度网盘下载</a>
+                    <a href="https://pan.baidu.com/s/1Y9CSRXKZ48cQYNi60ozBmA?pwd=8yh8" class="btn baidu" target="_blank" rel="noopener"><span class="ic">⇩</span> 百度网盘下载</a>
                 </div>
                 <div class="pwd"><span class="label">提取码</span><code>8yh8</code></div>
                 <div class="steps">
@@ -588,13 +603,12 @@
                 <p>链接会定期更新，请确保下载的是最新版本。</p>
             </section>
 
-            <section class="section" id="contact">
-                <div class="kicker"><span class="bar"></span> Contact</div>
-                <h2>联系我们</h2>
+            <section class="section rule" id="contact">
+                <h2><span class="idx">08</span> 联系我们</h2>
                 <p class="lead">使用中遇到问题，欢迎通过以下方式联系我们。</p>
                 <ul class="contact-list">
-                    <li><span class="e">💬</span><span class="lab">QQ 群</span><span><code>916607090</code>（扫码/搜索进群，见"加入社群"）</span></li>
-                    <li><span class="e">🐙</span><span class="lab">GitHub</span><span><a class="inline" href="https://github.com/XWJ-z/dsh-Desktop" target="_blank" rel="noopener">XWJ-z/dsh-Desktop</a></span></li>
+                    <li><span class="e">◈</span><span class="lab">QQ 群</span><span><code>916607090</code>（扫码/搜索进群，见"加入社群"）</span></li>
+                    <li><span class="e">◇</span><span class="lab">GitHub</span><span><a class="inline" href="https://github.com/XWJ-z/dsh-Desktop" target="_blank" rel="noopener">XWJ-z/dsh-Desktop</a></span></li>
                 </ul>
             </section>
         </main>
