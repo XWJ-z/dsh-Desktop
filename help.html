@@ -172,6 +172,9 @@
         .spec .stat { text-align: center; padding: 14px 16px; }
         .spec .num { font-size: 30px; font-weight: 760; letter-spacing: -.02em; color: var(--ink); font-variant-numeric: tabular-nums; }
         .spec .num em { font-style: normal; color: var(--brand); }
+        .spec .num.count { animation: ncount .7s var(--spring); }
+        @keyframes ncount { 0% { opacity: .2; transform: translateY(10px) scale(.85); filter: blur(6px); } 100% { opacity: 1; transform: none; filter: none; } }
+        @media (prefers-reduced-motion: reduce) { .spec .num.count { animation: none; } }
         .spec .lab { margin-top: 6px; font-size: 13px; color: var(--ink-3); letter-spacing: .02em; }
 
         /* ————— LAYOUT ————— */
@@ -413,6 +416,49 @@
         .footer a { color: var(--brand); text-decoration: none; font-weight: 560; }
         .footer a:hover { text-decoration: underline; }
 
+        /* ————— 高级交互 ————— */
+        /* 顶部阅读进度条 */
+        #progress { position: fixed; top: 0; left: 0; height: 3px; width: 0; z-index: 60;
+            background: linear-gradient(90deg, var(--brand), var(--ice), var(--green));
+            box-shadow: 0 0 12px var(--brand-glow); }
+
+        /* 指南卡 3D 倾斜 + 高光扫过 */
+        .gcard { transform-style: preserve-3d; will-change: transform; }
+        .gcard .shine {
+            content: ''; position: absolute; top: 0; left: -120%; width: 70%; height: 100%;
+            background: linear-gradient(100deg, transparent, rgba(255,255,255,.10), transparent);
+            transform: skewX(-18deg); pointer-events: none; transition: left .7s ease; opacity: 0;
+        }
+        .gcard:hover .shine { left: 130%; opacity: 1; }
+        .gcard > * { transform: translateZ(14px); }
+
+        /* 主按钮磁吸 */
+        .btn { will-change: transform; }
+        .btn.primary, .btn.ghost, .btn.join, .btn.baidu { transition: transform .18s var(--spring), box-shadow .2s ease, background .2s ease; }
+
+        /* FAQ 手风琴 */
+        .faq-item { border-bottom: 1px solid var(--line); }
+        .faq-item:last-child { border-bottom: none; }
+        .faq-q {
+            width: 100%; text-align: left; appearance: none; border: none; cursor: pointer;
+            background: none; color: var(--ink); font: inherit; font-weight: 640; font-size: 15.5px;
+            display: flex; align-items: center; justify-content: space-between; gap: 14px;
+            padding: 20px 2px; transition: color .18s ease;
+        }
+        .faq-q:hover { color: var(--brand); }
+        .faq-q .qterm { display: flex; align-items: center; gap: 12px; }
+        .faq-q .qterm .qmark {
+            flex: none; width: 22px; height: 22px; border-radius: 7px;
+            background: var(--brand-soft); border: 1px solid var(--brand-glow);
+            color: var(--brand); font-size: 12px; font-weight: 760; display: grid; place-items: center;
+        }
+        .faq-q .arr { flex: none; transition: transform .3s var(--spring); color: var(--brand); font-size: 13px; }
+        .faq-item.open .faq-q .arr { transform: rotate(45deg); }
+        .faq-item.open .faq-q { color: var(--brand); }
+        .faq-a { max-height: 0; overflow: hidden; transition: max-height .4s var(--spring); }
+        .faq-item.open .faq-a { max-height: 320px; }
+        .faq-a p { font-size: 14px; color: var(--ink-3); margin: 0 0 20px; padding-left: 34px; line-height: 1.8; }
+
         /* reveal */
         .section { opacity: 0; transform: translateY(20px); }
         .section.in { opacity: 1; transform: none; transition: opacity .6s ease, transform .6s var(--spring); }
@@ -436,6 +482,7 @@
     </style>
 </head>
 <body>
+    <div id="progress" aria-hidden="true"></div>
     <div class="vignette" aria-hidden="true"></div>
 
     <header class="hero">
@@ -535,12 +582,12 @@
                 <h2><span class="idx">02</span> 使用指南</h2>
                 <p class="lead">快速了解常用功能，开箱即用。</p>
                 <div class="guide-grid">
-                    <div class="gcard"><h3><span class="chip">🖥</span> 桌面鲸鱼宠物</h3><p>桌面鲸鱼伴侣，可拖拽到任意位置。悬停/点击会切换表情、弹出气泡提示，右键可隐藏或切换工具箱形态——在日常使用中始终陪伴，随时唤起。</p></div>
-                    <div class="gcard"><h3><span class="chip">✎</span> 提示词库</h3><p>内置 200+ 精选提示词模板，支持搜索、复制与一键注入输入框；「我的提示词」可自建并持久化保存。</p></div>
-                    <div class="gcard"><h3><span class="chip">⇪</span> 拖文件入工作区</h3><p>把文件拖进窗口，自动复制到当前 DSH 工作区并注入提示词；纯图片（PNG/JPG/WebP/GIF）直接放行显示缩略图附件。</p></div>
-                    <div class="gcard"><h3><span class="chip">◎</span> 全局记忆</h3><p>图形化编辑 AGENTS.md 与各角色记忆文件，让 DSH 记住你的称呼、项目背景与常用约定，无需手动发送。</p></div>
-                    <div class="gcard"><h3><span class="chip">⌘</span> 插件库</h3><p>连接官方社区，分类浏览、搜索、一键复制安装命令，按需扩展能力。</p></div>
-                    <div class="gcard"><h3><span class="chip">⛁</span> 数据备份</h3><p>一键备份 DSH 用户数据（工作区/会话/全局记忆/我的提示词/设置），更换机器或出问题时快速恢复。</p></div>
+                    <div class="gcard"><span class="shine"></span><h3><span class="chip">🖥</span> 桌面鲸鱼宠物</h3><p>桌面鲸鱼伴侣，可拖拽到任意位置。悬停/点击会切换表情、弹出气泡提示，右键可隐藏或切换工具箱形态——在日常使用中始终陪伴，随时唤起。</p></div>
+                    <div class="gcard"><span class="shine"></span><h3><span class="chip">✎</span> 提示词库</h3><p>内置 200+ 精选提示词模板，支持搜索、复制与一键注入输入框；「我的提示词」可自建并持久化保存。</p></div>
+                    <div class="gcard"><span class="shine"></span><h3><span class="chip">⇪</span> 拖文件入工作区</h3><p>把文件拖进窗口，自动复制到当前 DSH 工作区并注入提示词；纯图片（PNG/JPG/WebP/GIF）直接放行显示缩略图附件。</p></div>
+                    <div class="gcard"><span class="shine"></span><h3><span class="chip">◎</span> 全局记忆</h3><p>图形化编辑 AGENTS.md 与各角色记忆文件，让 DSH 记住你的称呼、项目背景与常用约定，无需手动发送。</p></div>
+                    <div class="gcard"><span class="shine"></span><h3><span class="chip">⌘</span> 插件库</h3><p>连接官方社区，分类浏览、搜索、一键复制安装命令，按需扩展能力。</p></div>
+                    <div class="gcard"><span class="shine"></span><h3><span class="chip">⛁</span> 数据备份</h3><p>一键备份 DSH 用户数据（工作区/会话/全局记忆/我的提示词/设置），更换机器或出问题时快速恢复。</p></div>
                 </div>
             </section>
 
@@ -566,11 +613,26 @@
             <section class="section rule" id="faq">
                 <h2><span class="idx">05</span> 常见问题</h2>
                 <div class="faq">
-                    <div class="faq-item"><h3>下载更新失败？</h3><p>多为本地代理环境（科学上网）干扰。关闭代理后重试；仍失败可用「手动下载安装包」或百度网盘备用渠道。</p></div>
-                    <div class="faq-item"><h3>提示词或插件描述是乱码？</h3><p>旧版本已修复中文乱码问题。若仍有乱码，请先更新到最新版确认网络拉取正常。</p></div>
-                    <div class="faq-item"><h3>我的提示词会丢失吗？</h3><p>不会。「我的提示词」持久化保存在本地，重启不丢，并通过「数据备份」随包备份，恢复可还原。</p></div>
-                    <div class="faq-item"><h3>想手动升级 DSH？</h3><p>启动时检测到 DSH 新版会弹窗提示「立即升级」；也可在「检查更新」窗口查看并一键升级。</p></div>
-                    <div class="faq-item"><h3>找不到答案？</h3><p>加入上方 QQ 群，或到 GitHub 提 issue，我们会尽快响应。</p></div>
+                    <div class="faq-item">
+                        <button class="faq-q" aria-expanded="false"><span class="qterm"><span class="qmark">Q</span> 下载更新失败？</span><span class="arr">＋</span></button>
+                        <div class="faq-a"><p>多为本地代理环境（科学上网）干扰。关闭代理后重试；仍失败可用「手动下载安装包」或百度网盘备用渠道。</p></div>
+                    </div>
+                    <div class="faq-item">
+                        <button class="faq-q" aria-expanded="false"><span class="qterm"><span class="qmark">Q</span> 提示词或插件描述是乱码？</span><span class="arr">＋</span></button>
+                        <div class="faq-a"><p>旧版本已修复中文乱码问题。若仍有乱码，请先更新到最新版确认网络拉取正常。</p></div>
+                    </div>
+                    <div class="faq-item">
+                        <button class="faq-q" aria-expanded="false"><span class="qterm"><span class="qmark">Q</span> 我的提示词会丢失吗？</span><span class="arr">＋</span></button>
+                        <div class="faq-a"><p>不会。「我的提示词」持久化保存在本地，重启不丢，并通过「数据备份」随包备份，恢复可还原。</p></div>
+                    </div>
+                    <div class="faq-item">
+                        <button class="faq-q" aria-expanded="false"><span class="qterm"><span class="qmark">Q</span> 想手动升级 DSH？</span><span class="arr">＋</span></button>
+                        <div class="faq-a"><p>启动时检测到 DSH 新版会弹窗提示「立即升级」；也可在「检查更新」窗口查看并一键升级。</p></div>
+                    </div>
+                    <div class="faq-item">
+                        <button class="faq-q" aria-expanded="false"><span class="qterm"><span class="qmark">Q</span> 找不到答案？</span><span class="arr">＋</span></button>
+                        <div class="faq-a"><p>加入上方 QQ 群，或到 GitHub 提 issue，我们会尽快响应。</p></div>
+                    </div>
                 </div>
             </section>
 
@@ -622,6 +684,21 @@
     <script>
         (function () {
             var RM = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            var FINE = window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+
+            /* ————— 阅读进度条 ————— */
+            (function () {
+                var bar = document.getElementById('progress');
+                if (!bar) return;
+                function upd() {
+                    var h = document.documentElement;
+                    var total = h.scrollHeight - h.clientHeight;
+                    var p = total > 0 ? (h.scrollTop / total) : 0;
+                    bar.style.width = (p * 100) + '%';
+                }
+                window.addEventListener('scroll', upd, { passive: true });
+                upd();
+            })();
 
             /* ————— canvas sea — a whisper of the whale's ocean ————— */
             var c = document.getElementById('sea');
@@ -650,6 +727,15 @@
                 }
                 resize();
                 window.addEventListener('resize', resize);
+                // 粒子跟随鼠标 —— 指针靠近时会轻轻聚合
+                var mx = -9999, my = -9999;
+                if (FINE) {
+                    c.addEventListener('mousemove', function (e) {
+                        var r = c.getBoundingClientRect();
+                        mx = e.clientX - r.left; my = e.clientY - r.top;
+                    });
+                    c.addEventListener('mouseleave', function () { mx = -9999; my = -9999; });
+                }
                 function frame() {
                     ctx.clearRect(0, 0, W, H);
                     T += .006;
@@ -658,6 +744,12 @@
                         var sway = Math.sin(T * p.sp * 12 + p.ph) * p.amp;
                         var y = p.y + Math.sin(T * p.sp * 8 + p.ph) * 5;
                         var x = p.x + sway;
+                        // 鼠标引力
+                        if (mx > -999) {
+                            var dx = mx - p.x, dy = my - p.y;
+                            var d2 = dx * dx + dy * dy;
+                            if (d2 < 90000) { var d = Math.sqrt(d2) || 1; x += (dx / d) * 12 * (1 - d / 300); y += (dy / d) * 12 * (1 - d / 300); }
+                        }
                         x = (x + W) % W;
                         p.x = x; p.y = y;
                         var a = .10 + .16 * Math.abs(Math.sin(T * .6 + p.ph));
@@ -708,6 +800,70 @@
                     });
                 });
             });
+
+            /* ————— FAQ 手风琴 ————— */
+            document.querySelectorAll('.faq-item').forEach(function (item) {
+                var q = item.querySelector('.faq-q');
+                q.addEventListener('click', function () {
+                    var open = item.classList.contains('open');
+                    // 手风琴：打开当前，收起其它
+                    document.querySelectorAll('.faq-item').forEach(function (it) {
+                        it.classList.remove('open');
+                        var b = it.querySelector('.faq-q');
+                        if (b) b.setAttribute('aria-expanded', 'false');
+                    });
+                    if (!open) {
+                        item.classList.add('open');
+                        q.setAttribute('aria-expanded', 'true');
+                    }
+                });
+            });
+            // 默认展开第一项
+            var firstFaq = document.querySelector('.faq-item');
+            if (firstFaq) { firstFaq.classList.add('open'); var b0 = firstFaq.querySelector('.faq-q'); if (b0) b0.setAttribute('aria-expanded', 'true'); }
+
+            /* ————— spec 数字计数（进入视口才跳动） ————— */
+            if (!RM) {
+                var nums = document.querySelectorAll('.spec .num');
+                var numIO = new IntersectionObserver(function (entries) {
+                    entries.forEach(function (e) {
+                        if (!e.isIntersecting) return;
+                        var el = e.target;
+                        numIO.unobserve(el);
+                        el.setAttribute('data-wave-done', '1');
+                        el.classList.add('count');
+                    });
+                }, { threshold: 0.6 });
+                nums.forEach(function (n) { numIO.observe(n); });
+            }
+
+            /* ————— 指南卡 3D 倾斜（仅精细指针 + 不减动画） ————— */
+            if (FINE && !RM) {
+                var gcards = document.querySelectorAll('.gcard');
+                gcards.forEach(function (card) {
+                    card.addEventListener('mousemove', function (e) {
+                        var r = card.getBoundingClientRect();
+                        var px = (e.clientX - r.left) / r.width - .5;
+                        var py = (e.clientY - r.top) / r.height - .5;
+                        card.style.transform = 'perspective(820px) rotateX(' + (-py * 7) + 'deg) rotateY(' + (px * 9) + 'deg) translateY(-2px)';
+                    });
+                    card.addEventListener('mouseleave', function () { card.style.transform = ''; });
+                });
+            }
+
+            /* ————— 主按钮磁吸（仅精细指针 + 不减动画） ————— */
+            if (FINE && !RM) {
+                document.querySelectorAll('.hero-actions .btn, .plat-panel .btn, .actions .btn').forEach(function (btn) {
+                    var strength = 14;
+                    btn.addEventListener('mousemove', function (e) {
+                        var r = btn.getBoundingClientRect();
+                        var dx = e.clientX - (r.left + r.width / 2);
+                        var dy = e.clientY - (r.top + r.height / 2);
+                        btn.style.transform = 'translate(' + (dx / r.width * strength) + 'px,' + (dy / r.height * strength) + 'px)';
+                    });
+                    btn.addEventListener('mouseleave', function () { btn.style.transform = ''; });
+                });
+            }
         })();
     </script>
 </body>
