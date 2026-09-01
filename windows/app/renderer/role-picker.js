@@ -3,7 +3,8 @@
 /**
  * role-picker.js — 角色选择窗口脚本（v1.0.3，用户反馈 3）
  * 主进程 did-finish-load 后注入 window.__rolePickerInit(list)；
- * 竖排列表展示每个角色（名称 + 定位摘要），点击 → window.dshDesktop.rolePickerResult(index)。
+ * v1.2.8（用户反馈）：只展示角色名，不再显示灰色定位摘要（desc）。
+ * 竖排列表展示每个角色，点击 → window.dshDesktop.rolePickerResult(index)。
  */
 
 const el = (id) => document.getElementById(id);
@@ -27,7 +28,6 @@ function render(list) {
     <button class="opt" data-index="${r.index}">
       <span class="icon">🎭</span>
       <span class="name">${escapeHtml(r.name)}</span>
-      ${r.desc ? `<span class="desc">${escapeHtml(r.desc)}</span>` : ''}
       <span class="arrow">›</span>
     </button>`).join('');
   wrap.querySelectorAll('.opt').forEach((b) => {
