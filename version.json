@@ -3,9 +3,9 @@
   "version": "1.2.8",
   "minVersion": "0.7.4",
   "author": "zx(xwj)",
-  "release_notes": "🎉 v1.2.8 —— 角色选择优化 + 帮助文档改官网直达 + 启动拦截自动打开网页\n🔹 新增：\n· 帮助文档直达官网 —— 「帮助文档…」菜单与启动页帮助按钮改为直开官网 http://dsh.xwjznh.cn；移除应用内/内置帮助文档（原本地 help.html + 后台远程同步），官网内容更新即时生效、无需发版\n🔹 修复：\n· 角色选择 —— 修复多次双击输入框连开多个角色选择窗口（加互斥锁，重复双击不再重复弹窗）\n· 角色选择 —— 修复角色名过长显示超限（名称与摘要超长均省略号截断，不再换行撑高/挤出摘要与箭头）\n· 启动拦截 —— 修复启动后系统浏览器自动打开本机 DSH 页（http://127.0.0.1:3080）：本地回环仅「网页打开」等显式操作放行，页面自动触发一律拒绝\n🔹 优化：\n· 去除应用内 help.html 本地副本与后台同步，安装包更精简",
+  "release_notes": "🎉 v1.2.8 —— 角色选择优化 + 帮助文档改官网直达 + 启动拦截自动打开网页\n🔹 新增：\n· 帮助文档直达官网 —— 「帮助文档…」菜单与启动页帮助按钮改为直开官网 http://dsh.xwjznh.cn；移除应用内/内置帮助文档（原本地 help.html + 后台远程同步），官网内容更新即时生效、无需发版\n🔹 修复：\n· 角色选择 —— 修复多次双击输入框连开多个角色选择窗口（加互斥锁，重复双击不再重复弹窗）\n· 角色选择 —— 修复角色名过长显示超限（名称与摘要超长均省略号截断，不再换行撑高/挤出摘要与箭头）\n· 启动拦截 —— 修复启动 DSH 服务后系统浏览器自动打开本机 DSH 页（http://127.0.0.1:3080）：DSH 自带的 openBrowser 配置默认打开浏览器，现启动 dsh web 时传 --no-open 关闭其浏览器外发；并加固本地回环仅「网页打开」等显式操作放行\n🔹 优化：\n· 去除应用内 help.html 本地副本与后台同步，安装包更精简",
   "force": false,
-  "hash": "64cea99778ec7eb49429f1362280df82f40e2fbc055a693f5aeab28e8c31287b",
+  "hash": "a0a5b5f5471b8fec3f161f31b78bec057b42346031157fc7a04a154cbcea5f09",
   "download_urls": [
     "https://ghfast.top/https://github.com/XWJ-z/dsh-Desktop/releases/download/v1.2.8/DSH-Desktop-Setup-1.2.8.exe",
     "https://gh-proxy.com/https://github.com/XWJ-z/dsh-Desktop/releases/download/v1.2.8/DSH-Desktop-Setup-1.2.8.exe"

@@ -106,6 +106,11 @@ function createServerLifecycle(deps) {
             ...runnerArgs,
             dshBin,
             'web',
+            // v1.2.8（用户反馈：启动 DSH 服务后系统浏览器自动打开 http://127.0.0.1:3080）：
+            // DSH 的 dsh-web-app 配置 openBrowser 默认 true，服务就绪时用 open() 拉起系统
+            // 默认浏览器（其控制台提示也写了 pass --no-open to disable）。壳自身在主窗口内
+            // 承载 DSH GUI，故传 --no-open 关掉 DSH 的浏览器外发，避免每次启动弹系统浏览器。
+            '--no-open',
             '--host', host,
             '--port', String(port),
           ];
