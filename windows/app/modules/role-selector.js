@@ -26,10 +26,11 @@ function createRoleSelector(deps) {
     dialog, appName, appendLog,
     getMainWindow, getRoles, roleFilePath, injectText,
     openRolePicker, // v1.0.3（用户反馈 3）：竖排列表选择
+    focusRolePicker, // v1.2.8：弹出后再双击 → 置顶已有选择窗口
   } = deps;
 
   // v1.2.8（用户反馈）：多次双击输入框会连开多个角色选择窗口 —— 加互斥锁：
-  // 同一时间只允许一次「弹窗选角色」，已打开时再次触发直接忽略（不再新建窗口）。
+  // 同一时间只允许一次「弹窗选角色」，已打开时再次触发改为置顶显示（不再新建窗口）。
   let pickerBusy = false;
 
   /** 当前是否有已配置角色（角色名非空） */
@@ -68,7 +69,10 @@ function createRoleSelector(deps) {
    * @returns {{ ok: boolean, name?: string, reason?: string }}
    */
   async function pickAndInject() {
-    if (pickerBusy) return { ok: false, reason: 'busy' }; // v1.2.8：已有选择窗口，忽略本次双击
+    if (pickerBusy) {
+      if (focusRolePicker) focusRolePicker(); // v1.2.8：已有选择窗口 → 置顶显示
+      return { ok: false, reason: 'busy' };
+    }
     const roles = configuredRoles();
     if (roles.length === 0) return { ok: false, reason: 'no-roles' }; // 未配置角色不弹
     pickerBusy = true;

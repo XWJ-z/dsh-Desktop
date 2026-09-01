@@ -517,6 +517,7 @@ const roleSelectorApi = createRoleSelector({
   roleFilePath: (name) => globalMemoryApi.roleFile(name),
   injectText: (win, text, opts) => promptInject.injectTextIntoInput(win, text, opts),
   openRolePicker: (roles) => rolePickerApi.openRolePicker(roles),
+  focusRolePicker: () => rolePickerApi.focusRolePicker(), // v1.2.8：弹出后再双击置顶显示
 });
 
 // ----
