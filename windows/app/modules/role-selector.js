@@ -28,6 +28,10 @@ function createRoleSelector(deps) {
     openRolePicker, // v1.0.3（用户反馈 3）：竖排列表选择
   } = deps;
 
+  // v1.2.8（用户反馈）：多次双击输入框会连开多个角色选择窗口 —— 加互斥锁：
+  // 同一时间只允许一次「弹窗选角色」，已打开时再次触发直接忽略（不再新建窗口）。
+  let pickerBusy = false;
+
   /** 当前是否有已配置角色（角色名非空） */
   function configuredRoles() {
     const roles = getRoles() || [];
@@ -64,19 +68,25 @@ function createRoleSelector(deps) {
    * @returns {{ ok: boolean, name?: string, reason?: string }}
    */
   async function pickAndInject() {
+    if (pickerBusy) return { ok: false, reason: 'busy' }; // v1.2.8：已有选择窗口，忽略本次双击
     const roles = configuredRoles();
     if (roles.length === 0) return { ok: false, reason: 'no-roles' }; // 未配置角色不弹
-    const chosen = await pickRole(roles);
-    if (!chosen) return { ok: false, reason: 'cancelled' };
-    const name = String(chosen.name).trim();
-    const filePath = roleFilePath ? roleFilePath(name) : null;
-    const text = `本次对话角色为 ${name}${filePath ? `，角色定义文件为 ${filePath}` : ''}`;
-    const mw = getMainWindow();
-    if (mw && !mw.isDestroyed()) {
-      injectText(mw, text, { celebrate: false }).catch(() => { /* ignore */ });
-      appendLog('info', `已选择角色：${name}（${filePath || '无文件'}）`);
+    pickerBusy = true;
+    try {
+      const chosen = await pickRole(roles);
+      if (!chosen) return { ok: false, reason: 'cancelled' };
+      const name = String(chosen.name).trim();
+      const filePath = roleFilePath ? roleFilePath(name) : null;
+      const text = `本次对话角色为 ${name}${filePath ? `，角色定义文件为 ${filePath}` : ''}`;
+      const mw = getMainWindow();
+      if (mw && !mw.isDestroyed()) {
+        injectText(mw, text, { celebrate: false }).catch(() => { /* ignore */ });
+        appendLog('info', `已选择角色：${name}（${filePath || '无文件'}）`);
+      }
+      return { ok: true, name };
+    } finally {
+      pickerBusy = false;
     }
-    return { ok: true, name };
   }
 
   /**

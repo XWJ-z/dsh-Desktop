@@ -64,7 +64,6 @@ const { createTaskNotify } = require('./modules/task-notify'); // v1.2.1 T8：�
 const { createRoleSelector } = require('./modules/role-selector'); // v0.9.13：新对话选择角色
 const { createRolePicker } = require('./modules/role-picker'); // v1.0.3（用户反馈 3）：角色选择竖排窗口
 const { createNoticeModule } = require('./modules/notice'); // v0.9.5（T3）：公告条/公告源
-const { createHelpDoc } = require('./modules/help-doc'); // v1.1.1：帮助文档远程下发
 const { createPromptsUpdater } = require('./modules/prompts-updater'); // v1.1.1：提示词库远程更新
 const { createPluginMarket } = require('./modules/plugin-market'); // v1.1.1：插件市场
 const { createMenu } = require('./modules/menu');
@@ -127,7 +126,6 @@ let promptLibWin = null; // 提示词库窗口（v0.8.3 T4）
 let noticeWin = null; // 公告窗口（v0.8.11 T0.6）
 let globalMemoryWin = null; // 全局记忆窗口（v0.9.12）
 let pluginMarketWin = null; // 插件市场窗口（v1.1.1）
-let helpDocWin = null; // 帮助文档窗口（v1.1.1 二轮：本地优先 + 后台静默远程同步）
 let skillLibWin = null; // 技能库窗口（v1.2.1 T5）
 let serverChild = null; // dsh web 服务子进程
 let resolvedPort = DEFAULT_PORT;
@@ -565,19 +563,9 @@ const {
 const noticeApi = createNoticeModule({ app, fs, path, appendLog, fetchJson });
 noticeApi.loadCache(); // 启动即载入缓存（buildMenu 用缓存 marquee，拉取失败不闪没）
 
-// v1.1.1 二轮：帮助文档窗口（本地优先 + 后台静默远程同步）——
-// 帮助文档模块组装早于 misc-windows，用晚绑定引用（与 refreshMenusRef 同模式）
-let openHelpDocWindowRef = () => {};
-// v1.1.1：帮助文档远程下发 —— 应用内窗口打开本地 help.html，后台静默同步远程
+// v1.2.8（用户指令）：移除应用内帮助文档，改为直开官网 —— 不再 createHelpDoc
+// 保留 isAllowedExternalUrl（插件市场打开 README 用）
 const { isAllowedExternalUrl } = require('./modules/external-links');
-const helpDocApi = createHelpDoc({
-  app,
-  path,
-  fs,
-  net: electronNet,
-  appendLog,
-  openHelpDocWindow: (htmlPath) => openHelpDocWindowRef(htmlPath),
-});
 
 // v1.1.1：提示词库远程更新 —— 三源并发拉取 prompts.json，缓存优先级：缓存 > 包内置
 const promptsUpdaterApi = createPromptsUpdater({ app, fs, path, appendLog, fetchJson });
@@ -639,10 +627,6 @@ const miscWindowsModule = createMiscWindowsModule({
   setPluginMarketWin: (v) => {
     pluginMarketWin = v;
   }, // v1.1.1
-  getHelpDocWin: () => helpDocWin,
-  setHelpDocWin: (v) => {
-    helpDocWin = v;
-  }, // v1.1.1 二轮
   getSkillLibWin: () => skillLibWin,
   setSkillLibWin: (v) => {
     skillLibWin = v;
@@ -656,7 +640,6 @@ const {
   openPromptLibWindow,
   openGlobalMemoryWindow,
   openPluginMarketWindow, // v1.1.1：插件市场窗口
-  openHelpDocWindow, // v1.1.1 二轮：帮助文档窗口
   openSkillLibraryWindow, // v1.2.1 T5：技能库窗口
   openLanQrWindow, // v1.2.1 T7：手机访问窗口
   openCloseChoiceWindow,
@@ -664,7 +647,6 @@ const {
   updateBackupProgress,
   closeBackupProgress,
 } = miscWindowsModule;
-openHelpDocWindowRef = openHelpDocWindow; // 晚绑定（helpDocApi 组装于 misc-windows 之前）
 
 // v1.0.3（用户反馈 3）：角色选择竖排窗口 —— 依赖 secureWebPreferences（组装于其后）
 const rolePickerApi = createRolePicker({
@@ -970,7 +952,6 @@ const menuApi = createMenu({
   isTrayCreated: () => trayApi.isTrayCreated(),
   updateTrayMenu: () => trayApi.updateTrayMenu(),
   openAppearanceDialog, // v0.8.18：设置菜单「外观…」
-  openHelpDoc: () => helpDocApi.openHelpDoc(), // v1.1.1：帮助文档远程下发
 });
 refreshMenusRef = menuApi.refreshMenus;
 saveSettingsRef = settingsApi.saveSettings;
@@ -1316,8 +1297,6 @@ if (!gotLock) {
       promptsUpdater: promptsUpdaterApi,
       // v1.1.1：插件市场
       pluginMarket: pluginMarketApi,
-      // v1.1.1 三轮：帮助文档窗口（应用内打开本地 + 后台静默同步）
-      helpDocApi,
       // v0.9.12：全局记忆（读写 AGENTS.md + 打开编辑窗口 + 覆盖确认宿主窗口）
       globalMemory: globalMemoryApi,
       openGlobalMemoryWindow,

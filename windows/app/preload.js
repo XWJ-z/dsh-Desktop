@@ -71,8 +71,8 @@ contextBridge.exposeInMainWorld('dshDesktop', {
   deleteCustomPrompt: (id) => ipcRenderer.invoke('promptlib:custom-delete', id),
   /** 关于窗口：关闭并打开更新窗口 */
   openUpdateWindow: () => ipcRenderer.invoke('about:open-update'),
-  /** 打开外部链接（仅 http/https） */
-  openExternal: (url) => ipcRenderer.invoke('app:open-external', url),
+  /** 打开外部链接（仅 http/https；opts.user=true 表示显式用户操作，放行本地回环） */
+  openExternal: (url, opts) => ipcRenderer.invoke('app:open-external', url, opts || {}),
   /** 网页打开按钮拖拽位置上报（v0.7.5：会话内记忆） */
   saveWebOpenBtnPos: (pos) => ipcRenderer.invoke('web-open-btn:pos', pos),
   // ── v0.8.11（T0.6 / T5 / T5.3）：公告 + 桌面宠物 ──
@@ -156,8 +156,6 @@ contextBridge.exposeInMainWorld('dshDesktop', {
   // ── v1.1.1：插件市场 ──
   /** 打开插件市场窗口 */
   openPluginMarket: () => ipcRenderer.invoke('toolbox:open-plugin-market'),
-  /** v1.1.1 三轮：打开帮助文档窗口（应用内本地 + 后台静默同步远程） */
-  openHelpDoc: () => ipcRenderer.invoke('app:open-help-doc'),
   /** v1.2.1 T5：打开技能库窗口 */
   openSkillLibrary: () => ipcRenderer.invoke('toolbox:open-skill-library'),
   /** 获取插件市场分类列表（含「全部」以外的 14 分类） */

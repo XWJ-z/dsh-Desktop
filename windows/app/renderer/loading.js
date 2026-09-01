@@ -22,13 +22,13 @@ const helpBtn = document.getElementById('help-btn'); // v1.1.2：启动界面打
 const params = new URLSearchParams(location.search);
 if (params.get('port')) portEl.textContent = params.get('port');
 
-// v1.1.2（用户反馈）：启动界面「打开帮助文档」按钮 —— 等待安装/启动时可直接查看
-// 使用说明（帮助文档窗口为应用内窗口，本地优先 + 后台静默同步远程）
+// v1.2.8（用户指令）：启动界面「打开帮助文档」按钮 —— 移除应用内帮助窗口，
+// 改为直开官网（preload openExternal 经 app:open-external 白名单）
 if (helpBtn) {
   helpBtn.addEventListener('click', () => {
-    if (window.dshDesktop && window.dshDesktop.openHelpDoc) {
-      window.dshDesktop.openHelpDoc().catch(() => {
-        /* 打开失败静默（主进程已记录日志） */
+    if (window.dshDesktop && window.dshDesktop.openExternal) {
+      window.dshDesktop.openExternal('http://dsh.xwjznh.cn').catch(() => {
+        /* 打开失败静默 */
       });
     }
   });

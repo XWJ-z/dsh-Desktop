@@ -14,6 +14,7 @@ const ALLOWED_EXTERNAL_HOSTS = Object.freeze([
   'github.com', // 项目仓库 / Releases 下载页
   'deepseek.com', // DeepSeek 官网
   'qq.com', // QQ 群链接（群号 916607090）
+  'xwjznh.cn', // v1.2.8：帮助文档官网（帮助菜单直开 http://dsh.xwjznh.cn）
   'raw.githubusercontent.com', // v1.1.1：帮助文档远程下发（仅限 help.html 路径）
   'cdn.jsdelivr.net', // v1.1.1：帮助文档远程下发（仅限 help.html 路径）
   // 本地回环：宠物菜单「网页打开」打开壳自身承载的 DSH GUI（getWebUrl，

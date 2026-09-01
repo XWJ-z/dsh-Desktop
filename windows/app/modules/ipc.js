@@ -49,8 +49,6 @@ function registerIpc(deps) {
     promptsUpdater,
     // v1.1.1：插件市场
     pluginMarket,
-    // v1.1.1 三轮：帮助文档窗口（应用内打开本地 + 后台静默同步）
-    helpDocApi,
     // v0.9.12（用户指令）：全局记忆（读写 ~/.dsh/AGENTS.md + 打开编辑窗口）
     globalMemory,
     openGlobalMemoryWindow,
@@ -192,11 +190,6 @@ function registerIpc(deps) {
   // v1.2.1 T5：技能库窗口
   ipcMain.handle('toolbox:open-skill-library', () => {
     openSkillLibraryWindow();
-    return true;
-  });
-  // v1.1.1 三轮：帮助文档窗口（应用内打开本地 help.html + 后台静默同步远程）
-  ipcMain.handle('app:open-help-doc', async () => {
-    await helpDocApi.openHelpDoc();
     return true;
   });
   ipcMain.handle('update:dsh-upgrade', () => upgradeDshVersion());
@@ -449,8 +442,12 @@ function registerIpc(deps) {
   });
   // P2-2（外审 zx(9)）：外部链接白名单 —— 渲染进程可达，仅放行白名单域名
   // （github.com / deepseek.com / qq.com 及子域），防 DSH 页面注入恶意链接钓鱼
-  ipcMain.handle('app:open-external', (_e, url) => {
-    if (isAllowedExternalUrl(url)) shell.openExternal(url);
+  // v1.2.8（用户反馈：启动后系统浏览器自动打开 127.0.0.1:3080）：本地回环
+  // 仅允许**显式用户操作**（宠物「网页打开」等传 { user: true }）放行；DSH 页面
+  // 自动触发/脚本调用未带用户标记的一律拒绝，杜绝启动时被动弹默认浏览器。
+  ipcMain.handle('app:open-external', (_e, url, opts) => {
+    const allowLoopback = opts && opts.user === true;
+    if (isAllowedExternalUrl(url, allowLoopback)) shell.openExternal(url);
     return true;
   });
 

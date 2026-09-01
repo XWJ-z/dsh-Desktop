@@ -59,7 +59,6 @@ function createMenu(deps) {
     getMarquee, // v0.9.5（T3）：公告条文案
     isTrayCreated,
     updateTrayMenu,
-    openHelpDoc, // v1.1.1：帮助文档远程下发
   } = deps;
 
   /**
@@ -288,10 +287,12 @@ function createMenu(deps) {
             },
           },
           { type: 'separator' },
-          // v1.1.1：帮助文档远程下发（修改仓库 help.html push 即生效，无需发版）
+          // v1.2.8（用户指令）：移除应用内/内置帮助文档，改为直开官网
           {
             label: '帮助文档…',
-            click: () => openHelpDoc(),
+            click: () => {
+              shell.openExternal('http://dsh.xwjznh.cn');
+            },
           },
           {
             label: 'DeepSeek 官网',

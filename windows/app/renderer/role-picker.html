@@ -26,7 +26,12 @@
     }
     .opt:hover { border-color: rgba(94,106,210,.55); background: var(--bg-hover, #1b2029); }
     .opt .icon { font-size: 16px; flex-shrink: 0; }
-    .opt .name { font-size: 13.5px; font-weight: 590; }
+    .opt .name {
+      font-size: 13.5px; font-weight: 590;
+      /* v1.2.8（用户反馈）：角色名过长会换行撑高/挤出摘要与箭头 —— 超长省略号截断 */
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      min-width: 0; flex: 0 1 auto;
+    }
     .opt .desc {
       font-size: 11.5px; color: var(--text-quaternary); font-weight: 400;
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0;

@@ -378,7 +378,8 @@ function createPet(deps) {
               // v1.2.1 T7：手机访问入口 —— 打开弹窗，开启/关闭在弹窗内的药丸开关
               if (window.dshDesktop && window.dshDesktop.openLanQr) window.dshDesktop.openLanQr();
             } else if (it.dataset.action === 'webopen') {
-              if (window.dshDesktop && window.dshDesktop.openExternal) window.dshDesktop.openExternal(url);
+              // v1.2.8：显式用户操作 → 传 { user: true } 放行本地回环（防启动自动弹窗误伤）
+              if (window.dshDesktop && window.dshDesktop.openExternal) window.dshDesktop.openExternal(url, { user: true });
             } else if (it.dataset.action === 'hide') {
               // v0.8.11（T5.2）/ v0.8.15：隐藏宠物 —— 前端同步切换为工具箱
               // （即时生效，不依赖 IPC 往返；IPC 仅持久化 petHidden）
