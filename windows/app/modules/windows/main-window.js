@@ -19,12 +19,12 @@
 
 function createMainWindowModule(deps) {
   const {
-    BrowserWindow, app, dialog, shell, screen, path, nativeTheme,
+    BrowserWindow, app, dialog, shell, screen, path, nativeTheme, clipboard,
     appendLog, logPath, appName,
     getSettings, saveSettings,
     injectPet, openCloseChoiceWindow,
     injectDropHandler, // v0.9（T3）：拖拽文件入工作区监听
-    getWebUrl, getIsQuitting, setQuitting, getMainWindow, setMainWindow,
+    getWebUrl, getWebAuthUrl, getIsQuitting, setQuitting, getMainWindow, setMainWindow,
   } = deps;
   // P2-2（外审 zx(9)）：外部链接白名单（setWindowOpenHandler 用）
   const { isAllowedExternalUrl } = require('../external-links');
@@ -88,6 +88,47 @@ function createMainWindowModule(deps) {
       const a = d.workArea;
       return b.x < a.x + a.width && b.x + b.width > a.x &&
              b.y < a.y + a.height && b.y + b.height > a.y;
+    });
+  }
+
+  /**
+   * v1.2.14（回退机制）：DSH 0.1.2-rc.1+ 浏览器鉴权兜底。
+   * 主窗口首载若因 token 竞态/捕获过晚仍撞上「authentication required」401 页，
+   * 自动用带 token 的地址重载（最多 5 次）；仍失败则弹窗给出带授权参数的地址，
+   * 供「在浏览器打开」或「复制地址」手动兜底，杜绝彻底打不开而无提示。
+   */
+  function wireAuthFallback(win, label) {
+    if (label !== 'gui') return;
+    let retries = 0;
+    win.webContents.on('did-finish-load', () => {
+      if (win.isDestroyed()) return;
+      win.webContents.executeJavaScript('document.body ? document.body.innerText.slice(0, 300) : ""')
+        .then((raw) => {
+          if (win.isDestroyed()) return;
+          const isAuthPage = String(raw || '').toLowerCase().includes('authentication required');
+          if (!isAuthPage) return; // 正常进入
+          const authUrl = getWebAuthUrl();
+          const hasToken = /[?&]token=/.test(authUrl);
+          appendLog('warn', `[gui] 撞上 DSH 鉴权页（token=${hasToken ? '有' : '无'}，第 ${retries + 1} 次重试）`);
+          if (retries < 5) {
+            retries++;
+            setTimeout(() => { if (!win.isDestroyed()) win.loadURL(getWebAuthUrl()); }, 700);
+            return;
+          }
+          dialog.showMessageBox(win, {
+            type: 'warning',
+            title: appName,
+            message: '界面打开需要 DSH 授权',
+            detail: `自动重载仍未通过 DSH 鉴权（已重试 ${retries} 次）。\n\n可点击「在浏览器打开」用系统浏览器打开（已自动带授权参数），或「复制地址」手动粘贴到浏览器打开。\n\n${getWebAuthUrl()}`,
+            buttons: ['在浏览器打开', '复制地址', '退出'],
+          }).then(({ response }) => {
+            if (win.isDestroyed()) return;
+            if (response === 0) shell.openExternal(getWebAuthUrl());
+            else if (response === 1) clipboard.writeText(getWebAuthUrl());
+            else app.quit();
+          }).catch(() => { /* ignore */ });
+        })
+        .catch(() => { /* ignore */ });
     });
   }
 
@@ -218,8 +259,10 @@ function createMainWindowModule(deps) {
     });
     win.on('closed', () => { if (getMainWindow() === win) setMainWindow(null); });
 
-    appendLog('info', `加载 DSH Web GUI：${getWebUrl()}`);
-    win.loadURL(getWebUrl());
+    appendLog('info', `加载 DSH Web GUI：${getWebAuthUrl()}`);
+    win.loadURL(getWebAuthUrl());
+    // v1.2.14（回退机制）：鉴权失败自动带 token 重载 / 弹窗兜底
+    wireAuthFallback(win, 'gui');
     return win;
   }
 

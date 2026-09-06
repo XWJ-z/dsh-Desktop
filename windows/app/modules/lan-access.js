@@ -30,7 +30,7 @@
  */
 
 function createLanAccess(deps) {
-  const { os, net, http, appendLog, getSettings, saveSettings, getResolvedPort, openQrWindow } = deps;
+  const { os, net, http, appendLog, getSettings, saveSettings, getResolvedPort, getWebAuthToken, openQrWindow } = deps;
 
   let proxyServer = null; // 局域网 TCP 反向代理
   let proxyPort = 0;      // 代理监听端口（QR 用）
@@ -58,13 +58,15 @@ function createLanAccess(deps) {
     return proxyPort > 0 ? proxyPort : (getResolvedPort() + 1);
   }
 
-  /** 采集二维码窗口数据（URL = http://<lanIP>:<proxyPort>） */
+  /** 采集二维码窗口数据（URL = http://<lanIP>:<proxyPort>，v1.2.14 起追加 DSH 鉴权 token） */
   function getQrData() {
     const p = effectiveProxyPort();
+    const token = getWebAuthToken();
+    const authSuffix = token ? `/?token=${encodeURIComponent(token)}` : '';
     return {
       enabled: isEnabled(),
       port: p,
-      ips: getLanIps().map((ip) => ({ ip, url: `http://${ip}:${p}` })),
+      ips: getLanIps().map((ip) => ({ ip, url: `http://${ip}:${p}${authSuffix}` })),
     };
   }
 
@@ -87,6 +89,20 @@ function createLanAccess(deps) {
 
   /** 转发普通 HTTP 请求到 127.0.0.1:<targetPort>（不改写 Host/Origin，trusted-host 已放行）；HTML 响应注入 crypto.randomUUID polyfill */
   function forwardHttp(req, res, targetPort) {
+    // v1.2.14（手机访问同步鉴权）：DSH 0.1.2-rc.1+ 首页需带 token 换取会话 cookie。
+    // 手机直接访问裸地址（http://<ip>:<port>/，旧二维码/手动输入）且还没种 cookie 时，
+    // 先 302 引导到带 token 的地址；已经带 dsh-auth cookie 的则按原样转发（避免循环）。
+    const token = getWebAuthToken();
+    if (token && req.method === 'GET' && !req.headers.cookie) {
+      try {
+        const u = new URL(req.url, 'http://localhost');
+        if (u.pathname === '/' && !u.searchParams.has('token')) {
+          res.writeHead(302, { location: `/?token=${encodeURIComponent(token)}` });
+          res.end();
+          return;
+        }
+      } catch { /* ignore —— URL 解析失败仍按原样转发 */ }
+    }
     const up = http.request({
       host: '127.0.0.1',
       port: targetPort,

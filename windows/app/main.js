@@ -80,6 +80,9 @@ const DEFAULT_PORT = 3080;
 const PORT_PROBE_RANGE = 50; // 端口被占用时最多顺延多少个
 const SERVER_READY_TIMEOUT_MS = 240_000; // 等待 dsh web 就绪的上限（含首次下载）
 const CHILD_GRACE_MS = 5_000; // 关闭子进程的宽限期
+// v1.2.x：DSH 0.1.2-rc.1+ 的 `dsh web` 引入浏览器鉴权（启动打印带 ?token= 的 URL）。
+// 壳从 DSH 子进程 stdout 捕获该 token 后，主窗口才用带 token 的 URL 加载（换取会话 cookie）。
+const AUTH_TOKEN_TIMEOUT_MS = 15_000; // 等待 token 输出的上限（旧版 DSH 无 token，dsh web 行无 token 即提前放行）
 const NPM_INSTALL_TIMEOUT_MS = 2_400_000; // 下载/安装 DSH 运行时的上限（v1.1.1：10→40 分钟；
 // 实测：npm 12 全量安装 @deepseek-ai/dsh（449 包）本机需 18~23 分钟、内存峰值 3.4GB，
 // 慢机器/虚拟机更久 —— 旧壳 10 分钟会被误杀（用户 jiu / 用户 VM 均复现"装不上"）；
@@ -136,6 +139,11 @@ let shellHasUpdate = false; // 启动后静默检查发现壳（DSH-Desktop）�
 let isQuitting = false; // 真正退出标志（区分"关窗隐藏"与"退出"）
 let serverStopRequested = false; // v0.7.10：主动停止 DSH 服务（恢复数据前释放占用），
 // 避免触发「服务意外退出」误报弹窗
+// v1.2.x：DSH 0.1.2-rc.1+ web 浏览器鉴权 —— 启动时从 dsh stdout 的 `dsh web: <url?token=X>` 捕获 token。
+// webAuthResolved=true 表示鉴权结果已定（token 已捕获，或确认当前 DSH 无鉴权），供 waitForAuthToken 立即返回。
+let webAuthToken = null;
+let webAuthTokenWaiters = [];
+let webAuthResolved = false;
 
 // 登记所有由本进程派生的子进程（npm install + dsh 服务），退出时统一清理，
 // 避免 Windows 下残留 node/npm 进程（审查 M1）。
@@ -246,12 +254,102 @@ const serverApi = createServerLifecycle({
   os, // v1.2.7：DSH 启动时传 --trusted-host 局域网IP（手机访问用）
   getMainWindow: () => mainWindow,
   getWebUrl: webUrl,
+  getWebAuthUrl: webAuthUrl, // v1.2.x：鉴权加载地址（DSH 0.1.2-rc.1+ 需带 ?token=）
+  waitForAuthToken, // v1.2.x：DSH 重启后等待新 token 再 reload
+  captureWebAuthToken, // v1.2.x：从 dsh stdout 捕获鉴权 token
+  resetWebAuth, // v1.2.x：spawn 新 DSH 前清空旧鉴权状态
   getResolvedPort: () => resolvedPort,
 });
 const { stopServer, stopServerOnly, spawnServer } = serverApi;
 
 function webUrl() {
   return `http://${DEFAULT_HOST}:${resolvedPort}`;
+}
+
+// ---------------------------------------------------------------------------
+// v1.2.x：DSH web 鉴权（0.1.2-rc.1+）
+// DSH 每次启动都会生成一个进程级 launchToken，并把带 `?token=` 的 URL 打印到
+// stdout（`dsh web: http://127.0.0.1:<port>/?token=X`）。浏览器首访该 URL，服务端
+// 校验 token 后回 303 到干净的 `/` 并种下权威绑定的会话 cookie，之后干净 URL 都能
+// 通过。壳需要这个 token 才能让主窗口/宠物「网页打开」进入鉴权页面。
+//
+// 语义约定：
+//  - webUrl()        干净基址（http://host:port），用于窗口导航白名单 startsWith 判断、
+//                    关于窗口展示等「不需要 token」的场景。
+//  - webAuthUrl()    带 token 的加载地址（http://host:port/?token=X）；token 未捕获时
+//                    回退为干净基址（旧版 DSH 无鉴权 / 兜底）。
+// ---------------------------------------------------------------------------
+function webAuthUrl() {
+  const base = `http://${DEFAULT_HOST}:${resolvedPort}`;
+  return webAuthToken ? `${base}/?token=${encodeURIComponent(webAuthToken)}` : base;
+}
+
+/** 唤醒所有等待鉴权结果的 waiter（webAuthResolved 为真才放行）。 */
+function flushWebAuthWaiters() {
+  if (!webAuthResolved) return;
+  const token = webAuthToken;
+  for (const w of webAuthTokenWaiters.splice(0)) w(token);
+}
+
+/** 捕获到有效 token 后落盘并放行等待者。 */
+function setWebAuthToken(token) {
+  if (!token || typeof token !== 'string') return;
+  if (webAuthResolved && webAuthToken === token) return;
+  webAuthToken = token;
+  webAuthResolved = true;
+  appendLog('info', `已捕获 DSH Web 鉴权 token（${token.length} 字符）`);
+  flushWebAuthWaiters();
+}
+
+/** 确认当前 DSH 版本无鉴权（dsh web 行无 token）：立即放行，主窗口用干净 URL。 */
+function markWebAuthUnavailable() {
+  if (webAuthResolved) return;
+  webAuthResolved = true;
+  webAuthToken = null;
+  flushWebAuthWaiters();
+}
+
+/** 重置鉴权状态（每次 spawn DSH 前调用）：旧进程 token 已失效，等待新进程输出。 */
+function resetWebAuth() {
+  webAuthToken = null;
+  webAuthResolved = false;
+  // 理论上此时无等待者（waitForAuthToken 都在 spawn 完成后才调用）；兜底清空防串台
+  webAuthTokenWaiters = [];
+}
+
+/** 等待鉴权结果确定（token 已捕获 / 确认无鉴权 / 超时兜底），返回当前 token（可能为 null）。 */
+function waitForAuthToken(timeoutMs) {
+  if (webAuthResolved) return Promise.resolve(webAuthToken);
+  return new Promise((resolve) => {
+    let settled = false;
+    const settle = (t) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(t);
+    };
+    const timer = setTimeout(() => {
+      webAuthTokenWaiters = webAuthTokenWaiters.filter((w) => w !== settle);
+      settle(webAuthToken);
+    }, timeoutMs);
+    webAuthTokenWaiters.push(settle);
+  });
+}
+
+/**
+ * 从 DSH 子进程的一行 stdout 里捕获鉴权 token。
+ * 匹配 `dsh web: <url?token=X>...` 行；有 token 则记录，无 token（旧版 DSH）则确认无鉴权。
+ */
+function captureWebAuthToken(line) {
+  const m = /^dsh web:\s+(http:\/\/\S+)/.exec(String(line).trim());
+  if (!m) return;
+  try {
+    const token = new URL(m[1]).searchParams.get('token');
+    if (token) setWebAuthToken(token);
+    else markWebAuthUnavailable();
+  } catch {
+    markWebAuthUnavailable();
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -446,6 +544,7 @@ const petApi = createPet({
   saveSettings: () => settingsApi.saveSettings(),
   getMainWindow: () => mainWindow,
   getWebUrl: webUrl,
+  getWebAuthUrl: webAuthUrl, // v1.2.x：宠物「网页打开」用带 ?token= 的鉴权地址（系统浏览器无会话 cookie）
 });
 const { injectPet, resetWebOpenBtnLayout, petBubble } = petApi;
 
@@ -664,6 +763,7 @@ const mainWindowModule = createMainWindowModule({
   app,
   dialog,
   shell,
+  clipboard,
   screen,
   path,
   nativeTheme, // v0.9.9：窗口背景跟随外观
@@ -676,6 +776,7 @@ const mainWindowModule = createMainWindowModule({
   openCloseChoiceWindow,
   injectDropHandler, // v0.9（T3）：拖拽监听注入
   getWebUrl: webUrl,
+  getWebAuthUrl: webAuthUrl, // v1.2.x：主窗口加载地址需带 ?token=（DSH 0.1.2-rc.1+ 鉴权）
   getIsQuitting: () => isQuitting,
   setQuitting: (v) => {
     isQuitting = v;
@@ -776,6 +877,7 @@ const lanApi = createLanAccess({
   getSettings: () => settings,
   saveSettings: () => settingsApi.saveSettings(),
   getResolvedPort: () => resolvedPort,
+  getWebAuthToken: () => webAuthToken, // v1.2.14：手机扫码 URL 携带 DSH 鉴权 token
   openQrWindow: () => openLanQrWindow(),
 });
 
@@ -1350,6 +1452,9 @@ if (!gotLock) {
       await waitForServer(DEFAULT_HOST, resolvedPort, SERVER_READY_TIMEOUT_MS);
       appendLog('info', `DSH 服务就绪：${webUrl()}`);
       pushStage('ready');
+      // v1.2.x：DSH 0.1.2-rc.1+ 需带 ?token= 才能进入 GUI（首访换会话 cookie）。
+      // 主窗口加载前等 token 捕获完成；旧版 DSH 的 `dsh web` 行无 token 会立即放行。
+      await waitForAuthToken(AUTH_TOKEN_TIMEOUT_MS);
       // v1.2.1 T8：任务完成通知监听（服务就绪后启动）
       startTaskNotifyWatch();
       // v1.2.1 T7：局域网访问（若用户在设置里开启过）→ 启动反向代理恢复暴露

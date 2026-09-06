@@ -18,11 +18,11 @@
  *  - app / fs / path
  *  - appendLog                       日志模块
  *  - getSettings / saveSettings      设置（webOpenBtnPos / petHidden）
- *  - getMainWindow / getWebUrl
+ *  - getMainWindow / getWebAuthUrl
  */
 
 function createPet(deps) {
-  const { app, fs, path, appendLog, getSettings, saveSettings, getMainWindow, getWebUrl } = deps;
+  const { app, fs, path, appendLog, getSettings, saveSettings, getMainWindow, getWebAuthUrl } = deps;
 
   /** v0.8.11（T1）：读取 Q 版鲸鱼 SVG（内联注入用；失败返回空串，前端兜底 emoji） */
   let petSvgCache = null;
@@ -88,7 +88,7 @@ function createPet(deps) {
         }
         window.__dshPetSelfHeal = true;
 
-        const url = '${getWebUrl()}';
+        const url = '${getWebAuthUrl()}';
         const saved = ${JSON.stringify(saved || null)};
         const petSvg = ${JSON.stringify(petSvg)};
         const toolboxSvg = ${JSON.stringify(toolboxSvg)};

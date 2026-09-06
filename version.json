@@ -1,13 +1,13 @@
 {
   "_comment": "自动更新版本清单（updater.js 三源拉取）：version / hash / download_urls 必须一致（hash=安装包实测 SHA256，NSIS 非确定性，重打包须重取）；release_notes 展示给用户，force=true 强制更新，minVersion 为最低支持版本",
-  "version": "1.2.8",
+  "version": "1.2.14",
   "minVersion": "0.7.4",
   "author": "zx(xwj)",
-  "release_notes": "本周更新：1.2.8 —— 角色选择优化 + 帮助文档改官网直达 + 启动拦截自动打开网页\n🔹 新增：\n· 帮助文档直达官网 —— 「帮助文档…」菜单与启动页帮助按钮改为直开官网 `http://dsh.xwjznh.cn`；移除应用内/内置帮助文档（原本地 help.html + 后台远程同步），官网内容更新即时生效、无需发版\n🔹 修复：\n· 角色选择 —— 修复多次双击输入框连开多个角色选择窗口（加互斥锁，重复双击不再重复弹窗）\n· 角色选择 —— 修复角色名过长显示超限（名称与摘要超长均省略号截断，不再换行撑高/挤出摘要与箭头）\n· 启动拦截 —— 修复启动 DSH 服务后系统浏览器自动打开本机 DSH 页（`http://127.0.0.1:3080`）：DSH 自带的 openBrowser 配置默认打开浏览器，现启动 dsh web 时传 --no-open 关闭其浏览器外发；并加固本地回环仅「网页打开」等显式操作放行\n🔹 优化：\n· 去除应用内 help.html 本地副本与后台同步，安装包更精简",
+  "release_notes": "本周更新：1.2.14 —— 适配 DSH 0.1.2-rc.1 浏览器鉴权（修复打不开界面）+ 手机扫码同步鉴权 + 鉴权失败自动兜底\n🔹 新增：\n· 适配新版 DSH 浏览器鉴权 —— DSH 0.1.2-rc.1 起 `dsh web` 需携带启动时生成的安全 token 才能打开界面；壳自动捕获 DSH 打印的鉴权地址并携带 token 打开主窗口，彻底解决「DSH 更新后界面打不开、一直停在 authentication required」\n· 手机扫码访问同步鉴权 —— 局域网扫码地址自动带上鉴权 token（手机直接输局域网裸地址也会自动引导到带授权地址），手机也能正常打开电脑 DSH 界面、选工作区/看会话/建会话\n🔹 优化：\n· 鉴权失败自动回退 —— 主窗口若因竞态/网络延迟首次仍撞上鉴权页，自动用带 token 的地址重载（最多 5 次）；仍失败会弹窗给出已带授权参数的地址，可一键在浏览器打开或复制，不再彻底卡死无提示",
   "force": false,
-  "hash": "74b170c7eb8bdaa36612c95c1f907f1bac97d45bcd2c580c51f1b3a10520b7af",
+  "hash": "",
   "download_urls": [
-    "https://ghfast.top/https://github.com/XWJ-z/dsh-Desktop/releases/download/v1.2.8/DSH-Desktop-Setup-1.2.8.exe",
-    "https://gh-proxy.com/https://github.com/XWJ-z/dsh-Desktop/releases/download/v1.2.8/DSH-Desktop-Setup-1.2.8.exe"
+    "https://ghfast.top/https://github.com/XWJ-z/dsh-Desktop/releases/download/v1.2.14/DSH-Desktop-Setup-1.2.14.exe",
+    "https://gh-proxy.com/https://github.com/XWJ-z/dsh-Desktop/releases/download/v1.2.14/DSH-Desktop-Setup-1.2.14.exe"
   ]
 }

@@ -16,7 +16,8 @@
  *  - waitForServer                         端口模块
  *  - defaultHost / childGraceMs / serverReadyTimeoutMs     常量
  *  - getQuitting/setQuitting / getServerChild/setServerChild
- *  - getServerStopRequested/setServerStopRequested / getMainWindow / getWebUrl / getResolvedPort
+ *  - getServerStopRequested/setServerStopRequested / getMainWindow / getResolvedPort
+ *  - getWebAuthUrl / waitForAuthToken / captureWebAuthToken / resetWebAuth   v1.2.x：DSH 0.1.2-rc.1+ web 鉴权（token）
  */
 
 function createServerLifecycle(deps) {
@@ -30,7 +31,8 @@ function createServerLifecycle(deps) {
     getQuitting, setQuitting,
     getServerChild, setServerChild,
     getServerStopRequested, setServerStopRequested,
-    getMainWindow, getWebUrl, getResolvedPort,
+    getMainWindow, getWebAuthUrl, getResolvedPort,
+    waitForAuthToken, captureWebAuthToken, resetWebAuth,
     os,
   } = deps;
 
@@ -78,6 +80,9 @@ function createServerLifecycle(deps) {
 
   function spawnServer(port) {
     return new Promise((resolve, reject) => {
+      // v1.2.x：DSH 0.1.2-rc.1+ 每进程一个 launchToken，spawn 前清空旧 token，
+      // 确保 waitForAuthToken 等待的是本次新进程输出的 token。
+      try { resetWebAuth(); } catch { /* ignore */ }
       ensureDshRuntime()
         .then((dshBin) => {
           // v1.1.1（Issue #1 修复，26 方案 A）：DSH 运行时同样建议新 Node
@@ -138,7 +143,12 @@ function createServerLifecycle(deps) {
 
           child.stdout.on('data', (chunk) => {
             for (const line of chunk.toString().split(/\r?\n/)) {
-              if (line.trim()) appendLog('dsh', line.trimEnd());
+              if (line.trim()) {
+                // v1.2.x：DSH 0.1.2-rc.1+ 在 stdout 打印 `dsh web: <url?token=X>`，
+                // 捕获 token 供主窗口加载鉴权地址（首访换会话 cookie）。
+                try { captureWebAuthToken(line.trimEnd()); } catch { /* ignore */ }
+                appendLog('dsh', line.trimEnd());
+              }
             }
           });
           child.stderr.on('data', (chunk) => {
@@ -163,12 +173,13 @@ function createServerLifecycle(deps) {
                 .then(({ response }) => {
                   if (response === 0) {
                     spawnServer(getResolvedPort()).then(() => {
-                      waitForServer(defaultHost, getResolvedPort(), serverReadyTimeoutMs)
-                        .then(() => {
-                          const mw = getMainWindow();
-                          if (mw && !mw.isDestroyed()) mw.loadURL(getWebUrl());
-                        })
-                        .catch((err2) => appendLog('error', String(err2)));
+                      // v1.2.x：DSH 重启后是新进程 → 新 launchToken，需等 token 捕获完成再 reload
+                      return waitForAuthToken(serverReadyTimeoutMs);
+                    }).then(() => {
+                      return waitForServer(defaultHost, getResolvedPort(), serverReadyTimeoutMs);
+                    }).then(() => {
+                      const mw = getMainWindow();
+                      if (mw && !mw.isDestroyed()) mw.loadURL(getWebAuthUrl());
                     }).catch((err2) => appendLog('error', String(err2)));
                   } else {
                     app.quit();

@@ -43,8 +43,8 @@
 > 💡 **普通用户请直接下载安装包**（下方按钮），无需安装 Node.js。
 > 源码仅供开发者研究/二开使用。
 
-<a href="https://github.com/XWJ-z/dsh-Desktop/releases/download/v1.2.8/DSH-Desktop-Setup-1.2.8.exe">
-<img src="https://img.shields.io/badge/下载安装包-DSH--Desktop--Setup--1.2.8.exe%20%E7%BA%A6115MB-2ea44f?style=for-the-badge&logo=windows&logoColor=white" alt="下载 DSH-Desktop 安装包"/>
+<a href="https://github.com/XWJ-z/dsh-Desktop/releases/download/v1.2.14/DSH-Desktop-Setup-1.2.14.exe">
+<img src="https://img.shields.io/badge/下载安装包-DSH--Desktop--Setup--1.2.14.exe%20%E7%BA%A6115MB-2ea44f?style=for-the-badge&logo=windows&logoColor=white" alt="下载 DSH-Desktop 安装包"/>
 </a>
 
 📖 详细说明（特性 / 打包 / 安装 / 升级 / 目录结构 / 运行原理）→ **[windows/README.md](windows/README.md)**
@@ -81,7 +81,8 @@
 | v1.1.6 | 启动检查更新同时检查 DSH 并弹窗提示 / 首次安装直接装最新版 DSH（dshVersion=latest） / 图片拖放放行给 DSH 原生 / 全窗口 UI 协调优化 / 更新下载改 Electron 网络栈 / 中文乱码修复 / 更新失败手动下载按钮 |
 | v1.2.7 | 全局记忆编辑体验升级（模板/三级子区块/自动编号）+ 项目记忆三栏重构 + 提示词库检查更新「权威源优先」修复 + 手机访问（trusted-host 信任局域网、crypto.randomUUID 补丁、二维码30s/手动刷新）—— 手机可连电脑同一 DSH |
 | v1.2.2 | 记忆管理（全局记忆 + 项目记忆）/ 技能库（扫描/自建/市场）/ 局域网扫码访问 / 任务完成通知 / 备份纳入项目记忆 / 技能目录扫描顺序对齐官方 / 记忆与技能安全加固 |
-| v1.2.8 | 角色选择优化（多次双击不再连开窗口、角色名超长截断）+ 帮助文档改官网直达（http://dsh.xwjznh.cn，去除内置/远程 help.html）+ 启动拦截（系统浏览器不再自动弹本机 DSH 页） |
+| v1.2.14 | 适配 DSH 0.1.2-rc.1 浏览器鉴权（DSH 更新后打不开界面、一直停在 authentication required）+ 手机扫码访问同步鉴权 + 鉴权失败自动回退（自动带 token 重载 / 失败弹窗给授权地址） |
+| v1.2.8 | 角色选择优化（多次双击不再连开窗口、角色名超长截断）+ 帮助文档改官网直达（http://dsh.xwjznh.cn）+ 启动拦截（系统浏览器不再自动弹本机 DSH 页） |
 
 > 本项目（Windows 版 & 飞牛版）版本号统一遵循 `vX.Y.Z` 三段式规则（Z 从 1 开始，无 0）：
 
