@@ -19,16 +19,13 @@
  * 用法：npm run installer
  */
 
+const { setupCacheEnv, ensureNodeReady } = require('./common-env'); // 2.0.1 去重：统一 env/内置 Node 检查
 const path = require('node:path');
 const fs = require('node:fs');
 const { spawnSync } = require('node:child_process');
 
-const root = path.join(__dirname, '..');
-
-// 网络与缓存配置（可被环境变量覆盖）
-process.env.ELECTRON_MIRROR = process.env.ELECTRON_MIRROR || 'https://npmmirror.com/mirrors/electron/';
-process.env.electron_config_cache = process.env.electron_config_cache || path.join(root, '.electron-cache');
-process.env.ELECTRON_CACHE = process.env.ELECTRON_CACHE || path.join(root, '.electron-cache');
+// 网络与缓存配置（可被环境变量覆盖）—— 公共部分由 setupCacheEnv 设置；builder 相关为 installer 独有，保留
+const root = setupCacheEnv();
 process.env.ELECTRON_BUILDER_BINARIES_MIRROR =
   process.env.ELECTRON_BUILDER_BINARIES_MIRROR || 'https://npmmirror.com/mirrors/electron-builder-binaries/';
 process.env.ELECTRON_BUILDER_CACHE = process.env.ELECTRON_BUILDER_CACHE || path.join(root, '.builder-cache');
@@ -77,20 +74,7 @@ function signingArgs() {
 
 function main() {
   // 确保内置 Node 运行时就绪（审查 H3：DSH 原生模块需真实 Node ABI）
-  const nodeExe = path.join(root, 'resources', 'node', 'node.exe');
-  if (!require('node:fs').existsSync(nodeExe)) {
-    console.log('[installer] 内置 Node 缺失，先执行 fetch-node …');
-    const fetch = spawnSync(process.execPath, [path.join(root, 'scripts', 'fetch-node.js')], {
-      cwd: root,
-      stdio: 'inherit',
-      env: process.env,
-      windowsHide: false,
-    });
-    if (fetch.status !== 0) {
-      console.error('[installer] 获取内置 Node 失败，中止');
-      process.exit(fetch.status || 1);
-    }
-  }
+  ensureNodeReady(root, 'installer');
 
   const cli = path.join(root, 'node_modules', 'electron-builder', 'out', 'cli', 'cli.js');
   // P2-3：签名凭据齐全时追加签名配置（--config 可多次指定，electron-builder 深度合并）

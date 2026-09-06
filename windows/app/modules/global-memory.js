@@ -27,6 +27,7 @@
  */
 
 const FILE_NAME = 'AGENTS.md';
+const { renderLongSection } = require('./memory-util'); // 2.0.1 去重：统一长区块渲染
 
 /** 三个独立顶层区块（v0.9.13 方案：全局记忆是 DSH 的视角 —— 用户设定/我的设定/DSH 角色） */
 const USER_SECTION = '用户设定';
@@ -499,22 +500,9 @@ function createGlobalMemory(deps) {
     syncRoleFiles([], roles);
   }
 
-  /** 渲染长文本区块（## 标题 + 原格式内容；v1.2.3 支持 ### 三级子区块） */
+  /** 渲染长文本区块（## 标题 + 原格式内容；v1.2.3 支持 ### 三级子区块）—— 2.0.1 去重：复用公共实现 */
   function renderLong(title, body, subs) {
-    // 防御：body 可能是数组（解析产物）或字符串（窗口提交），统一为字符串
-    const raw = Array.isArray(body) ? body.join('\n') : String(body || '');
-    const b = raw.replace(/^\s*\n+|\s+$/g, ''); // 去首尾多余空行
-    const subBlocks = (Array.isArray(subs) && subs.length)
-      ? subs.map((sb) => {
-          const sbRaw = Array.isArray(sb.body) ? sb.body.join('\n') : String(sb.body || '');
-          const sbBody = sbRaw.replace(/^\s*\n+|\s+$/g, '');
-          return `### ${sb.title}${sbBody ? `\n\n${sbBody}` : ''}`;
-        }).join('\n\n')
-      : '';
-    let out = `## ${title}`;
-    if (b) out += `\n\n${b}`;
-    if (subBlocks) out += `\n\n${subBlocks}`;
-    return out;
+    return renderLongSection(title, body, subs);
   }
 
   /**

@@ -35,47 +35,8 @@
 
   const $ = (id) => document.getElementById(id);
 
-  // ── 编号辅助（与全局记忆一致：新增区块/子区块自动编号）──
-  const CN_NUMS = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
-  function cnNum(n) {
-    const x = Math.floor(Number(n) || 0);
-    if (x <= 0) return String(x);
-    if (x < 10) return CN_NUMS[x];
-    const tens = Math.floor(x / 10);
-    const ones = x % 10;
-    if (x < 20) return '十' + (ones ? CN_NUMS[ones] : '');
-    return CN_NUMS[tens] + '十' + (ones ? CN_NUMS[ones] : '');
-  }
-  function cnToNum(s) {
-    const str = String(s || '').trim();
-    if (!str) return null;
-    if (str.length === 1) { const i = CN_NUMS.indexOf(str); return i >= 0 ? i : null; }
-    if (str === '十') return 10;
-    const shi = str.indexOf('十');
-    if (shi === -1) return null;
-    const tens = shi === 0 ? 1 : CN_NUMS.indexOf(str[shi - 1]);
-    if (tens <= 0) return null;
-    let val = tens * 10;
-    const tail = str.slice(shi + 1);
-    if (tail) { const o = CN_NUMS.indexOf(tail); if (o < 0) return null; val += o; }
-    return val;
-  }
-  function numFromTitle(title) {
-    const t = String(title || '').trim();
-    const c = /^([零一二三四五六七八九十]+)/.exec(t);
-    if (c) { const v = cnToNum(c[1]); if (v != null) return v; }
-    const a = /^(\d+)/.exec(t);
-    if (a) return parseInt(a[1], 10);
-    return null;
-  }
-  function nextSubNum(subs) {
-    let maxM = 0, sectionN = null;
-    (Array.isArray(subs) ? subs : []).forEach((sb) => {
-      const m = /^(\d+)[.、](\d+)\b/.exec(String(sb.title || '').trim());
-      if (m) { const n = parseInt(m[1], 10); const mm = parseInt(m[2], 10); if (mm > maxM) { maxM = mm; sectionN = n; } }
-    });
-    return sectionN === null ? null : `${sectionN}.${maxM + 1}`;
-  }
+  // ── 编号辅助（2.0.1 去重：抽到 memory-common.js，与全局记忆共用）──
+  const { cnNum, numFromTitle, nextSubNum } = window.__memoryNums || {};
 
   // ── 项目记忆编辑状态 ──
   const pm = {

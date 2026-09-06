@@ -43,6 +43,7 @@ const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 天缓存
 // v1.1.3 重构：本仓库下发源 URL 集中到 remote-sources.js（plugin-desc-zh.json）
 // 注意：PLUGIN_README_URLS 是第三方仓库（Anil-matcha/awesome-dsh-plugin）数据源，不属于本仓库下发源，保留原位
 const { PLUGIN_DESC_URLS } = require('./remote-sources');
+const { createNetCommon } = require('./net-common'); // 2.0.1 去重：统一 Electron net 拉取
 
 // 官方分类（README「## Plugin Categories」18 类 + 兜底其他）；match 用于标题匹配
 // v1.1.1：去掉 icon 表情符号（用户指令：插件市场不显示表情）
@@ -70,6 +71,8 @@ const PLUGIN_CATEGORIES = [
 
 function createPluginMarket(deps) {
   const { app, fs, path, shell, clipboard, net, appendLog, isAllowedExternalUrl } = deps;
+  // 2.0.1 去重：fetchText 改用公共 net-common 实现（原先此模块内联了一份同款逻辑）
+  const { fetchText } = createNetCommon({ net });
 
   let cachedPlugins = null;
   let cacheTimestamp = 0;
@@ -127,70 +130,6 @@ function createPluginMarket(deps) {
     } catch (err) {
       appendLog('error', `保存插件市场缓存失败：${err.message}`);
     }
-  }
-
-  /**
-   * GET 并返回响应文本（Electron net.request，Chromium 网络栈 + 系统 CA + 自动跟随重定向；
-   * 失败/超时返回 null）
-   * @param {string} url
-   * @param {number} timeoutMs
-   * @param {object} headers
-   * @param {number} maxBytes
-   * @returns {Promise<string|null>}
-   */
-  function fetchText(url, timeoutMs = 8000, headers = {}, maxBytes = 5 * 1024 * 1024) {
-    return new Promise((resolve) => {
-      let req;
-      try {
-        req = net.request(url);
-        Object.keys(headers || {}).forEach((k) => req.setHeader(k, headers[k]));
-        if (!headers || !headers['User-Agent']) req.setHeader('User-Agent', 'DSH-Desktop');
-        const timer = setTimeout(() => {
-          try {
-            req.abort();
-          } catch {
-            /* ignore */
-          }
-          resolve(null);
-        }, timeoutMs);
-        req.on('response', (res) => {
-          const code = res.statusCode;
-          if (code < 200 || code >= 300) {
-            clearTimeout(timer);
-            resolve(null);
-            return;
-          }
-          res.setEncoding('utf8'); // P2-1 v1.1.6：跨 chunk 不拆断 UTF-8，中文插件描述无乱码
-          let body = '';
-          let aborted = false;
-          res.on('data', (c) => {
-            if (aborted) return;
-            body += c;
-            if (body.length > maxBytes) {
-              aborted = true;
-              clearTimeout(timer);
-              try {
-                req.abort();
-              } catch {
-                /* ignore */
-              }
-              resolve(null);
-            }
-          });
-          res.on('end', () => {
-            clearTimeout(timer);
-            if (!aborted) resolve(body);
-          });
-        });
-        req.on('error', () => {
-          clearTimeout(timer);
-          resolve(null);
-        });
-        req.end();
-      } catch {
-        resolve(null);
-      }
-    });
   }
 
   /**

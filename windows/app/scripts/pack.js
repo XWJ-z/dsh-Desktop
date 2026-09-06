@@ -13,16 +13,11 @@
  * 用法：npm run pack
  */
 
+const { setupCacheEnv, ensureNodeReady } = require('./common-env'); // 2.0.1 去重：统一 env/内置 Node 检查
 const path = require('node:path');
-const fs = require('node:fs');
-const { spawnSync } = require('node:child_process');
-
-const root = path.join(__dirname, '..');
 
 // 网络与缓存配置（可被环境变量覆盖）
-process.env.ELECTRON_MIRROR = process.env.ELECTRON_MIRROR || 'https://npmmirror.com/mirrors/electron/';
-process.env.electron_config_cache = process.env.electron_config_cache || path.join(root, '.electron-cache');
-process.env.ELECTRON_CACHE = process.env.ELECTRON_CACHE || path.join(root, '.electron-cache');
+const root = setupCacheEnv();
 
 const ignore = [
   /^\/docs(\/|$)/,
@@ -37,16 +32,7 @@ const ignore = [
 
 async function main() {
   // 确保内置 Node 运行时就绪（审查 H3：DSH 原生模块需真实 Node ABI）
-  if (!fs.existsSync(path.join(root, 'resources', 'node', 'node.exe'))) {
-    console.log('[pack] 内置 Node 缺失，先执行 fetch-node …');
-    const fetch = spawnSync(process.execPath, [path.join(root, 'scripts', 'fetch-node.js')], {
-      cwd: root,
-      stdio: 'inherit',
-      env: process.env,
-      windowsHide: false,
-    });
-    if (fetch.status !== 0) process.exit(fetch.status || 1);
-  }
+  ensureNodeReady(root, 'pack');
 
   const { packager } = await import('@electron/packager');
   console.log('[pack] 开始打包 win32-x64 …');

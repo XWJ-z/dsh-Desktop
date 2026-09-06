@@ -29,8 +29,11 @@
 
 const { compareSemver } = require('./semver');
 const { verifyKnownHash } = require('./shell-hashes');
+const { createNetCommon } = require('./net-common'); // 2.0.1 去重：统一 Electron net 拉取
 
 function createUpdater(deps) {
+  // 2.0.1 去重：fetchJson 改用公共 net-common 实现（原先此模块内联了一份同款逻辑）
+  const { fetchJson } = createNetCommon(deps);
   const {
     app, shell, crypto, fs, path, rmQuiet,   // O2 v1.1.6：移除不再使用的 https（downloadFile 已改 Electron net）
     net, // v1.1.3（用户反馈：下载更新失败）：版本检查改用 Electron net
@@ -38,76 +41,6 @@ function createUpdater(deps) {
     readShellConfig, installedDshVersion, updateDshVersion,
     shellUpdateUrls,
   } = deps;
-
-  /**
-   * GET 并解析 JSON；失败/超时返回 null（静默）。响应体超 maxBytes（默认 5MB）放弃。
-   * v1.1.3（用户反馈：下载更新失败，日志「版本检查：1/3 源可达…拒绝自动下载」）：
-   * 改用 Electron net.request（Chromium 网络栈 + 系统 CA + 自动跟随重定向）——
-   * Node https.get 在真机 TLS 验证失败（api.github.com / raw.githubusercontent
-   * "unable to verify the first certificate"），三源只有 jsDelivr 可达 →
-   * sourcesAgree=false → 防投毒拒绝自动下载；与 help-doc.js / plugin-market.js
-   * v1.1.1 同款修复（那两个模块当年已改 net 实测三源全通）。
-   */
-  function fetchJson(url, timeoutMs = 8000, headers = {}, maxBytes = 5 * 1024 * 1024) {
-    return new Promise((resolve) => {
-      let req;
-      try {
-        req = net.request(url);
-        Object.keys(headers || {}).forEach((k) => req.setHeader(k, headers[k]));
-        if (!headers || !headers['User-Agent']) req.setHeader('User-Agent', 'DSH-Desktop');
-        const timer = setTimeout(() => {
-          try {
-            req.abort();
-          } catch {
-            /* ignore */
-          }
-          resolve(null);
-        }, timeoutMs);
-        req.on('response', (res) => {
-          const code = res.statusCode;
-          if (code < 200 || code >= 300) {
-            clearTimeout(timer);
-            resolve(null);
-            return;
-          }
-          res.setEncoding('utf8'); // P2-1 v1.1.6：跨 chunk 不拆断 UTF-8，release_notes 中文无乱码
-          let body = '';
-          let aborted = false;
-          const finish = (v) => {
-            if (aborted) return;
-            aborted = true;
-            clearTimeout(timer);
-            resolve(v);
-          };
-          res.on('data', (c) => {
-            if (aborted) return;
-            body += c;
-            if (body.length > maxBytes) { // P2-4：防超大响应体耗尽内存
-              aborted = true;
-              try { req.abort(); } catch { /* ignore */ }
-              clearTimeout(timer);
-              resolve(null);
-            }
-          });
-          res.on('end', () => {
-            if (!aborted) {
-              aborted = true;
-              clearTimeout(timer);
-              try { resolve(JSON.parse(body)); } catch { resolve(null); }
-            }
-          });
-          res.on('error', () => finish(null));
-        });
-        req.on('error', () => {
-          clearTimeout(timer);
-          resolve(null);
-        });
-        req.end();
-      } catch {
-        resolve(null);
-      }
-    });
-  }
 
   /**
    * 查询 npm registry 上 DSH 最新版本信息（dist-tags.latest + dist.integrity）。

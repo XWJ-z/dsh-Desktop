@@ -52,6 +52,9 @@ refapp.fpk
 # 一次性发布验证脚本
 windows/app/scripts/_verify-*.js
 
+# jscpd 重复检测报告产物（本地分析，不入库）
+.jscpd-report/
+
 # 系统文件
 .DS_Store
 Thumbs.db

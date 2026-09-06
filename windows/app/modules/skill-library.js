@@ -28,6 +28,7 @@
  */
 
 const { SKILLS_LIST_URLS } = require('./remote-sources');
+const { createNetCommon } = require('./net-common'); // 2.0.1 去重：统一 Electron net 拉取
 
 const NAME_RE = /^[a-z0-9-]+$/; // 名称 kebab-case
 const MAX_SKILL_SIZE = 500 * 1024; // 技能正文上限（500KB，方案待定取此值）
@@ -35,6 +36,8 @@ const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 市场列表 7 天缓存
 
 function createSkillLibrary(deps) {
   const { app, fs, os, path, net, appendLog, getWorkspacePath } = deps;
+  // 2.0.1 去重：fetchText 改用公共 net-common 实现（原先此模块内联了一份同款逻辑）
+  const { fetchText } = createNetCommon({ net });
 
   /** DSH home 根目录（$DSH_HOME 非空优先，否则 ~/.dsh） */
   function dshHome() {
@@ -249,35 +252,6 @@ function createSkillLibrary(deps) {
 
   function marketCacheFile() {
     return path.join(app.getPath('userData'), 'skills-market-cache.json');
-  }
-
-  /** GET 文本（Electron net；失败/超时返回 null） */
-  function fetchText(url, timeoutMs = 8000, headers = {}, maxBytes = 5 * 1024 * 1024) {
-    return new Promise((resolve) => {
-      let req;
-      try {
-        req = net.request(url);
-        Object.keys(headers || {}).forEach((k) => req.setHeader(k, headers[k]));
-        if (!headers || !headers['User-Agent']) req.setHeader('User-Agent', 'DSH-Desktop');
-        const timer = setTimeout(() => { try { req.abort(); } catch { /* ignore */ } resolve(null); }, timeoutMs);
-        req.on('response', (res) => {
-          if (res.statusCode < 200 || res.statusCode >= 300) { clearTimeout(timer); resolve(null); return; }
-          res.setEncoding('utf8');
-          let body = '';
-          let aborted = false;
-          res.on('data', (c) => {
-            if (aborted) return;
-            body += c;
-            if (body.length > maxBytes) { aborted = true; clearTimeout(timer); try { req.abort(); } catch { /* ignore */ } resolve(null); }
-          });
-          res.on('end', () => { clearTimeout(timer); if (!aborted) resolve(body); });
-        });
-        req.on('error', () => { clearTimeout(timer); resolve(null); });
-        req.end();
-      } catch {
-        resolve(null);
-      }
-    });
   }
 
   /** 加载市场缓存（未过期才认） */

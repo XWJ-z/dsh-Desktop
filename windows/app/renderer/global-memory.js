@@ -367,55 +367,8 @@ function renderMemoEditor() {
   if (addSubBtnEl) addSubBtnEl.addEventListener('click', addSub);
 }
 
-// ── v1.2.3（用户指令 3/4）：新区块 / 子区块自动编号 ──
-const CN_NUMS = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
-/** 1..99 → 中文数字（一…九 / 十 / 十一… / 二十… / 九十九） */
-function cnNum(n) {
-  const x = Math.floor(Number(n) || 0);
-  if (x <= 0) return String(x);
-  if (x < 10) return CN_NUMS[x];
-  const tens = Math.floor(x / 10);
-  const ones = x % 10;
-  if (x < 20) return '十' + (ones ? CN_NUMS[ones] : '');
-  return CN_NUMS[tens] + '十' + (ones ? CN_NUMS[ones] : '');
-}
-/** 中文数字（一…九 / 十 / 十一… / 二十…）→ 整数；不认识返回 null */
-function cnToNum(s) {
-  const str = String(s || '').trim();
-  if (!str) return null;
-  if (str.length === 1) { const i = CN_NUMS.indexOf(str); return i >= 0 ? i : null; }
-  if (str === '十') return 10;
-  const shi = str.indexOf('十');
-  if (shi === -1) return null;
-  const tens = shi === 0 ? 1 : CN_NUMS.indexOf(str[shi - 1]);
-  if (tens <= 0) return null;
-  let val = tens * 10;
-  const tail = str.slice(shi + 1);
-  if (tail) { const o = CN_NUMS.indexOf(tail); if (o < 0) return null; val += o; }
-  return val;
-}
-/** 从标题开头提取序号（中文 一… 或 数字 1…）；无序号返回 null */
-function numFromTitle(title) {
-  const t = String(title || '').trim();
-  const c = /^([零一二三四五六七八九十]+)/.exec(t);
-  if (c) { const v = cnToNum(c[1]); if (v != null) return v; }
-  const a = /^(\d+)/.exec(t);
-  if (a) return parseInt(a[1], 10);
-  return null;
-}
-/** 计算下一个子区块序号（沿用现有「n.m 标题」规律，如 4.3 → 4.4）；无规律返回 null */
-function nextSubNum(subs) {
-  let maxM = 0, sectionN = null;
-  (Array.isArray(subs) ? subs : []).forEach((sb) => {
-    const m = /^(\d+)[.、](\d+)\b/.exec(String(sb.title || '').trim());
-    if (m) {
-      const thisN = parseInt(m[1], 10);
-      const thisM = parseInt(m[2], 10);
-      if (thisM > maxM) { maxM = thisM; sectionN = thisN; }
-    }
-  });
-  return sectionN === null ? null : `${sectionN}.${maxM + 1}`;
-}
+// ── v1.2.3（用户指令 3/4）：新区块 / 子区块自动编号（2.0.1 去重：抽到 memory-common.js 共用）──
+const { cnNum, numFromTitle, nextSubNum } = window.__memoryNums || {};
 
 /** 「＋ 添加区块」：界面内新建（不用 prompt —— 沙箱渲染进程禁用 window.prompt）
  *  v1.2.3（用户指令 4）：自动编号 —— 现有 ## 最大序号 +1（如已有 四 → 新加 五、新区块）。 */

@@ -34,6 +34,7 @@
 
 const FILE_NAME = 'AGENTS.md';
 const MAX_SIZE = 1024 * 1024; // 1MB（对齐全局记忆）
+const { renderLongSection } = require('./memory-util'); // 2.0.1 去重：统一长区块渲染
 
 function createProjectMemory(deps) {
   const { fs, path, app, appendLog, getWorkspacePath, readWorkspaceRegistry } = deps;
@@ -149,21 +150,9 @@ function createProjectMemory(deps) {
     return { head: head.join('\n'), sections };
   }
 
-  /** 渲染单个长区块（## 标题 + 原格式内容 + ### 子区块；标题空则丢弃） */
+  /** 渲染单个长区块（## 标题 + 原格式内容 + ### 子区块；标题空则丢弃）—— 2.0.1 去重：复用公共实现 */
   function renderLong(title, body, subs) {
-    const raw = Array.isArray(body) ? body.join('\n') : String(body || '');
-    const b = raw.replace(/^\s*\n+|\s+$/g, ''); // 去首尾多余空行
-    const subBlocks = (Array.isArray(subs) && subs.length)
-      ? subs.map((sb) => {
-          const sbRaw = Array.isArray(sb.body) ? sb.body.join('\n') : String(sb.body || '');
-          const sbBody = sbRaw.replace(/^\s*\n+|\s+$/g, '');
-          return `### ${sb.title}${sbBody ? `\n\n${sbBody}` : ''}`;
-        }).join('\n\n')
-      : '';
-    let out = `## ${title}`;
-    if (b) out += `\n\n${b}`;
-    if (subBlocks) out += `\n\n${subBlocks}`;
-    return out;
+    return renderLongSection(title, body, subs);
   }
 
   /**
