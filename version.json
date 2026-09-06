@@ -5,7 +5,7 @@
   "author": "zx(xwj)",
   "release_notes": "本周更新：1.2.14 —— 适配 DSH 0.1.2-rc.1 浏览器鉴权（修复打不开界面）+ 手机扫码同步鉴权 + 鉴权失败自动兜底\n🔹 新增：\n· 适配新版 DSH 浏览器鉴权 —— DSH 0.1.2-rc.1 起 `dsh web` 需携带启动时生成的安全 token 才能打开界面；壳自动捕获 DSH 打印的鉴权地址并携带 token 打开主窗口，彻底解决「DSH 更新后界面打不开、一直停在 authentication required」\n· 手机扫码访问同步鉴权 —— 局域网扫码地址自动带上鉴权 token（手机直接输局域网裸地址也会自动引导到带授权地址），手机也能正常打开电脑 DSH 界面、选工作区/看会话/建会话\n🔹 优化：\n· 鉴权失败自动回退 —— 主窗口若因竞态/网络延迟首次仍撞上鉴权页，自动用带 token 的地址重载（最多 5 次）；仍失败会弹窗给出已带授权参数的地址，可一键在浏览器打开或复制，不再彻底卡死无提示",
   "force": false,
-  "hash": "",
+  "hash": "80ec05ccdda5fa1d4e7e86a7134815636cb33097c5c89fe18250aa7993771543",
   "download_urls": [
     "https://ghfast.top/https://github.com/XWJ-z/dsh-Desktop/releases/download/v1.2.14/DSH-Desktop-Setup-1.2.14.exe",
     "https://gh-proxy.com/https://github.com/XWJ-z/dsh-Desktop/releases/download/v1.2.14/DSH-Desktop-Setup-1.2.14.exe"
