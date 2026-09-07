@@ -172,6 +172,45 @@ function createProjectMemory(deps) {
     return blocks.join('\n\n') + (blocks.length ? '\n' : '');
   }
 
+  /** M2（代码审查 2026-09-07）：判断 workspacePath 是否为「已知工作区」——
+   *  索引里出现过的项目 或 工作区注册表里登记的项目（同步；供保存守卫用）。 */
+  function isKnownWorkspace(workspacePath) {
+    const ws = String(workspacePath || '');
+    if (!ws) return false;
+    if (listProjects().some((p) => p.path === ws)) return true;
+    try {
+      const reg = readWorkspaceRegistry ? readWorkspaceRegistry() : null;
+      if (reg && reg.tables && reg.tables.workspaces &&
+          Object.values(reg.tables.workspaces).some((v) => v && v.path === ws)) {
+        return true;
+      }
+    } catch { /* 注册表异常不影响判断 */ }
+    return false;
+  }
+
+  /**
+   * M2（代码审查 2026-09-07）：保存守卫版 —— 限定只能保存「已知工作区」
+   *  （索引 / 注册表 / 当前工作区），避免渲染进程被 XSS 后把内容写到任意已存在目录。
+   *  内部先解析当前工作区补判定，再落到原同步 saveProjectMemory。
+   * @returns {Promise<{ok:boolean,file?:string,message?:string}>}
+   */
+  async function saveProjectMemoryGuarded(workspacePath, content) {
+    const ws = String(workspacePath || '');
+    if (!ws) return { ok: false, message: '项目路径为空' };
+    let known = isKnownWorkspace(ws);
+    if (!known && getWorkspacePath) {
+      try {
+        const cur = await getWorkspacePath();
+        known = !!cur && String(cur) === ws;
+      } catch { /* ignore */ }
+    }
+    if (!known) {
+      appendLog('warn', `拒绝保存项目记忆：路径不在已登记项目内（${ws}）`);
+      return { ok: false, message: '项目路径无效：不在已登记的项目列表内（请从左侧列表选择项目）' };
+    }
+    return saveProjectMemory(ws, content);
+  }
+
   /**
    * 保存项目记忆：校验目录 + 大小上限 + 原子写盘 + 更新索引。
    * 保存前自动备份上一次版本（AGENTS.md.bak）。
@@ -322,6 +361,8 @@ function createProjectMemory(deps) {
     parseProjectMemory,
     renderProjectMemory,
     saveProjectMemory,
+    saveProjectMemoryGuarded, // M2：保存守卫版（限定已知工作区，IPC 路径用）
+    isKnownWorkspace,          // M2：已知工作区判定
     deleteProjectMemory,
     data,
     FILE_NAME,

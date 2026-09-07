@@ -90,7 +90,7 @@ function filteredItems() {
       if (s.id === currentSub) {
         if (!kw) return s.items;
         return s.items.filter((it) =>
-          it.title.toLowerCase().includes(kw) || it.text.toLowerCase().includes(kw));
+          (it.title || '').toLowerCase().includes(kw) || (it.text || '').toLowerCase().includes(kw));
       }
     }
   }

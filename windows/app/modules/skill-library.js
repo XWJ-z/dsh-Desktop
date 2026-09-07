@@ -32,6 +32,10 @@ const { createNetCommon } = require('./net-common'); // 2.0.1 去重：统一 El
 
 const NAME_RE = /^[a-z0-9-]+$/; // 名称 kebab-case
 const MAX_SKILL_SIZE = 500 * 1024; // 技能正文上限（500KB，方案待定取此值）
+// M5（代码审查 2026-09-07）：技能市场安装的来源 owner 白名单 —— 任意 owner/repo 都能装会放大
+// prompt injection 攻击面（技能内容会注入模型上下文）。仅放行受信生态 owner（按需扩展）；
+// 安装统一走指定分支 main（下方 URL 已固定，天然满足 branch 限制）。
+const TRUSTED_SKILL_OWNERS = new Set(['anthropics', 'deepseek-ai', 'microsoft', 'google', 'openai']);
 
 function createSkillLibrary(deps) {
   const { fs, os, path, net, appendLog, getWorkspacePath, skillsUpdater } = deps;
@@ -285,6 +289,12 @@ function createSkillLibrary(deps) {
     if (!name) return { ok: false, message: '技能名非法（kebab-case）' };
     const rf = String(s.repo || '').replace(/^https?:\/\/github\.com\//, '').replace(/\/$/, '');
     if (!rf || !/^[\w.-]+\/[\w.-]+$/.test(rf)) return { ok: false, message: '技能来源仓库非法' };
+    // M5（代码审查 2026-09-07）：来源 owner 白名单（防受攻陷的服务器下发任意 repo 安装恶意技能）
+    const owner = rf.split('/')[0];
+    if (!TRUSTED_SKILL_OWNERS.has(owner)) {
+      appendLog('warn', `技能安装拒绝：来源 owner「${owner}」不在受信白名单内（${rf}）`);
+      return { ok: false, message: `技能来源 owner「${owner}」不受信任，已拒绝安装（白名单见维护者配置）` };
+    }
     const file = String(s.file || '');
     if (!file || /\.\./.test(file)) return { ok: false, message: '技能文件路径非法' };
     const url = `https://raw.githubusercontent.com/${rf}/main/${file}`;

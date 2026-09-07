@@ -141,8 +141,11 @@ function createDragDrop(deps) {
             })
             .filter(Boolean);
           // 全部取路径失败也上报（主进程给「无法读取文件路径」反馈，避免静默失败）
+          // M3（代码审查 2026-09-07）：drop 时同步取主进程签发的短期 token，随 paths 上送校验，
+          // 防渲染页被注入后任意构造 drop:files。
           if (window.dshDesktop && window.dshDesktop.dropFiles) {
-            window.dshDesktop.dropFiles(paths);
+            const token = window.dshDesktop.getDropToken ? window.dshDesktop.getDropToken() : '';
+            window.dshDesktop.dropFiles(paths, token);
           }
         }, true);
 

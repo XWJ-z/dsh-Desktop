@@ -149,6 +149,24 @@ let webAuthToken = null;
 let webAuthTokenWaiters = [];
 let webAuthResolved = false;
 
+// M3（代码审查 2026-09-07）：drop:files 短期 token —— 主进程签发（crypto），拖拽监听注入后
+// 经 preload 同步取（sendSync），drop 时随 paths 上送，主进程校验匹配才放行；TTL 覆盖整页会话
+// （拖放可能发生在页面加载后任意时刻）。防渲染页被注入后任意构造 drop:files。
+let dropToken = null;
+let dropTokenAt = 0;
+const DROP_TOKEN_TTL_MS = 60 * 60 * 1000; // 1h
+function issueDropToken() {
+  const now = Date.now();
+  if (!dropToken || now - dropTokenAt > DROP_TOKEN_TTL_MS) {
+    dropToken = crypto.randomBytes(16).toString('hex');
+    dropTokenAt = now;
+  }
+  return dropToken;
+}
+function isValidDropToken(t) {
+  return !!t && !!dropToken && t === dropToken;
+}
+
 // 登记所有由本进程派生的子进程（npm install + dsh 服务），退出时统一清理，
 // 避免 Windows 下残留 node/npm 进程（审查 M1）。
 const trackedChildren = new Set();
@@ -262,6 +280,7 @@ const serverApi = createServerLifecycle({
   waitForAuthToken, // v1.2.x：DSH 重启后等待新 token 再 reload
   captureWebAuthToken, // v1.2.x：从 dsh stdout 捕获鉴权 token
   resetWebAuth, // v1.2.x：spawn 新 DSH 前清空旧鉴权状态
+  markWebAuthUnavailable, // M9：spawn/install 失败时置鉴权不可用并放行等待者（fail-fast）
   getResolvedPort: () => resolvedPort,
 });
 const { stopServer, stopServerOnly, spawnServer } = serverApi;
@@ -862,6 +881,7 @@ const generateDiagnostics = createDiagnostics({
   getLogPath: logPath,
   getLogLines, // v0.8.12：logger 模块
   getOwnerWindow: () => (mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined),
+  getSkippedNativePackages: () => runtimeApi.probeSkippedNativePackages(), // S1：诊断报告列出未放行原生依赖
 });
 
 // v0.8.1（T5）：设置模块 —— settings 对象本体仍在本文件（大量代码直接读 settings.xxx），
@@ -1253,7 +1273,9 @@ function promptShellUpdate(info) {
             .then(({ response: resp }) => {
               if (resp === 0) openUpdateWindow();
               else if (resp === 1) shell.openExternal(SHELL_BAIDU_PAN_URL);
-              else if (resp === 2) shell.openExternal('https://github.com/XWJ-z/dsh-Desktop/releases/latest');
+              // M10（代码审查 2026-09-07）：下载失败时给用户的 GitHub Releases 兜底，改走 ghfast
+              // 镜像（国内访问 GitHub 本身常不稳，直连大概率同样失败）
+              else if (resp === 2) shell.openExternal('https://ghfast.top/https://github.com/XWJ-z/dsh-Desktop/releases/latest');
             })
             .catch(() => {
               /* ignore */
@@ -1369,6 +1391,8 @@ if (!gotLock) {
     // v0.8.1（T4）：注册全局快捷键（呼出/隐藏主窗口；默认 Ctrl+Alt+D，注册失败仅告警不阻塞启动）
     hotkeyApi.registerHotkey(settings.hotkey);
     // v0.8.12（优化方案）：全部 IPC handler 集中注册到 modules/ipc.js
+    ipcMain.on('drop:token', (e) => { e.returnValue = issueDropToken(); }); // M3：拖拽监听注入后同步取 token
+
     registerIpc({
       ipcMain,
       app,
@@ -1407,6 +1431,8 @@ if (!gotLock) {
       promptInject,
       handleDropFiles,
       getWorkspacePath,
+      issueDropToken,       // M3：DropFiles 数据源 + 短期 token 签发（拖拽监听注入后经 preload 同步取）
+      isValidDropToken,     // M3：drop:files 通道校验
       // v0.9.5：自定义提示词（T2）+ 公告模块（T3，notice:data 唯一源）
       customPrompts: customPromptsApi,
       noticeApi,
@@ -1599,6 +1625,12 @@ if (!gotLock) {
     if (taskNotifyWatchTimer) {
       clearInterval(taskNotifyWatchTimer);
       taskNotifyWatchTimer = null;
+    }
+    // L2（代码审查 2026-09-07）：dshThemeWatchTimer 此前未清理 —— 一并统一清掉（避免退出后
+    // setInterval 引用主进程闭包泄漏）。三项定时器统一在 will-quit 清理。
+    if (dshThemeWatchTimer) {
+      clearInterval(dshThemeWatchTimer);
+      dshThemeWatchTimer = null;
     }
     // v1.2.1 T7：退出停止局域网反向代理（释放端口）
     try { lanApi.stopProxy(); } catch { /* ignore */ }

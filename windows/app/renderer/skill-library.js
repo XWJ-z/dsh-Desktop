@@ -81,7 +81,11 @@
         renderInstalled(installedCache.slice());
       });
       card.querySelector('.act-del').addEventListener('click', async () => {
-        if (!confirm('确定删除技能「' + s.name + '」？')) return;
+        // M12-r2（代码审查 2026-09-07）：sandbox 渲染进程 window.confirm 被禁用 → 主进程 dialog 确认
+        const ok = window.dshDesktop.confirmDialog
+          ? await window.dshDesktop.confirmDialog({ title: '删除技能', message: '确定删除技能「' + s.name + '」？', detail: '此操作会删除技能文件，不可恢复。', confirmLabel: '删除', cancelLabel: '取消' })
+          : confirm('确定删除技能「' + s.name + '」？');
+        if (!ok) return;
         const r = await window.dshDesktop.deleteSkill(s.name);
         if (r && r.ok) { showBanner('inst-banner', '技能已删除 ✓', true); loadInstalled(); }
         else showBanner('inst-banner', '删除失败：' + ((r && r.message) || '未知'), false);
@@ -121,7 +125,7 @@
     if (!marketCache.length) { box.innerHTML = '<div class="empty">技能市场为空（可能网络拉取失败，点「刷新」重试）</div>'; return; }
     const shown = marketCache.filter((s) =>
       (marketCat === 'all' || s.category === marketCat) &&
-      (!q || s.name.toLowerCase().includes(q) || s.description.toLowerCase().includes(q)));
+      (!q || (s.name || '').toLowerCase().includes(q) || (s.description || '').toLowerCase().includes(q)));
     if (!shown.length) { box.innerHTML = '<div class="empty">没有匹配的技能</div>'; return; }
     box.innerHTML = '';
     shown.forEach((s) => {
@@ -139,7 +143,17 @@
         '<button class="btn sm ghost act-copy-req">复制安装指令</button>' +
         '<button class="btn sm ghost act-src">查看来源</button></div>';
       card.querySelector('.act-install').addEventListener('click', async () => {
-        if (!confirm('确定安装技能「' + s.name + '」？\n\n技能内容会注入模型上下文，请确认来源可信。\n\n安装要求：' + (s.installReq || '自包含纯文本'))) return;
+        // M12-r2（代码审查 2026-09-07）：sandbox 渲染进程 window.confirm 被禁用 → 主进程 dialog 确认
+        const ok = window.dshDesktop.confirmDialog
+          ? await window.dshDesktop.confirmDialog({
+              title: '安装技能',
+              message: '确定安装技能「' + s.name + '」？',
+              detail: '技能内容会注入模型上下文，请确认来源可信。\n\n安装要求：' + (s.installReq || '自包含纯文本'),
+              confirmLabel: '安装',
+              cancelLabel: '取消',
+            })
+          : confirm('确定安装技能「' + s.name + '」？\n\n技能内容会注入模型上下文，请确认来源可信。\n\n安装要求：' + (s.installReq || '自包含纯文本'));
+        if (!ok) return;
         const r = await window.dshDesktop.installSkill({ name: s.name, repo: s.repo, file: s.file });
         if (r && r.ok) { showBanner('market-banner', '技能「' + s.name + '」安装成功 ✓（可在已装技能中查看）', true); }
         else showBanner('market-banner', '安装失败：' + ((r && r.message) || '未知'), false);

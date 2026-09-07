@@ -32,7 +32,7 @@ function createServerLifecycle(deps) {
     getServerChild, setServerChild,
     getServerStopRequested, setServerStopRequested,
     getMainWindow, getWebAuthUrl, getResolvedPort,
-    waitForAuthToken, captureWebAuthToken, resetWebAuth,
+    waitForAuthToken, captureWebAuthToken, resetWebAuth, markWebAuthUnavailable, // M9：失败时快速放行鉴权等待者
     os,
   } = deps;
 
@@ -102,7 +102,10 @@ function createServerLifecycle(deps) {
             for (const key of Object.keys(itf)) {
               for (const a of (itf[key] || [])) {
                 if (a.family === 'IPv4' && !a.internal) {
-                  trustedHosts.push(a.address, `${a.address}:${String(port)}`, `${a.address}:${String(port + 1)}`);
+                  trustedHosts.push(a.address, `${a.address}:${String(port)}`);
+                  // L6（代码审查 2026-09-07）：port+1 可能超过 65535 → 拼成非法 authority，
+                  // DSH 接 --trusted-host IP:65536 行为未定义；仅当有效时才追加
+                  if (port + 1 < 65535) trustedHosts.push(`${a.address}:${String(port + 1)}`);
                 }
               }
             }
@@ -136,6 +139,9 @@ function createServerLifecycle(deps) {
               'dsh-server',
             );
           } catch (err) {
+            // M9（代码审查 2026-09-07）：spawn 失败也要放行鉴权等待者（fail-fast），
+            // 避免主窗口 waitForAuthToken 挂到 AUTH_TOKEN_TIMEOUT_MS 才超时
+            try { markWebAuthUnavailable(); } catch { /* ignore */ }
             reject(err);
             return;
           }
@@ -190,7 +196,12 @@ function createServerLifecycle(deps) {
 
           resolve(child);
         })
-        .catch(reject);
+        .catch((err) => {
+          // M9（代码审查 2026-09-07）：ensureDshRuntime 失败/异常 → 置未可用并放行鉴权等待者，
+          // 让主窗口 waitForAuthToken 立刻 resolve（走 fail-fast），不等到 15s 超时
+          try { markWebAuthUnavailable(); } catch { /* ignore */ }
+          reject(err);
+        });
     });
   }
 

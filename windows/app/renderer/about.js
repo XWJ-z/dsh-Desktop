@@ -14,10 +14,10 @@ async function init() {
   const info = await dsh.getAboutInfo();
   if (!info) return;
 
-  if (info.iconPath) {
+  if (info.iconUrl) {
     const logo = el('logo');
     logo.onerror = () => { logo.style.display = 'none'; };
-    logo.src = 'file:///' + info.iconPath.replace(/\\/g, '/');
+    logo.src = info.iconUrl; // M14：主进程已用 pathToFileURL 生成 file: URL（防特殊字符路径失真）
   }
   el('app-version').textContent = `v${info.appVersion}`;
   el('dsh-ver').textContent = info.dsh;

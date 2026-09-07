@@ -73,6 +73,9 @@ contextBridge.exposeInMainWorld('dshDesktop', {
   openUpdateWindow: () => ipcRenderer.invoke('about:open-update'),
   /** 打开外部链接（仅 http/https；opts.user=true 表示显式用户操作，放行本地回环） */
   openExternal: (url, opts) => ipcRenderer.invoke('app:open-external', url, opts || {}),
+  /** M12-r2：主进程二次确认（sandbox 渲染进程禁用 window.confirm，返回 boolean）。
+   *  opts = { title?, message, detail?, confirmLabel?, cancelLabel? } */
+  confirmDialog: (opts) => ipcRenderer.invoke('app:dialog-confirm', opts || {}),
   /** 网页打开按钮拖拽位置上报（v0.7.5：会话内记忆） */
   saveWebOpenBtnPos: (pos) => ipcRenderer.invoke('web-open-btn:pos', pos),
   // ── v0.8.11（T0.6 / T5 / T5.3）：公告 + 桌面宠物 ──
@@ -96,8 +99,10 @@ contextBridge.exposeInMainWorld('dshDesktop', {
       return '';
     }
   },
-  /** 拖拽文件 → 主进程处理（复制进工作区 + 注入提示词） */
-  dropFiles: (paths) => ipcRenderer.invoke('drop:files', paths),
+  /** 拖拽文件 → 主进程处理（复制进工作区 + 注入提示词；M3：需携带短期 token） */
+  dropFiles: (paths, token) => ipcRenderer.invoke('drop:files', paths, token),
+  /** M3：取主进程签发的 drop:files 短期 token（同步，drop 事件内调用） */
+  getDropToken: () => ipcRenderer.sendSync('drop:token'),
   // ── v0.9.12：全局记忆（宠物菜单入口；~/.dsh/AGENTS.md，DSH 自动读取）──
   /** 打开全局记忆编辑窗口（基础设定图形化表单） */
   openGlobalMemory: () => ipcRenderer.invoke('memory:open-window'),

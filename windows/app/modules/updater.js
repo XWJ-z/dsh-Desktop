@@ -216,7 +216,11 @@ function createUpdater(deps) {
           if (file) { try { file.destroy(); } catch { /* ignore */ } }
           if (attempts < MAX_ATTEMPTS) {
             attempts++;
-            setTimeout(() => start(target), 500);
+            // M1（代码审查 2026-09-07）：固定 500ms 连续 3 次命中同一限流窗口 → 直接失败。
+            // 改成指数退避（500ms / 1s / 2s）+ 0~250ms jitter，错开限流窗口、避免同窗重试。
+            const backoff = 500 * Math.pow(2, attempts - 1); // 第 1/2/3 次重试 = 500/1000/2000ms
+            const delay = backoff + Math.floor(Math.random() * 250);
+            setTimeout(() => start(target), delay);
             return;
           }
           reject(err);

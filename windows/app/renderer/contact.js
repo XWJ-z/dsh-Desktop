@@ -14,11 +14,11 @@ async function init() {
     return;
   }
   const info = await dsh.getContactInfo();
-  // 品牌鲸鱼 logo（主进程 assets/icon.png）
-  if (info && info.iconPath) {
+  // 品牌鲸鱼 logo（主进程 assets/icon.png，M14 起经 pathToFileURL 生成 file: URL）
+  if (info && info.iconUrl) {
     const logo = el('logo');
     logo.onerror = () => { logo.style.display = 'none'; };
-    logo.src = 'file:///' + info.iconPath.replace(/\\/g, '/');
+    logo.src = info.iconUrl;
   }
   if (!info || !info.number) {
     el('group-num').textContent = '未配置 QQ 群';
@@ -27,11 +27,11 @@ async function init() {
   }
   el('group-num').textContent = info.number;
 
-  if (info.qrPath) {
+  if (info.qrUrl) {
     const img = el('qr');
     img.onload = () => { el('qr-placeholder').style.display = 'none'; img.style.display = ''; };
     img.onerror = () => { el('qr-placeholder').textContent = '二维码加载失败'; };
-    img.src = 'file:///' + info.qrPath.replace(/\\/g, '/');
+    img.src = info.qrUrl; // M14：file: URL（防特殊字符路径失真）
   } else {
     el('qr-placeholder').textContent = '未找到二维码图片';
   }

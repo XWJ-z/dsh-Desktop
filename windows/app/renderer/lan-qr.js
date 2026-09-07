@@ -81,7 +81,9 @@
   // v1.2.7：二维码 30s 自动刷新 + 手动刷新（局域网 IP/代理端口变化时自动更新）
   const refreshBtn = document.getElementById('lan-refresh');
   if (refreshBtn) refreshBtn.addEventListener('click', () => refresh());
-  setInterval(() => { if (sw.checked) refresh(); }, 30000);
+  // L3（代码审查 2026-09-07）：保存 interval 句柄，窗口卸载时清理（避免关闭后 30s 内幽灵 IPC 往返）
+  const qrTimer = setInterval(() => { if (sw.checked) refresh(); }, 30000);
+  window.addEventListener('beforeunload', () => { clearInterval(qrTimer); });
 
   await refresh();
 })();

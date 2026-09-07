@@ -27,6 +27,8 @@ function createDiagnostics(deps) {
     appendLog, localTimestamp,
     readShellConfig, installedDshVersion, resolveRunner,
     getResolvedPort, getCurrentStage, getLogPath, getLogLines, getOwnerWindow,
+    // S1（代码审查 2026-09-07）：未放行 allow-scripts 白名单的原生依赖包探测（dsh-runtime）
+    getSkippedNativePackages = () => [],
   } = deps;
 
   /**
@@ -47,6 +49,9 @@ function createDiagnostics(deps) {
       lines.push(`启动阶段：${getCurrentStage()}`);
       lines.push(`数据目录：${app.getPath('userData')}`);
       lines.push(`日志文件：${getLogPath()}`);
+      // S1：未放行白名单的原生依赖（npm 12 默认跳过其 install 脚本 → 潜在 `.node` 缺失）
+      const skipped = getSkippedNativePackages();
+      lines.push(`未放行的原生依赖：${skipped.length ? skipped.map((s) => `${s.name}@${s.version}`).join(', ') : '无'}`);
       lines.push(`系统：${os.platform()} ${os.release()} (${os.arch()})`);
       lines.push(`内存：${(os.totalmem() / 1024 / 1024 / 1024).toFixed(1)} GB 总量`);
       lines.push('');

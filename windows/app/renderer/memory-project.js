@@ -413,7 +413,11 @@
 
   $('pm-delete').addEventListener('click', async () => {
     if (!pm.current) return;
-    if (!confirm('确定删除该项目记忆（' + pm.current + '/AGENTS.md）？此操作不可恢复。')) return;
+    // M12-r2（代码审查 2026-09-07）：sandbox 渲染进程 window.confirm 被禁用 → 主进程 dialog 确认
+    const ok = window.dshDesktop.confirmDialog
+      ? await window.dshDesktop.confirmDialog({ title: '删除项目记忆', message: '确定删除该项目记忆（' + pm.current + '/AGENTS.md）？', detail: '此操作会删除文件，不可恢复。', confirmLabel: '删除', cancelLabel: '取消' })
+      : confirm('确定删除该项目记忆（' + pm.current + '/AGENTS.md）？此操作不可恢复。');
+    if (!ok) return;
     const r = await window.dshDesktop.deleteProjectMemory(pm.current);
     if (r && r.ok) {
       showBanner('项目记忆已删除 ✓', true);

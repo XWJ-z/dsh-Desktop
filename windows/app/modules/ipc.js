@@ -1,5 +1,9 @@
 'use strict';
 
+/** M14（代码审查 2026-09-07）：本地图片路径 → file: URL 用 pathToFileURL（正确处理
+ *  # ? % 空格 等特殊字符），渲染进程直接可用，避免手拼 'file:///' + path 在特殊字符路径下失真。 */
+const { pathToFileURL } = require('url');
+
 /**
  * DSH-Desktop — IPC 集中注册模块（优化方案 2026-08-16 阶段一：从 main.js 拆分）
  *
@@ -13,6 +17,7 @@ function registerIpc(deps) {
   const {
     ipcMain,
     app,
+    dialog, // M12-r2（代码审查 2026-09-07）：sandbox 渲染进程禁用 window.confirm → 主进程 dialog 二次确认
     clipboard,
     shell,
     path,
@@ -42,6 +47,8 @@ function registerIpc(deps) {
     // v0.9：提示词注入公共链路 + 拖文件处理（drop:files）
     promptInject,
     handleDropFiles,
+    // M3（代码审查 2026-09-07）：drop:files 短期 token 校验（主进程签发）
+    isValidDropToken,
     // v0.9.5（T2）：自定义提示词 + （T3）公告条
     customPrompts,
     noticeApi,
@@ -177,10 +184,22 @@ function registerIpc(deps) {
   });
   // v0.9.5（T2.2）：自定义提示词 —— 列表 / 保存（新增+更新）/ 删除
   ipcMain.handle('promptlib:custom-list', () => customPrompts.read());
-  ipcMain.handle('promptlib:custom-save', (_e, item) => customPrompts.save(item));
+  // L4（代码审查 2026-09-07）：IPC 层先做 payload 大小守卫，把"过大"的请求在
+  // 序列化/反序列化往返前提前拒绝（模块内部还有 100 字符名称 / 50KB 内容上限兜底）。
+  ipcMain.handle('promptlib:custom-save', (_e, item) => {
+    const size = Buffer.byteLength(JSON.stringify(item || {}), 'utf8');
+    if (size > 200 * 1024) return { ok: false, reason: 'payload-too-large', message: '保存内容过大' };
+    return customPrompts.save(item);
+  });
   ipcMain.handle('promptlib:custom-delete', (_e, id) => customPrompts.remove(String(id || '')));
   // v0.9（T4）：拖文件 → 复制进工作区 + 注入提示词（处理逻辑见 drop-files 模块）
-  ipcMain.handle('drop:files', (_e, paths) => handleDropFiles(paths));
+  // M3（代码审查 2026-09-07）：校验短期 token —— 防渲染页被注入后任意构造 drop:files 复制定点文件。
+  ipcMain.handle('drop:files', (_e, paths, token) => {
+    if (!isValidDropToken(token)) {
+      return { ok: false, reason: 'bad-token', message: '拖拽会话已失效，请重新拖放文件' };
+    }
+    return handleDropFiles(paths);
+  });
   ipcMain.handle('toolbox:open-promptlib', () => {
     openPromptLibWindow();
     return true;
@@ -261,9 +280,11 @@ function registerIpc(deps) {
     }
   });
   // v1.2.1 T1：保存项目记忆（workspacePath + content）→ 原子写 <ws>/AGENTS.md + 更新索引
+  // M2（代码审查 2026-09-07）：走守卫版 —— 限定仅保存已知工作区（索引/注册表/当前），
+  // 防渲染进程被 XSS 后把内容写到任意已存在目录。
   ipcMain.handle('project-memory:save', async (_e, workspacePath, content) => {
     try {
-      return projectMemory.saveProjectMemory(workspacePath, content || '');
+      return await projectMemory.saveProjectMemoryGuarded(workspacePath, content || '');
     } catch (err) {
       appendLog('error', `保存项目记忆异常：${err.message}`);
       return { ok: false, message: err.message };
@@ -405,19 +426,29 @@ function registerIpc(deps) {
   });
   // v0.9.13（用户反馈）：双击 DSH 输入框重选角色 —— 弹窗选角色并注入
   ipcMain.handle('role:choose', () => pickAndInjectRole());
-  // 联系我们窗口：向渲染进程提供二维码路径与群号（文件路径经 IPC 传递最稳）
+  // 联系我们窗口：向渲染进程提供二维码路径与群号（带 file: URL，M14 防特殊字符路径失真）
   ipcMain.handle('contact:info', () => {
     const group = readShellConfig().qqGroup;
     const iconPath = path.join(app.getAppPath(), 'assets', 'icon.png');
+    const iconExists = fs.existsSync(iconPath);
     if (!group || !group.number) {
-      return { number: '', qrPath: null, iconPath: fs.existsSync(iconPath) ? iconPath : null };
+      return {
+        number: '',
+        qrPath: null,
+        qrUrl: null,
+        iconPath: iconExists ? iconPath : null,
+        iconUrl: iconExists ? pathToFileURL(iconPath).href : null, // M14
+      };
     }
     let qrPath = group.qrImage;
     if (qrPath && !path.isAbsolute(qrPath)) qrPath = path.join(app.getAppPath(), qrPath);
+    const qrExists = !!(qrPath && fs.existsSync(qrPath));
     return {
       number: group.number,
-      qrPath: fs.existsSync(qrPath) ? qrPath : null,
-      iconPath: fs.existsSync(iconPath) ? iconPath : null,
+      qrPath: qrExists ? qrPath : null,
+      qrUrl: qrExists ? pathToFileURL(qrPath).href : null, // M14：file: URL（防特殊字符路径失真）
+      iconPath: iconExists ? iconPath : null,
+      iconUrl: iconExists ? pathToFileURL(iconPath).href : null, // M14
     };
   });
   // 关于窗口：版本信息 + 图标 + 动作
@@ -434,6 +465,7 @@ function registerIpc(deps) {
       shellNewer: !!(shellLatest && compareSemver(app.getVersion(), shellLatest.version) < 0),
       url: getWebUrl(),
       iconPath: fs.existsSync(iconPath) ? iconPath : null,
+      iconUrl: fs.existsSync(iconPath) ? pathToFileURL(iconPath).href : null, // M14：file: URL
     };
   });
   // 关于窗口动作：打开更新窗口（关闭关于）、打开外部链接
@@ -452,6 +484,30 @@ function registerIpc(deps) {
     const allowLoopback = opts && opts.user === true;
     if (isAllowedExternalUrl(url, allowLoopback)) shell.openExternal(url);
     return true;
+  });
+  // M12-r2（代码审查 2026-09-07）：sandbox 渲染进程 `window.confirm()` 被禁用（返回 undefined/false），
+  // 技能库删除/安装、项目记忆删除等二次确认在渲染层静默失效。统一改为主进程 dialog 确认，
+  // 返回 boolean（确定=true / 取消=false / 关闭窗口=false）。
+  ipcMain.handle('app:dialog-confirm', (_e, opts) => {
+    const o = opts || {};
+    const owner = getMainWindow && !getMainWindow().isDestroyed() ? getMainWindow() : undefined;
+    const message = String(o.message || '确认执行此操作？');
+    const detail = o.detail ? String(o.detail) : undefined;
+    const confirmLabel = String(o.confirmLabel || '确认');
+    const cancelLabel = String(o.cancelLabel || '取消');
+    return dialog
+      .showMessageBox(owner, {
+        type: 'question',
+        title: String(o.title || '确认'),
+        message,
+        detail,
+        buttons: [confirmLabel, cancelLabel],
+        defaultId: 0,
+        cancelId: 1,
+        noLink: true,
+      })
+      .then(({ response }) => response === 0)
+      .catch(() => false);
   });
 
   // v1.1.1：插件市场 IPC 处理器

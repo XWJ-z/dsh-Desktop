@@ -88,11 +88,14 @@ function createPluginMarket(deps) {
     return !!(r && r.ok);
   }
 
-  /** 复制安装命令到剪贴板 */
+  /** 复制安装命令到剪贴板。
+   *  M12-r1（代码审查 2026-09-07）：审计日志只记「复制了命令，长度=N」，不记录原文
+   *  （命令可能含 token/密钥类敏感内容），便于回溯又避免泄密。 */
   function copyInstallCommand(command) {
-    if (command) {
-      clipboard.writeText(command);
-      appendLog('info', `已复制安装命令：${command}`);
+    const text = String(command || '');
+    if (text) {
+      clipboard.writeText(text);
+      appendLog('info', `已复制安装命令到剪贴板（长度 ${text.length} 字符）`);
     }
   }
 

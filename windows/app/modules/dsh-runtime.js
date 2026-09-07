@@ -39,6 +39,16 @@ function createDshRuntime(deps) {
   // 失败后自动切 npmjs 官方源重试
   const REGISTRY_FALLBACKS = ['https://registry.npmjs.org'];
 
+  // 代码审查 2026-09-07 S1/S4：npm 12 默认阻止生命周期脚本，白名单里放行的原生依赖包。
+  // 与下方 .npmrc 的 allow-scripts 保持一致（单一定义，避免两处漂移）。
+  const ALLOW_SCRIPTS = [
+    '@deepseek-ai/dsh-subprocess-local',
+    'koffi',
+    'node-pty',
+    '@google/genai',
+    'protobufjs',
+  ];
+
   /** 读取壳配置（app/config.json）：DSH 包名 + 版本号，用户改版本号即升级 DSH。
    *  v1.0.3（用户反馈 6）：config.json 位于**安装目录**，升级壳覆盖安装会被重置为
    *  内置版本 → 重启后按旧版本重装，表现为「更新壳后 DSH 版本回退」。
@@ -177,13 +187,77 @@ function createDshRuntime(deps) {
     }
   }
 
-  /** P1-2：核对已装版本与安装记录一致（检测 dshenv 目录被替换/篡改） */
+  /** M7：读取 <dshenv>/node_modules/.package-lock.json 中 dsh 主包记录的 integrity（sha512）。
+   *  npm 7+ 安装后会在 node_modules 根写该文件，逐包记 resolved + integrity；
+   *  用它实际校验安装记录里落盘的 tar 包 integrity（避免仅比对版本号被目录替换绕过）。 */
+  function packageLockIntegrity() {
+    const cfg = readShellConfig();
+    const lock = path.join(dshRuntimeDir(), 'node_modules', '.package-lock.json');
+    try {
+      const lk = JSON.parse(fs.readFileSync(lock, 'utf8'));
+      const packages = (lk && lk.packages) || {};
+      const key = `node_modules/${cfg.dshPackage}`; // scoped 包键形如 node_modules/@deepseek-ai/dsh
+      const entry = packages[key];
+      return entry && entry.integrity ? String(entry.integrity) : '';
+    } catch {
+      return '';
+    }
+  }
+
+  /** S1/S4：探测 DSH 依赖树里带 install/preinstall/postinstall 脚本、但未放行到
+   *  allow-scripts 白名单的原生依赖包。npm 12 默认静默跳过这些包的 install 钩子，
+   *  若某个包对原生模块有运行时依赖，会出现「require 时找不到 .node」这类隐式错误。
+   *  返回 [{ name, version, scripts }]；无风险包返回空数组。仅扫顶层 node_modules
+   *  （npm 扁平化），兼顾准确与开销。 */
+  function probeSkippedNativePackages() {
+    const root = path.join(dshRuntimeDir(), 'node_modules');
+    const scriptKeys = ['preinstall', 'install', 'postinstall'];
+    const skipped = [];
+    const checkPkg = (pkgDir, name) => {
+      try {
+        const pkg = JSON.parse(fs.readFileSync(path.join(pkgDir, 'package.json'), 'utf8'));
+        const scripts = (pkg && pkg.scripts) || {};
+        const keys = scriptKeys.filter((k) => typeof scripts[k] === 'string' && scripts[k].trim().length > 0);
+        if (keys.length === 0) return;
+        if (!ALLOW_SCRIPTS.includes(name)) {
+          skipped.push({ name, version: String((pkg && pkg.version) || '?'), scripts: keys });
+        }
+      } catch { /* 不可读的包（损坏/无 package.json）跳过 */ }
+    };
+    let entries;
+    try { entries = fs.readdirSync(root, { withFileTypes: true }); } catch { return skipped; }
+    for (const e of entries) {
+      if (!e.isDirectory()) continue;
+      if (e.name.startsWith('@')) {
+        // scoped 包 @scope/name
+        let sub;
+        try { sub = fs.readdirSync(path.join(root, e.name), { withFileTypes: true }); } catch { continue; }
+        for (const s of sub) {
+          if (s.isDirectory()) checkPkg(path.join(root, e.name, s.name), `${e.name}/${s.name}`);
+        }
+      } else {
+        checkPkg(path.join(root, e.name), e.name);
+      }
+    }
+    return skipped;
+  }
+
+  /** P1-2：核对已装版本与安装记录一致（检测 dshenv 目录被替换/篡改）。
+   *  M7（代码审查 2026-09-07）：在版本号基础上**实际校验 integrity** —— 目录被整包替换时
+   *  package.json 可保留原版本号（version 仍匹配），需对比 .package-lock 记录与该包 integrity。 */
   function verifyInstallRecord() {
     const rec = readDshInstallRecord();
     const installed = installedDshVersion();
     if (!rec) return { ok: false, reason: 'no-record', installed };
     if (installed !== rec.version) {
       return { ok: false, reason: 'version-mismatch', installed, recorded: rec.version };
+    }
+    if (rec.integrity) {
+      const lockIntegrity = packageLockIntegrity();
+      // 仅当 .package-lock 能给出该包 integrity 时才对比（缺记录无法校验 → 跳过，不误伤）
+      if (lockIntegrity && lockIntegrity !== rec.integrity) {
+        return { ok: false, reason: 'integrity-mismatch', installed, recorded: rec.version, integrity: rec.integrity };
+      }
     }
     return { ok: true, installed, recorded: rec.version, integrity: rec.integrity || '' };
   }
@@ -215,8 +289,18 @@ function createDshRuntime(deps) {
       pushStage('start');
       // P1-2：启动核对安装记录（不一致记日志告警，不阻断启动）
       const v = verifyInstallRecord();
-      if (!v.ok && v.reason === 'version-mismatch') {
-        appendLog('warn', `安装记录异常：已装 v${v.installed} ≠ 记录 v${v.recorded}（目录可能被替换，建议重新安装）`);
+      if (!v.ok) {
+        if (v.reason === 'version-mismatch') {
+          appendLog('warn', `安装记录异常：已装 v${v.installed} ≠ 记录 v${v.recorded}（目录可能被替换，建议重新安装）`);
+        } else if (v.reason === 'integrity-mismatch') {
+          // M7：版本号匹配但 tar 包 integrity 与实际不符 → 目录可能被篡改
+          appendLog('warn', '安装记录异常：integrity 校验不通过（dsh 包内容与记录不符，可能被篡改，建议重新安装）');
+        }
+      }
+      // S1/S4：启动时探测未放行的原生依赖包（有风险则告警，提示维护者加白名单）
+      const skipped = probeSkippedNativePackages();
+      if (skipped.length > 0) {
+        appendLog('warn', `DSH 依赖中 ${skipped.length} 个带 install 脚本的原生包未在 allow-scripts 白名单内：${skipped.map((s) => `${s.name}@${s.version}`).join(', ')}（若运行时报 Cannot find module .node，请联系维护者加白名单）`);
       }
       return installedDshBin();
     }
@@ -258,7 +342,7 @@ function createDshRuntime(deps) {
       fs.mkdirSync(dshRuntimeDir(), { recursive: true });
       fs.writeFileSync(
         path.join(dshRuntimeDir(), '.npmrc'),
-        `allow-scripts=@deepseek-ai/dsh-subprocess-local,koffi,node-pty,@google/genai,protobufjs\nregistry=${primaryRegistry}\n`,
+        `allow-scripts=${ALLOW_SCRIPTS.join(',')}\nregistry=${primaryRegistry}\n`,
         'utf8',
       );
     } catch (err) {
@@ -399,6 +483,11 @@ function createDshRuntime(deps) {
             saveUserDshVersion(installedDshVersion(), targetIntegrity);
           }
           pushStage('start');
+          // S1/S4：安装完成后探测未放行的原生依赖包（本轮链路上游新增依赖即暴露）
+          const skipped = probeSkippedNativePackages();
+          if (skipped.length > 0) {
+            appendLog('warn', `DSH 依赖中 ${skipped.length} 个带 install 脚本的原生包未在 allow-scripts 白名单内：${skipped.map((s) => `${s.name}@${s.version}`).join(', ')}（若运行时报 Cannot find module .node，请联系维护者加白名单）`);
+          }
           resolve(bin);
         });
       });
@@ -473,6 +562,8 @@ function createDshRuntime(deps) {
     updateDshVersion,
     readDshInstallRecord,   // P1-2：安装记录读取/核对（诊断/启动告警用）
     verifyInstallRecord,
+    packageLockIntegrity,           // M7：dsh 主包 .package-lock integrity（供启动校验）
+    probeSkippedNativePackages,     // S1/S4：探测未放行白名单的原生依赖包（供诊断）
     userDshVersionFile, readUserDshVersion, saveUserDshVersion, // v1.0.3：用户 DSH 版本选择持久化
   };
 }
