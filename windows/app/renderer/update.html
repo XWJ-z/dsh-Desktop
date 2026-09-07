@@ -108,6 +108,36 @@
     <div class="status" id="prompts-status"></div>
   </div>
 
+  <!-- v2.0.5：插件库卡片（单独远程升级，走DSH服务器） -->
+  <div class="card">
+    <div class="card-title">插件库</div>
+    <div class="row"><span class="label">当前版本</span><span class="value" id="plugins-current">-</span></div>
+    <div class="row">
+      <span class="label">最新版本</span><span class="value" id="plugins-latest">-</span>
+      <span class="badge unknown" id="plugins-badge">未知</span>
+    </div>
+    <div class="row"><span class="label">更新日期</span><span class="value" id="plugins-updated">-</span></div>
+    <div class="btn-row">
+      <button class="btn" id="plugins-update" style="display:none">立即更新</button>
+    </div>
+    <div class="status" id="plugins-status"></div>
+  </div>
+
+  <!-- v2.0.5：技能库卡片（单独远程升级，走DSH服务器） -->
+  <div class="card">
+    <div class="card-title">技能库</div>
+    <div class="row"><span class="label">当前版本</span><span class="value" id="skills-current">-</span></div>
+    <div class="row">
+      <span class="label">最新版本</span><span class="value" id="skills-latest">-</span>
+      <span class="badge unknown" id="skills-badge">未知</span>
+    </div>
+    <div class="row"><span class="label">更新日期</span><span class="value" id="skills-updated">-</span></div>
+    <div class="btn-row">
+      <button class="btn" id="skills-update" style="display:none">立即更新</button>
+    </div>
+    <div class="status" id="skills-status"></div>
+  </div>
+
   <script src="update.js"></script>
 </body>
 </html>

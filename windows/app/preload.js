@@ -179,4 +179,13 @@ contextBridge.exposeInMainWorld('dshDesktop', {
   updatePrompts: () => ipcRenderer.invoke('prompts:update'),
   /** v2.0.4：首次打开时从服务器下载提示词库数据落缓存（返回 { ok, version }） */
   downloadPrompts: () => ipcRenderer.invoke('prompts:download'),
+  // ── v2.0.5：插件库 / 技能库版本检测与更新（更新窗口）──
+  /** 查询插件库更新信息（{ current, latest, hasUpdate, needsDownload }） */
+  queryPluginsUpdate: () => ipcRenderer.invoke('plugins:query'),
+  /** 立即更新插件库（拉服务器数据落缓存，返回 { ok, updated }） */
+  updatePlugins: () => ipcRenderer.invoke('plugins:update'),
+  /** 查询技能库更新信息（{ current, latest, hasUpdate, needsDownload }） */
+  querySkillsUpdate: () => ipcRenderer.invoke('skills:query'),
+  /** 立即更新技能库（拉服务器数据落缓存，返回 { ok, updated }） */
+  updateSkills: () => ipcRenderer.invoke('skills:update'),
 });

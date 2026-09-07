@@ -47,6 +47,9 @@ function registerIpc(deps) {
     noticeApi,
     // v1.1.1：提示词库远程更新
     promptsUpdater,
+    // v2.0.5：插件库/技能库市场远程更新
+    pluginsUpdater,
+    skillsUpdater,
     // v1.1.1：插件市场
     pluginMarket,
     // v0.9.12（用户指令）：全局记忆（读写 ~/.dsh/AGENTS.md + 打开编辑窗口）
@@ -486,6 +489,19 @@ function registerIpc(deps) {
   // v2.0.4：首次打开提示词库时，从服务器下载数据落缓存
   ipcMain.handle('prompts:download', async () => {
     return await promptsUpdater.downloadData();
+  });
+  // v2.0.5：插件库/技能库单独升级 —— 更新窗口查询 / 立即更新
+  ipcMain.handle('plugins:query', async () => {
+    return await pluginsUpdater.queryInfo();
+  });
+  ipcMain.handle('plugins:update', async () => {
+    return await pluginsUpdater.forceUpdate();
+  });
+  ipcMain.handle('skills:query', async () => {
+    return await skillsUpdater.queryInfo();
+  });
+  ipcMain.handle('skills:update', async () => {
+    return await skillsUpdater.forceUpdate();
   });
 }
 

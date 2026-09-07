@@ -1412,6 +1412,9 @@ if (!gotLock) {
       noticeApi,
       // v1.1.1：提示词库远程更新
       promptsUpdater: promptsUpdaterApi,
+      // v2.0.5：插件库/技能库市场远程更新（更新窗口查询/立即更新）
+      pluginsUpdater: pluginsUpdaterApi,
+      skillsUpdater: skillsUpdaterApi,
       // v1.1.1：插件市场
       pluginMarket: pluginMarketApi,
       // v0.9.12：全局记忆（读写 AGENTS.md + 打开编辑窗口 + 覆盖确认宿主窗口）

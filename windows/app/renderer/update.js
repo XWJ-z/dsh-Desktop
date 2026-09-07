@@ -77,6 +77,9 @@ async function load() {
 
   // ── v1.1.1：提示词库卡片 ──
   await loadPrompts();
+  // ── v2.0.5：插件库 + 技能库卡片 ──
+  await loadPlugins();
+  await loadSkills();
 }
 
 // ── 提示词库：查询 + 立即更新（v1.1.1 单独远程升级）──
@@ -121,6 +124,96 @@ el('prompts-update').addEventListener('click', async () => {
     el('prompts-update').disabled = false;
     el('prompts-status').textContent = (r && r.reason === 'data-fetch-failed')
       ? '拉取提示词库数据失败（请检查网络后重试）'
+      : '检查更新失败（请检查网络后重试）';
+  }
+});
+
+// ── 插件库：查询 + 立即更新（v2.0.5 单独远程升级）──
+let pluginsUpdating = false;
+
+async function loadPlugins() {
+  if (!dsh || !dsh.queryPluginsUpdate) return;
+  el('plugins-status').textContent = '查询中…';
+  const info = await dsh.queryPluginsUpdate();
+  if (!info || !info.ok) {
+    el('plugins-current').textContent = info && info.current != null ? `v${info.current}` : '-';
+    el('plugins-latest').textContent = '未知';
+    el('plugins-updated').textContent = '-';
+    setBadge('plugins-badge', 'unknown', '未知');
+    el('plugins-status').textContent = '查询失败（请检查网络）';
+    return;
+  }
+  el('plugins-current').textContent = info.current != null ? `v${info.current}` : '-';
+  el('plugins-latest').textContent = info.latest != null ? `v${info.latest}` : '未知';
+  el('plugins-updated').textContent = info.updated || '-';
+  setBadge('plugins-badge', info.hasUpdate ? 'update' : 'latest', info.hasUpdate ? '可更新' : '最新');
+  el('plugins-update').style.display = info.hasUpdate ? '' : 'none';
+  el('plugins-status').textContent = '';
+}
+
+el('plugins-update').addEventListener('click', async () => {
+  if (pluginsUpdating || !dsh || !dsh.updatePlugins) return;
+  pluginsUpdating = true;
+  el('plugins-update').disabled = true;
+  el('plugins-status').innerHTML = '<span class="spinner"></span> 正在更新…';
+  const r = await dsh.updatePlugins();
+  pluginsUpdating = false;
+  if (r && r.ok && r.updated) {
+    el('plugins-status').textContent = `已更新到 v${r.info.latest}，打开插件库即可看到新内容`;
+    el('plugins-update').style.display = 'none';
+    setBadge('plugins-badge', 'latest', '最新');
+    el('plugins-latest').textContent = `v${r.info.latest}`;
+  } else if (r && r.ok && !r.updated) {
+    el('plugins-status').textContent = '当前已是最新版本';
+  } else {
+    el('plugins-update').disabled = false;
+    el('plugins-status').textContent = (r && r.reason === 'data-fetch-failed')
+      ? '拉取插件库数据失败（请检查网络后重试）'
+      : '检查更新失败（请检查网络后重试）';
+  }
+});
+
+// ── 技能库：查询 + 立即更新（v2.0.5 单独远程升级）──
+let skillsUpdating = false;
+
+async function loadSkills() {
+  if (!dsh || !dsh.querySkillsUpdate) return;
+  el('skills-status').textContent = '查询中…';
+  const info = await dsh.querySkillsUpdate();
+  if (!info || !info.ok) {
+    el('skills-current').textContent = info && info.current != null ? `v${info.current}` : '-';
+    el('skills-latest').textContent = '未知';
+    el('skills-updated').textContent = '-';
+    setBadge('skills-badge', 'unknown', '未知');
+    el('skills-status').textContent = '查询失败（请检查网络）';
+    return;
+  }
+  el('skills-current').textContent = info.current != null ? `v${info.current}` : '-';
+  el('skills-latest').textContent = info.latest != null ? `v${info.latest}` : '未知';
+  el('skills-updated').textContent = info.updated || '-';
+  setBadge('skills-badge', info.hasUpdate ? 'update' : 'latest', info.hasUpdate ? '可更新' : '最新');
+  el('skills-update').style.display = info.hasUpdate ? '' : 'none';
+  el('skills-status').textContent = '';
+}
+
+el('skills-update').addEventListener('click', async () => {
+  if (skillsUpdating || !dsh || !dsh.updateSkills) return;
+  skillsUpdating = true;
+  el('skills-update').disabled = true;
+  el('skills-status').innerHTML = '<span class="spinner"></span> 正在更新…';
+  const r = await dsh.updateSkills();
+  skillsUpdating = false;
+  if (r && r.ok && r.updated) {
+    el('skills-status').textContent = `已更新到 v${r.info.latest}，打开技能库即可看到新内容`;
+    el('skills-update').style.display = 'none';
+    setBadge('skills-badge', 'latest', '最新');
+    el('skills-latest').textContent = `v${r.info.latest}`;
+  } else if (r && r.ok && !r.updated) {
+    el('skills-status').textContent = '当前已是最新版本';
+  } else {
+    el('skills-update').disabled = false;
+    el('skills-status').textContent = (r && r.reason === 'data-fetch-failed')
+      ? '拉取技能库数据失败（请检查网络后重试）'
       : '检查更新失败（请检查网络后重试）';
   }
 });
