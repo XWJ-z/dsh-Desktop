@@ -15,7 +15,7 @@ DSH 本身是运行在浏览器中的 Web 界面（`http://127.0.0.1:3080`）。
 - 🔌 **自动探测端口**：默认 `127.0.0.1:3080`，被占用时自动顺延
 - 📦 **纯套壳，DSH 不内置**：壳自带 Node+npm 环境，DSH 由 `npm install @deepseek-ai/dsh@<版本>` 安装到用户数据目录（与官方 `npx` 同机制）；目标电脑无需预装 Node/npm
 - 🔄 **更新 DSH 不重打包壳**：改 `windows/app/config.json` 里的 `dshVersion` 即可切换 DSH 版本，壳代码不受 DSH 版本影响（官方破坏性更新也能从容应对）
-- ⬆️ **检查更新（v0.5.3+）**：「帮助 → 检查更新」现代窗口同屏展示 **DSH**（npm 源最新版，一键升级改 config 重启安装）与 **DSH-Desktop 壳**（GitHub version.json 三源并发检查——jsDelivr/GitHub API/raw.githubusercontent 取最高版本，规避 CDN 缓存旧版漏报；多镜像下载 + SHA256 校验 + **断点续传（v0.7.2+，中断自动续传）**；v0.8.11 起下载互斥——多入口触发不冲突）两侧更新状态，带徽章/更新日志/下载进度条
+- ⬆️ **检查更新（v0.5.3+）**：「帮助 → 检查更新」现代窗口同屏展示 **DSH**（npm 源最新版，一键升级改 config 重启安装）与 **DSH-Desktop 壳**（v2.0.2 起版本校验走DSH服务器接口，多镜像下载 + SHA256 校验 + **断点续传（v0.7.2+，中断自动续传）**；v0.8.11 起下载互斥——多入口触发不冲突），另展示 **提示词库 / 插件库 / 技能库**（v2.0.6 起，从服务器检测版本 + 一键更新，无需更新壳）三侧更新状态，带徽章/更新日志/下载进度条
 - 📢 **公告（v0.8.11+）**：帮助菜单「公告」展示项目公告（远程拉取 + 本地已读，有新公告时菜单标「（新）」）
 - 💬 **帮助菜单（v0.5.3+，v0.6.4 起更名）**：检查更新、公告、更新日志、联系我们（QQ 群二维码大图 + 一键复制群号）、关于（现代窗口：版本/DSH/服务地址）、DeepSeek 官网、DSH 项目主页
 - 📋 **内置提示词库（v0.8.3+，v0.8.7 升级）**：61 条精选提示词（学习/写作/工作/生活/编程 + 🛠️ DSH 任务 15 条），分类浏览 + 搜索 + 复制 + **一键注入 DSH 输入框**（真实键盘输入，发送按钮可点；已有内容时弹覆盖/追加/取消询问，可记住选择）
@@ -122,12 +122,8 @@ npm run installer
 2. 上传安装包到 GitHub Releases（附件无大小限制）；
 3. **★ 验证资产存在**：`curl -sI <下载链接>` 返回 200/302（非 404）——0.8.9 教训：
    资产没上传 → 老用户下载 404 → 更新校验失败；
-4. 更新仓库根 `version.json`（可用 `windows/app/scripts/release.js` 一键更新：
-   `node scripts/release.js <版本> --hash <SHA256>`）：
-   - `version` = 新版本号；`release_notes` = 更新日志；
-   - `download_urls` = 镜像加速直链数组（`镜像前缀 + GitHub Releases 原链接`）；
-   - `hash` = 安装包 SHA256（`certutil -hashfile 安装包.exe SHA256`）；
-   - `force` = 是否强制更新（仅重大安全修复设 true，默认 false）；
+4. **更新服务器版本记录**（v2.0.6 起不再使用仓库根 `version.json`，发布归档/校验以服务器 MySQL `dsh.shell_version` 为准）：
+   在服务端 `dsh.shell_version` 写入新版本记录（version / hash / download_urls / release_notes / force_update / min_version）；
 5. push 到 GitHub，等 jsDelivr 缓存生效（几分钟）后老用户启动即收到更新提示。
 
 ## 📁 目录结构
