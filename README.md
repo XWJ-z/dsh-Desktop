@@ -1,12 +1,4 @@
-<!--
-- 快捷键：`Ctrl+Shift+V`（当前文件）或 `Ctrl+K V`（分屏侧边预览）
-- 右上角双页图标（预览按钮），或在命令面板 `Ctrl+Shift+P` 输入 `Markdown: Open Preview` / `Markdown Preview Enhanced: Open Preview`
 
-两个扩展的预览区别__：
-- `Ctrl+Shift+V` 打开的是 VS Code 内置预览 + 两个扩展的增强（Markdown All in One 提供同步滚动、目录跳转等）
-- Markdown Preview Enhanced 有自己独立的预览窗口（更强，支持公式/图表/导出），用命令面板里搜 `Markdown Preview Enhanced` 相关命令打开
-
--->
 
 <div align="center">
 
@@ -82,12 +74,7 @@
 | v1.2.7 | 全局记忆编辑体验升级（模板/三级子区块/自动编号）+ 项目记忆三栏重构 + 提示词库检查更新「权威源优先」修复 + 手机访问（trusted-host 信任局域网、crypto.randomUUID 补丁、二维码30s/手动刷新）—— 手机可连电脑同一 DSH |
 | v1.2.2 | 记忆管理（全局记忆 + 项目记忆）/ 技能库（扫描/自建/市场）/ 局域网扫码访问 / 任务完成通知 / 备份纳入项目记忆 / 技能目录扫描顺序对齐官方 / 记忆与技能安全加固 |
 | v1.2.14 | 适配 DSH 0.1.2-rc.1 浏览器鉴权（DSH 更新后打不开界面、一直停在 authentication required）+ 手机扫码访问同步鉴权 + 鉴权失败自动回退（自动带 token 重载 / 失败弹窗给授权地址） |
-| v1.2.8 | 角色选择优化（多次双击不再连开窗口、角色名超长截断）+ 帮助文档改官网直达（http://dsh.xwjznh.cn）+ 启动拦截（系统浏览器不再自动弹本机 DSH 页） |
-| v2.0.6 | 公告改为官网提醒（旧版用户前往官网手动下载新版）+ 检查更新窗口新增插件库/技能库版本检测与更新 + 清理并入服务器的远程下发文件（prompts/plugins/skills/version.json）与配套生成/发布脚本，安装包更精简 |
-| v2.0.5 | 插件库/技能库改走DSH服务器（版本检测+数据下载），安装包不再内置插件中文描述与技能市场列表；首次打开自动从服务器下载，安装包更精简 |
-| v2.0.4 | 提示词库改走DSH服务器（版本检测+数据下载），安装包不再内置提示词；首次打开提示词库提示从服务器下载，安装包更精简 |
-| v2.0.3 | 更新下载失败时新增百度网盘备用下载渠道（弹窗「百度网盘下载」+ 覆盖安装提示，提取码 8yh8）|
-| v2.0.2 | 壳更新校验改走DSH服务器（MySQL 存储版本信息），解耦 GitHub 网络问题；仅安装包下载仍走 GitHub Releases |
+| v2.1.1 | 更新架构进行了重构，体验优化 |
 
 > 本项目（Windows 版 & 飞牛版）版本号统一遵循 `vX.Y.Z` 三段式规则（Z 从 1 开始，无 0）：
 
@@ -119,15 +106,17 @@
 ```
 dsh-Desktop/
 ├── windows/                    # Windows 桌面版（仅开发文件：app 源码 + tests 测试 + README）
-│   ├── app/                    # Electron 应用工程（main.js + modules/ + renderer/ + scripts/ + assets/…）
+│   ├── app/                    # Electron 应用工程（main.js + modules/ + renderer/ + scripts/ + assets/…；提示词/插件/技能库数据走 DSH 服务器，安装包零内置）
 │   ├── tests/                  # 冒烟测试（smoke.js）
 │   └── README.md               # Windows 版详细说明（特性/打包/安装/升级/运行原理）
 ├── fnos/                       # 飞牛 OS 应用（仅开发文件：dsh-fnos 源码 + README）
 │   ├── dsh-fnos/               # 飞牛应用开发包（dsh 源码 / tools 工具 / release 产物）
 │   └── README.md               # 飞牛版详细说明（特性/安装/目录结构/开发打包）
+├── server/                     # 服务器端部署与工具（壳更新/提示词/插件/技能库接口 + 数据 SQL）
+├── skills/                     # 技能市场占位技能（pack 排除不随壳分发）
 ├── Dev-log/                    # ⚠️ 开发文档库（内部，不发布到 GitHub，详见下方）
 ├── notice.json                 # 远程公告源（唯一远程下发源，GitHub 三源；v2.0.6 起内容为旧版用户官网手动下载提醒）
-├── README.md                   # 本文件（两个应用简介 + 版本命名规则 + 署名规范）
+├── README.md                   # 本文件（两个应用简介 + 版本命名规则 + 开发者署名）
 ├── LICENSE                     # MIT License
 ├── .editorconfig               # 统一编辑器行为
 └── .gitignore                  # 忽略规则（含 /Dev-log/ 不发布）
@@ -153,20 +142,7 @@ Dev-log/
 
 ---
 
-## ✍️ 项目署名规范（zx 统一格式）
-
-> 团队统一署名格式：**`zx(身份标识)`**（2026-08-16 起执行）。凡需要署名的地方——代码注释、文档、release_notes、开发日志、版本信息等——一律使用该格式，**不单独写** `zx`  / `6` 等。
-
-| 成员 | 身份 | 署名 |
-|------|---------|------|
-| xwj | 项目所有 | `zx(xwj)` |
-| znh | 项目测试 | `zx(znh)` |
-| tsy | 项目开发 | `zx(tsy)` |
-| tyx | 项目开发 | `zx(tyx)` |
-| 6 | 开发者 | `zx(6)` |
-| 26| 技术总监 | `zx(26)` |
-| 29| 外审 | `zx(29)` |
-| 9 | 外审 | `zx(9)` |
+## 开发者：zx
 
 ---
 
