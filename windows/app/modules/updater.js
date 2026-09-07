@@ -4,7 +4,7 @@
  * DSH-Desktop — 更新检查 / 下载模块（优化方案 2026-08-16 阶段一：从 main.js 拆分）
  *
  * 职责：
- *  - 壳（DSH-Desktop）版本检查：GitHub version.json 三源并发（jsDelivr/API/raw）
+ *  - 壳（DSH-Desktop）版本检查：自家服务器接口（config.json shellUpdate.apiUrl，MySQL dsh.shell_version）
  *  - DSH 版本检查：npm registry dist-tags.latest
  *  - 语义化比较 / 展示值修正（T-028：latest ≤ current 显示 current）
  *  - 壳安装包下载：多镜像 fallback + SHA256 校验 + 断点续传 + 互斥锁（T0.5）
@@ -14,21 +14,21 @@
  *  - appendLog                      日志模块
  *  - readShellConfig / installedDshVersion / updateDshVersion   运行时模块
  *  - getMainWindow                  主窗口 getter（下载完打开安装包/弹窗归属）
- *  - shellUpdateUrls                三源 URL 表（main.js 常量注入）
  *  （v0.9.5 T3：公告已独立到 modules/notice.js（notice.json 唯一源），
  *   本模块不再承载公告解析/缓存）
  *
- * 外审 zx(9) 2026-08-17 整改：
- *  - P1-1：版本比较收敛到 modules/semver.js（P3-3）；壳更新三源多数一致 +
- *    壳内置期望 hash 台账（modules/shell-hashes.js）双保险 —— 防「同一信任域
- *    投毒」（hash 与 URL 同源，单靠 SHA256 无法防）；版本比较不再内部实现。
+ * v2.0.2（需求1）：壳版本检测/校验改走自家服务器接口（唯一权威源，MySQL 存储），
+ * 去掉原「GitHub 三源多数一致（sourcesAgree）+ 壳内置期望 hash 台账（shell-hashes.js）」，
+ * 解耦 GitHub 网络问题；hash 校验以服务器下发为准，下载安装包仍走 GitHub Releases。
+ *
+ * 外审 zx(9) 2026-08-17 整改（历史保留）：
+ *  - P1-1：版本比较收敛到 modules/semver.js（P3-3）。
  *  - P1-2：DSH 升级链路附带 registry 返回的 dist.integrity（sha512），由
  *    dsh-runtime 落盘核对（固定版本安装，不再无锁定 @latest）。
  *  - P3-5：下载首 URL 与重定向目标强制 https。
  */
 
 const { compareSemver } = require('./semver');
-const { verifyKnownHash } = require('./shell-hashes');
 const { createNetCommon } = require('./net-common'); // 2.0.1 去重：统一 Electron net 拉取
 
 function createUpdater(deps) {
@@ -39,7 +39,6 @@ function createUpdater(deps) {
     net, // v1.1.3（用户反馈：下载更新失败）：版本检查改用 Electron net
     appendLog,
     readShellConfig, installedDshVersion, updateDshVersion,
-    shellUpdateUrls,
   } = deps;
 
   /**
@@ -134,18 +133,22 @@ function createUpdater(deps) {
   }
 
   /**
-   * 查询壳最新版本（三源并发：并发请求全部更新源）。
-   * 返回 { version, download_urls, release_notes, force, hash, minVersion, sourcesAgree }
-   * 或 null（全部失败/超时静默）。
-   *  - sourcesAgree：是否存在「≥2 个源返回相同版本且 hash 一致」的多数一致组
-   *    （P1-1：三源同属一个 GitHub repo 的三个镜像，不是独立信任域；多数一致
-   *    才能防「单源投毒」。自动下载仅在 sourcesAgree=true 时允许，见 doShellDownload）。
-   *  - 取版本号最高的**多数一致组**；若无任何多数一致组，退回版本号最高者
-   *    但标记 sourcesAgree=false（可提示更新，但拒绝自动下载）。
-   * v0.7.10（29 建议 A）：新增 minVersion 字段 —— 低于该版本的旧客户端启动时强制提示升级
-   * v0.9.5（T3）：公告已独立到 notice.json（modules/notice.js），version.json 不再承载 notices
+   * 查询壳最新版本（v2.0.2：单一权威源 = 自家服务器接口）。
+   * 返回 { version, downloadUrls, releaseNotes, force, hash, minVersion } 或 null（失败/超时/无源）。
+   *  - 源地址读取 config.json 的 shellUpdate.apiUrl（数据存服务器 MySQL dsh.shell_version）——
+   *    改服务器地址只需改 config.json，壳无需重打包。
+   *  - 失败/超时/非 2xx/无效返回 → null，调用处提示「网络错误，请稍后重试」
+   *    （不再回退 GitHub 三源；服务器为唯一权威源）。
+   *  - 下载安装包仍在 doShellDownload 走 GitHub Releases（download_urls），v2.0.2 起
+   *    hash 校验以服务器下发为准（去掉壳内置台账 verifyKnownHash）。
    */
   function fetchLatestShellVersion() {
+    const cfg = readShellConfig();
+    const url = cfg.shellUpdate && cfg.shellUpdate.apiUrl;
+    if (!url) {
+      appendLog('warn', '缺少 shellUpdate.apiUrl 配置，跳过壳更新检查');
+      return Promise.resolve(null);
+    }
     const parse = (info) => {
       if (!info || typeof info.version !== 'string') return null;
       return {
@@ -157,30 +160,19 @@ function createUpdater(deps) {
         minVersion: String(info.minVersion || ''), // v0.7.10：最低支持版本（空 = 不限制）
       };
     };
-    return Promise.all(shellUpdateUrls.map((s) => fetchJson(s.url, 8000, s.headers || {}).then(parse)))
-      .then((results) => {
-        const valid = results.filter(Boolean);
-        if (valid.length === 0) return null;
-        // P1-1：按版本分组，组内 hash 去重后唯一数 ≤1 且源数 ≥2 → 多数一致组
-        const byVersion = new Map();
-        for (const r of valid) {
-          if (!byVersion.has(r.version)) byVersion.set(r.version, []);
-          byVersion.get(r.version).push(r);
-        }
-        const pick = (group) => ({
-          version: group[0].version,
-          agree: group.length >= 2 && new Set(group.map((r) => r.hash).filter(Boolean)).size <= 1,
-        });
-        const groups = [...byVersion.entries()].map(([, list]) => pick(list));
-        // 多数一致组中取版本最高者；无一致组 → 退回最高版本但 sourcesAgree=false
-        const agreed = groups.filter((g) => g.agree).sort((a, b) => (compareSemver(a.version, b.version) < 0 ? 1 : -1));
-        const chosen = agreed[0] || groups.sort((a, b) => (compareSemver(a.version, b.version) < 0 ? 1 : -1))[0];
-        const best = byVersion.get(chosen.version)[0];
-        best.sourcesAgree = !!chosen.agree;
-        const detail = shellUpdateUrls.map((s, i) => `${s.name}=${results[i] ? results[i].version : '×'}`).join(', ');
-        appendLog('info', `版本检查：${valid.length}/${shellUpdateUrls.length} 源可达（${detail}），取 v${best.version}${best.sourcesAgree ? '' : '（源不一致，仅提示不自动下载）'}`);
-        return best;
-      });
+    return fetchJson(url, 8000).then((raw) => {
+      if (!raw) {
+        appendLog('warn', `壳版本检查失败（服务器不可达或返回异常）：${url}`);
+        return null;
+      }
+      const r = parse(raw);
+      if (!r) {
+        appendLog('warn', `壳版本检查：服务器返回数据无效（${url}）`);
+        return null;
+      }
+      appendLog('info', `壳版本检查：服务器返回 v${r.version}`);
+      return r;
+    });
   }
 
   /** 下载文件到 dest，带进度回调（0~1）；自动跟随重定向（≤5 次）。 */
@@ -369,23 +361,8 @@ function createUpdater(deps) {
     if (!info) return { ok: false, reason: 'fetch-failed' };
     const current = app.getVersion();
     if (compareSemver(current, info.version) >= 0) return { ok: false, reason: 'no-update' };
-    // P1-1：多数一致信任门 —— 三源（jsDelivr/API/raw）同属一个 GitHub repo 镜像，
-    // 无 ≥2 源一致时拒绝自动下载（可提示有新版，但不自动拉包），防单源/CDN 投毒
-    if (!info.sourcesAgree) {
-      appendLog('warn', `版本源不一致，拒绝自动下载 v${info.version}（防投毒：仅提示不下载）`);
-      return {
-        ok: false,
-        reason: 'sources-disagree',
-        message: '更新源返回的版本/hash 不一致，已阻止自动下载（可能为镜像缓存差异或被劫持）。请稍后重试或到 GitHub Releases 手动下载。',
-      };
-    }
-    // P1-1：壳内置期望 hash 台账核对 —— 已发布版本 hash 必须与壳内置一致
-    const hashCheck = verifyKnownHash(info.version, info.hash);
-    if (!hashCheck.ok) {
-      appendLog('warn', hashCheck.message);
-      return { ok: false, reason: 'hash-mismatch', message: hashCheck.message };
-    }
-
+    // v2.0.2：版本信息由自家服务器接口提供（唯一权威源），不再做「三源多数一致」信任门与
+    // 壳内置 hash 台账核对；下载仍走 GitHub（download_urls），下载后按服务器下发 hash 做 SHA256 校验。
     const dest = shellDownloadDest(info);
     // P3-5：下载 URL 强制 https（防 version.json 被投毒塞 http:// 明文下载）
     let urls = (info.downloadUrls.length > 0 ? info.downloadUrls : [])

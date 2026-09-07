@@ -1,6 +1,19 @@
 {
   "versions": [
     {
+      "version": "2.0.2",
+      "date": "2026-09-11",
+      "notes": [
+        "本周更新：2.0.2 —— 壳更新校验改走自家服务器，解耦 GitHub 网络问题",
+        "🔹 新增：",
+        "· 壳更新检测与校验改走自家服务器接口（MySQL 存储版本信息）—— 不再依赖 GitHub 三源（jsDelivr/API/raw），显著降低 GitHub 网络问题导致的更新失败/卡顿，升级体验更稳定",
+        "· 版本信息单一权威源 —— 版本号 + 安装包 SHA256 + 下载地址均由自家服务器下发，校验一致才自动更新",
+        "🔹 优化：",
+        "· 去 GitHub 网络依赖 —— 仅安装包下载仍走 GitHub Releases（download_urls），检测/校验已完全解耦 GitHub"
+      ],
+      "released": false
+    },
+    {
       "version": "2.0.1",
       "date": "2026-09",
       "notes": [

@@ -5,5 +5,8 @@
   "qqGroup": {
     "number": "916607090",
     "qrImage": "assets/qq-group.png"
+  },
+  "shellUpdate": {
+    "apiUrl": "https://api.dsh.xwjznh.cn/api/shell/version"
   }
 }

@@ -37,8 +37,9 @@ function buildSources(file, ref = 'main') {
 module.exports = {
   REPO,
   buildSources,
-  /** 壳自动更新版本清单 */
-  VERSION_JSON_URLS: buildSources('version.json'),
+  // v2.0.2：壳版本检测/校验已改走自家服务器接口（config.json 的 shellUpdate.apiUrl，
+  // 数据存 MySQL dsh.shell_version），不再从 GitHub 三源拉 version.json。
+  // 公告/提示词库/插件描述/技能列表仍走 GitHub 三源（不属本需求范围，保持不动）。
   /** 远程公告源（公告条 marquee + 公告窗口 items） */
   NOTICE_URLS: buildSources('notice.json'),
   /** 提示词库版本标记（先拉它比对，版本大于缓存才拉 prompts.json） */

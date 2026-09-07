@@ -627,8 +627,8 @@ const roleSelectorApi = createRoleSelector({
 // v0.5.9：三源并发（jsDelivr @main 快但会卡缓存 / api.github.com 国内最稳、
 // 永远最新 / raw.githubusercontent 兜底），取可达源中版本号最高者，
 // 规避 jsDelivr @main 解析缓存卡死导致漏报更新。
-// v1.1.3 重构：三源 URL 集中到 modules/remote-sources.js（见下方 require 区）
-const { VERSION_JSON_URLS } = require('./modules/remote-sources');
+// v2.0.2：壳版本检测/校验改走自家服务器接口（config.json shellUpdate.apiUrl，
+// 数据存 MySQL dsh.shell_version），不再从 GitHub 三源拉 version.json，解耦 GitHub 网络问题。
 
 // v0.8.11（T0.6）：远程公告 —— v0.9.5（T3）起公告唯一源 = notice.json，
 // 独立公告模块（三源并发 + 本地缓存），不再依赖 version.json notices。
@@ -646,7 +646,6 @@ const updaterApi = createUpdater({
   installedDshVersion,
   updateDshVersion,
   getMainWindow: () => mainWindow,
-  shellUpdateUrls: VERSION_JSON_URLS,
 });
 const {
   fetchLatestDshVersion,
@@ -1212,7 +1211,7 @@ function promptShellUpdate(info) {
           appendLog('error', `自动更新失败：${r.reason}${r.message ? ' ' + r.message : ''}`);
           let reasonText =
             {
-              'fetch-failed': '无法连接更新源，请检查网络',
+              'fetch-failed': '无法连接更新服务器，请检查网络后重试',
               'no-update': '当前已是最新版本',
               'download-failed': '所有下载源均失败，请稍后重试',
               'hash-mismatch': '下载的安装包校验不通过（已删除），请重新下载',

@@ -1,7 +1,10 @@
 'use strict';
 
 /**
- * DSH-Desktop — 壳（DSH-Desktop）已发布版本 SHA256 内置台账（外审 zx(9) 2026-08-17 P1-1）
+ * ⚠️ 已废弃（v2.0.2 起）：壳版本 hash 校验改走自家服务器接口（唯一权威源，MySQL dsh.shell_version），
+ * 不再使用本文件的壳内置台账。文件保留仅供历史参考，updater.js 已不再引用。
+ *
+ * 历史用途：DSH-Desktop — 壳（DSH-Desktop）已发布版本 SHA256 内置台账（外审 zx(9) 2026-08-17 P1-1）
  *
  * 信任模型加固：version.json 的 hash 与下载 URL 同源（同一 GitHub repo 三镜像），
  * 单靠 SHA256 校验无法防「作者账号被盗 / repo 被攻破 / CDN 投毒」场景。本台账把

@@ -1,13 +1,12 @@
 {
-  "_comment": "自动更新版本清单（updater.js 三源拉取）：version / hash / download_urls 必须一致（hash=安装包实测 SHA256，NSIS 非确定性，重打包须重取）；release_notes 展示给用户，force=true 强制更新，minVersion 为最低支持版本",
-  "version": "1.2.14",
+  "_comment": "自动更新版本清单：v2.0.2 起壳版本检测/校验改走自家服务器接口（config.json 的 shellUpdate.apiUrl，数据存 MySQL dsh.shell_version），本清单仅作发布归档/镜像校验；hash 为安装包实测 SHA256，发布时回填真实值（未发布阶段为占位）",
+  "version": "2.0.2",
   "minVersion": "0.7.4",
   "author": "zx(xwj)",
-  "release_notes": "本周更新：1.2.14 —— 适配 DSH 0.1.2-rc.1 浏览器鉴权（修复打不开界面）+ 手机扫码同步鉴权 + 鉴权失败自动兜底\n🔹 新增：\n· 适配新版 DSH 浏览器鉴权 —— DSH 0.1.2-rc.1 起 `dsh web` 需携带启动时生成的安全 token 才能打开界面；壳自动捕获 DSH 打印的鉴权地址并携带 token 打开主窗口，彻底解决「DSH 更新后界面打不开、一直停在 authentication required」\n· 手机扫码访问同步鉴权 —— 局域网扫码地址自动带上鉴权 token（手机直接输局域网裸地址也会自动引导到带授权地址），手机也能正常打开电脑 DSH 界面、选工作区/看会话/建会话\n🔹 优化：\n· 鉴权失败自动回退 —— 主窗口若因竞态/网络延迟首次仍撞上鉴权页，自动用带 token 的地址重载（最多 5 次）；仍失败会弹窗给出已带授权参数的地址，可一键在浏览器打开或复制，不再彻底卡死无提示",
+  "release_notes": "本周更新：2.0.2 —— 壳更新校验改走自家服务器，解耦 GitHub 网络问题\n🔹 新增：\n· 壳更新检测与校验改走自家服务器接口（MySQL 存储版本信息）—— 不再依赖 GitHub 三源（jsDelivr/API/raw），显著降低 GitHub 网络问题导致的更新失败/卡顿，升级体验更稳定\n· 版本信息单一权威源 —— 版本号 + 安装包 SHA256 + 下载地址均由自家服务器下发，校验一致才自动更新\n🔹 优化：\n· 去 GitHub 网络依赖 —— 仅安装包下载仍走 GitHub Releases（download_urls），检测/校验已完全解耦 GitHub",
   "force": false,
-  "hash": "80ec05ccdda5fa1d4e7e86a7134815636cb33097c5c89fe18250aa7993771543",
+  "hash": "REPLACE_WITH_REAL_HASH_AT_RELEASE",
   "download_urls": [
-    "https://ghfast.top/https://github.com/XWJ-z/dsh-Desktop/releases/download/v1.2.14/DSH-Desktop-Setup-1.2.14.exe",
-    "https://gh-proxy.com/https://github.com/XWJ-z/dsh-Desktop/releases/download/v1.2.14/DSH-Desktop-Setup-1.2.14.exe"
+    "https://ghfast.top/https://github.com/XWJ-z/dsh-Desktop/releases/download/v2.0.2/DSH-Desktop-Setup-2.0.2.exe"
   ]
 }
