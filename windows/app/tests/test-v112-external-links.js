@@ -8,7 +8,7 @@
  *    指向 127.0.0.1/localhost 的链接一律拒绝（不再自动弹系统浏览器）
  *  - app:open-external（宠物「网页打开」显式用户操作）默认 allowLoopback=true →
  *    本地回环仍放行（功能不受影响）
- *  - 外部白名单（github/deepseek/qq/raw/cdn）行为不变
+ *  - 外部白名单（github/deepseek/qq/xwjznh）行为不变
  */
 
 const { isAllowedExternalUrl } = require('../modules/external-links');
@@ -35,9 +35,8 @@ ok(isAllowedExternalUrl('http://127.0.0.1:3080/'), '显式操作 127.0.0.1 带�
 ok(isAllowedExternalUrl('https://github.com/XWJ-z/dsh-Desktop', false), 'github.com 放行（页面触发）');
 ok(isAllowedExternalUrl('https://www.deepseek.com/', false), 'www.deepseek.com 放行');
 ok(isAllowedExternalUrl('https://qm.qq.com/q/916607090', false), 'qq.com 放行');
-ok(isAllowedExternalUrl('https://cdn.jsdelivr.net/gh/XWJ-z/dsh-Desktop@main/help.html', false), 'jsDelivr help.html 放行');
-ok(!isAllowedExternalUrl('https://cdn.jsdelivr.net/gh/XWJ-z/dsh-Desktop@main/other.json', false), 'jsDelivr 非 help.html 拒绝');
-ok(isAllowedExternalUrl('https://raw.githubusercontent.com/XWJ-z/dsh-Desktop/main/help.html', false), 'raw help.html 放行');
+ok(isAllowedExternalUrl('http://dsh.xwjznh.cn', false), 'xwjznh.cn 帮助官网放行');
+ok(!isAllowedExternalUrl('https://cdn.jsdelivr.net/gh/XWJ-z/dsh-Desktop@main/other.json', false), 'jsDelivr 白名单外拒绝');
 ok(!isAllowedExternalUrl('https://evil.example.com/', false), '陌生域名拒绝');
 ok(!isAllowedExternalUrl('javascript:alert(1)', false), 'javascript: 协议拒绝');
 ok(!isAllowedExternalUrl('', false), '空串拒绝');

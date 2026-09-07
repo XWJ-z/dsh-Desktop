@@ -5,8 +5,11 @@
  *
  * app:open-external / setWindowOpenHandler 等「打开外部浏览器」入口统一经
  * isAllowedExternalUrl 校验：仅放行白名单域名（精确匹配或子域），其余一律拒绝。
- * 当前全部调用点均为硬编码可信链接（GitHub 仓库 / DeepSeek 官网 / QQ 群），
- * 白名单与之一一对应；渲染进程（DSH 页面注入）即使被塞入恶意链接也打不开钓鱼站。
+ * 当前全部调用点均为硬编码可信链接（GitHub 仓库 / DeepSeek 官网 / QQ 群 /
+ * 帮助文档官网 dsh.xwjznh.cn），白名单与之一一对应；渲染进程（DSH 页面注入）
+ * 即使被塞入恶意链接也打不开钓鱼站。
+ * v2.0.2：已移除帮助文档「远程下发」时代的 raw.githubusercontent / jsDelivr
+ * 白名单（help.html 路径专判）—— 帮档改官网直达后成死代码，一并清理。
  */
 
 /** 允许打开外部浏览器的域名（主机名精确匹配或其后缀 `.域名` 匹配） */
@@ -15,8 +18,6 @@ const ALLOWED_EXTERNAL_HOSTS = Object.freeze([
   'deepseek.com', // DeepSeek 官网
   'qq.com', // QQ 群链接（群号 916607090）
   'xwjznh.cn', // v1.2.8：帮助文档官网（帮助菜单直开 http://dsh.xwjznh.cn）
-  'raw.githubusercontent.com', // v1.1.1：帮助文档远程下发（仅限 help.html 路径）
-  'cdn.jsdelivr.net', // v1.1.1：帮助文档远程下发（仅限 help.html 路径）
   // 本地回环：宠物菜单「网页打开」打开壳自身承载的 DSH GUI（getWebUrl，
   // http://127.0.0.1:<port>）—— 非外部站点，属产品功能，必须放行
   '127.0.0.1',
@@ -26,7 +27,6 @@ const ALLOWED_EXTERNAL_HOSTS = Object.freeze([
 /**
  * 判断 URL 是否可安全打开（https/http + 域名在白名单内）。
  * 非字符串 / 非 http(s) / 域名不在白名单 → false。
- * v1.1.1：raw.githubusercontent.com 和 cdn.jsdelivr.net 仅允许 help.html 路径。
  * v1.1.2（用户反馈：启动后自动打开系统浏览器）：新增 allowLoopback 参数 ——
  * 本地回环（127.0.0.1/localhost，宠物「网页打开」用）只在**显式用户操作**
  * （app:open-external IPC）时放行；setWindowOpenHandler（页面 window.open /
@@ -60,13 +60,6 @@ function isAllowedExternalUrl(url, allowLoopback = true) {
   });
 
   if (!hostAllowed) return false;
-
-  // v1.1.1：raw.githubusercontent.com 和 cdn.jsdelivr.net 仅允许 help.html 路径
-  if (host === 'raw.githubusercontent.com' || host === 'cdn.jsdelivr.net') {
-    const pathname = parsed.pathname.toLowerCase();
-    // 只允许 help.html 路径（精确匹配或以 /help.html 结尾）
-    return pathname === '/xwj-z/dsh-desktop/main/help.html' || pathname.endsWith('/help.html');
-  }
 
   return true;
 }
