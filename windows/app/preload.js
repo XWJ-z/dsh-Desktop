@@ -56,7 +56,7 @@ contextBridge.exposeInMainWorld('dshDesktop', {
   /** 获取更新日志数据（本地 CHANGELOG.json，离线可用；v0.8.1 T3） */
   getChangelog: () => ipcRenderer.invoke('changelog:data'),
   // ── v0.8.3（T1/T3/T4）：提示词库 ──
-  /** 获取内置提示词库数据（prompts.json） */
+  /** 获取提示词库数据（v2.0.4 起走服务器缓存，返回 { categories, needsDownload, version }） */
   getPrompts: () => ipcRenderer.invoke('promptlib:data'),
   /** 把提示词直接注入主窗口 DSH 输入框（失败返回 { ok:false, reason }） */
   injectPrompt: (text) => ipcRenderer.invoke('promptlib:inject', text),
@@ -177,4 +177,6 @@ contextBridge.exposeInMainWorld('dshDesktop', {
   queryPromptsUpdate: () => ipcRenderer.invoke('prompts:query'),
   /** 立即更新提示词库（拉远程数据落缓存，返回 { ok, updated }） */
   updatePrompts: () => ipcRenderer.invoke('prompts:update'),
+  /** v2.0.4：首次打开时从服务器下载提示词库数据落缓存（返回 { ok, version }） */
+  downloadPrompts: () => ipcRenderer.invoke('prompts:download'),
 });

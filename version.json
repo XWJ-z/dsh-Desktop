@@ -1,12 +1,12 @@
 {
   "_comment": "自动更新版本清单：v2.0.2 起壳版本检测/校验改走DSH服务器接口（config.json 的 shellUpdate.apiUrl，数据存 MySQL dsh.shell_version），本清单仅作发布归档/镜像校验；hash 为安装包实测 SHA256，发布时回填真实值（未发布阶段为占位）",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "minVersion": "0.7.4",
   "author": "zx(xwj)",
-  "release_notes": "本周更新：2.0.3 —— 更新下载失败时新增百度网盘备用下载渠道\n🔹 新增：\n· 更新下载失败弹窗新增「百度网盘下载」入口 —— 当自动更新中安装包下载失败时，弹窗提供百度网盘备用下载（提取码 8yh8），并提示下载完成后直接覆盖安装即可、无需卸载旧版本\n🔹 优化：\n· 检查更新窗口下载失败提示同步补充百度网盘渠道 —— 与弹窗一致，GitHub 下载不稳时多一条稳定备用下载路径",
+  "release_notes": "本周更新：2.0.4 —— 提示词库改走DSH服务器，安装包不再内置提示词\n🔹 新增：\n· 提示词库完全走DSH服务器 —— 版本检测与数据下载均改为从服务器获取（不再依赖 GitHub 三源），更新更快更稳定\n· 首次打开提示词库提示从服务器下载 —— 安装包不再内置提示词库数据，首次打开提示词库时会提示从服务器下载（下载一次后本地缓存可离线用），安装包更小更精简\n🔹 优化：\n· 安装包瘦身 —— 移除内置提示词库数据（prompts.json / prompts.version.json），减小安装包体积",
   "force": false,
   "hash": "REPLACE_WITH_REAL_HASH_AT_RELEASE",
   "download_urls": [
-    "https://ghfast.top/https://github.com/XWJ-z/dsh-Desktop/releases/download/v2.0.3/DSH-Desktop-Setup-2.0.3.exe"
+    "https://ghfast.top/https://github.com/XWJ-z/dsh-Desktop/releases/download/v2.0.4/DSH-Desktop-Setup-2.0.4.exe"
   ]
 }

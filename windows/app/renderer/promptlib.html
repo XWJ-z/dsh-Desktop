@@ -117,6 +117,22 @@
     .act.del:hover { background: rgba(239,68,68,.2); }
     .act.del.confirm { background: #ef4444; color: #fff; border-color: #ef4444; }
     .empty { color: var(--text-quaternary); text-align: center; padding: 40px 0; font-size: 13px; }
+    /* v2.0.4：首次打开提示词库、数据尚未下载的占位区 */
+    .prompts-download {
+      display: flex; flex-direction: column; align-items: center; gap: 14px;
+      padding: 42px 26px; margin: 12px 0; text-align: center;
+      border: 1px dashed var(--border-standard); border-radius: var(--radius-card);
+      background: var(--bg-hover);
+    }
+    .prompts-download .pd-title { font-size: 15px; font-weight: 590; color: var(--text-primary); }
+    .prompts-download .pd-desc { font-size: 12px; color: var(--text-tertiary); line-height: 1.7; max-width: 360px; }
+    .prompts-download .pd-btn {
+      padding: 9px 24px; border: none; border-radius: var(--radius-btn);
+      background: var(--brand); color: #fff; font-size: 13px; font-weight: 590;
+      cursor: pointer;
+    }
+    .prompts-download .pd-btn:hover { background: var(--accent-hover); }
+    .prompts-download .pd-btn:disabled { opacity: .6; cursor: default; }
     /* v0.9.5：新建/编辑弹窗 */
     .modal-mask {
       position: fixed; inset: 0; z-index: 100; display: none;
@@ -165,6 +181,12 @@
     <div class="subtitle">点「使用」填入输入框，点卡片看完整内容和替换说明</div>
     <input class="search" id="search" type="text" placeholder="🔍 搜索提示词…" autocomplete="off" />
     <div class="banner" id="banner"></div>
+    <!-- v2.0.4：首次打开、提示词库数据尚未从服务器下载的占位提示 -->
+    <div id="prompts-download" class="prompts-download" style="display:none;">
+      <div class="pd-title">📥 提示词库数据尚未下载</div>
+      <div class="pd-desc">提示词库已改为从 DSH 服务器获取（安装包不再内置）。点击下方按钮从服务器下载最新提示词库，下载一次后本地缓存可离线使用。</div>
+      <button id="btn-download-prompts" class="pd-btn">从服务器下载提示词库</button>
+    </div>
     <div class="layout">
       <div class="cats" id="cats"><!-- 分类（JS 渲染） --></div>
       <div class="items" id="items"><!-- 提示词卡片（JS 渲染） --></div>

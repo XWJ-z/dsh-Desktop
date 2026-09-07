@@ -154,13 +154,13 @@ function registerIpc(deps) {
       return { versions: [], current: app.getVersion() };
     }
   });
-  // v0.8.3（T1/T4）：提示词库 —— 数据（内置 prompts.json）/ 注入输入框 / 工具箱入口
-  // v1.1.1：使用 promptsUpdater 模块，优先级：缓存 > 包内置
+  // v0.8.3（T1/T4）：提示词库 —— 数据（v2.0.4 起走服务器缓存，安装包零内置）/ 注入输入框 / 工具箱入口
+  // v2.0.4：promptsUpdater.getData() 返回 { categories, needsDownload, version }（无缓存时 needsDownload=true）
   ipcMain.handle('promptlib:data', () => {
     try {
-      return promptsUpdater.getData() || { categories: [] };
+      return promptsUpdater.getData();
     } catch {
-      return { categories: [] };
+      return { categories: [], needsDownload: true, version: null };
     }
   });
   // v0.9：提示词注入链路抽到 modules/prompt-inject.js（v0.8.6 两段式：
@@ -311,7 +311,7 @@ function registerIpc(deps) {
       const dir = projectMemory.validateWorkspace(workspacePath);
       if (dir) shell.openPath(dir);
       return true;
-    } catch (err) {
+    } catch {
       return false;
     }
   });
@@ -482,6 +482,10 @@ function registerIpc(deps) {
   });
   ipcMain.handle('prompts:update', async () => {
     return await promptsUpdater.forceUpdate();
+  });
+  // v2.0.4：首次打开提示词库时，从服务器下载数据落缓存
+  ipcMain.handle('prompts:download', async () => {
+    return await promptsUpdater.downloadData();
   });
 }
 

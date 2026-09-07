@@ -8,5 +8,8 @@
   },
   "shellUpdate": {
     "apiUrl": "https://api.dsh.xwjznh.cn/api/shell/version"
+  },
+  "promptsUpdate": {
+    "apiUrl": "https://api.dsh.xwjznh.cn/api/prompts"
   }
 }

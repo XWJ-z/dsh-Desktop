@@ -668,8 +668,8 @@ noticeApi.loadCache(); // 启动即载入缓存（buildMenu 用缓存 marquee，
 // 保留 isAllowedExternalUrl（插件市场打开 README 用）
 const { isAllowedExternalUrl } = require('./modules/external-links');
 
-// v1.1.1：提示词库远程更新 —— 三源并发拉取 prompts.json，缓存优先级：缓存 > 包内置
-const promptsUpdaterApi = createPromptsUpdater({ app, fs, path, appendLog, fetchJson });
+// v2.0.4：提示词库 —— 版本检测 + 数据下载完全走DSH服务器（config.json 的 promptsUpdate.apiUrl），安装包零内置
+const promptsUpdaterApi = createPromptsUpdater({ app, fs, path, appendLog, fetchJson, readShellConfig });
 promptsUpdaterApi.loadCache(); // 启动即载入缓存
 
 // v1.1.1：插件市场 —— 连接官方 awesome-dsh-plugin 社区

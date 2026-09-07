@@ -28,6 +28,8 @@ const ignore = [
   /^\/electron-out\.log$/,
   /^\/electron-err\.log$/,
   /^\/skills(\/|$)/, // v1.2.1 T6：技能本体在 GitHub 仓库（市场按需 raw 拉取），不随壳分发
+  /^\/prompts\.json$/, // v2.0.4：提示词库完全走DSH服务器，安装包不内置数据（瘦身）
+  /^\/prompts\.version\.json$/, // v2.0.4：提示词库版本标记同理不内置
 ];
 
 async function main() {

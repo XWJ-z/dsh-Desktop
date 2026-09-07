@@ -1,39 +1,57 @@
 'use strict';
 
 /**
- * DSH-Desktop — 提示词库远程更新模块（v1.1.1）
+ * DSH-Desktop — 提示词库远程更新模块（v2.0.4 重构：完全走服务器）
  *
- * 职责：提示词库独立远程更新：
- *  - 三源并发拉取 prompts.version.json（jsDelivr / api.github.com / raw.githubusercontent）
- *  - 版本号 > 缓存版本 → 拉取 prompts.json → 原子写缓存
- *  - 无网络/失败 → 用缓存；无缓存 → 用包内置 prompts.json（兜底）
- *  - 缓存文件：userData/prompts-cache.json
- *  - v1.2.6：三源按「权威源优先」选源（GitHub API > raw > jsDelivr/CDN），
- *    防 CDN 边缘缓存旧版或投毒导致的「检查更新仍是旧版本」。
+ * 职责：提示词库独立远程更新（数据权威源 = DSH服务器，安装包零内置）：
+ *  - 版本检测：拉服务器 GET {apiUrl}/version（返回最新版本号）
+ *  - 数据下载：拉服务器 GET {apiUrl}/data（返回完整 categories 数组）→ 存本地缓存
+ *  - 首次打开（无缓存）：getData() 返回 { categories: [], needsDownload: true }，
+ *    界面提示「从服务器下载」；下载成功后落缓存，后续用缓存。
+ *  - 无网络/失败：用已下载缓存（有则用；无则仍标 needsDownload 提示下载，不再回退包内置）。
  *
  * 依赖注入（deps）：
  *  - app / fs / path
  *  - appendLog
  *  - fetchJson      updater 模块导出（8s 超时 + 5MB 上限）
+ *  - readShellConfig  读取 config.json（取 promptsUpdate.apiUrl）
  */
 
-// v1.1.3 重构：三源 URL 集中到 remote-sources.js
-const { PROMPTS_VERSION_URLS, PROMPTS_DATA_URLS } = require('./remote-sources');
-
-const MAX_PROMPTS_SIZE = 1024 * 1024; // 1MB 上限
-
 function createPromptsUpdater(deps) {
-  const { app, fs, path, appendLog, fetchJson } = deps;
+  const { app, fs, path, appendLog, fetchJson, readShellConfig } = deps;
 
-  let cached = null; // { version, data }
+  let cached = null; // { version, updated, data }
 
   function cacheFile() {
     return path.join(app.getPath('userData'), 'prompts-cache.json');
   }
 
+  /** 从 config.json 读提示词库接口地址（单源）；无配置返回 null */
+  function apiBase() {
+    try {
+      const cfg = readShellConfig();
+      const u = cfg.promptsUpdate && cfg.promptsUpdate.apiUrl;
+      return u ? String(u) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** 版本检测接口地址 */
+  function versionUrl() {
+    const base = apiBase();
+    return base ? `${base}/version` : null;
+  }
+
+  /** 数据下载接口地址 */
+  function dataUrl() {
+    const base = apiBase();
+    return base ? `${base}/data` : null;
+  }
+
   /**
    * 加载本地缓存（userData/prompts-cache.json）
-   * @returns {{ version: number, data: object } | null}
+   * @returns {{ version: number|string, updated?: string, data: object } | null}
    */
   function loadCache() {
     try {
@@ -55,20 +73,21 @@ function createPromptsUpdater(deps) {
 
   /**
    * 保存缓存到 userData/prompts-cache.json（原子写入）
-   * @param {number} version
-   * @param {object} data
+   * @param {number|string} version
+   * @param {string} [updated]
+   * @param {object} data categories 数组（{ id,name,icon,subs }）
    */
-  function saveCache(version, data) {
+  function saveCache(version, data, updated) {
     try {
       const file = cacheFile();
       const tempFile = file + '.tmp';
-      const content = JSON.stringify({ version, data }, null, 2);
+      const content = JSON.stringify({ version, updated: updated || null, data }, null, 2);
 
       // 原子写入：先写临时文件，再重命名
       fs.writeFileSync(tempFile, content, 'utf8');
       fs.renameSync(tempFile, file);
 
-      cached = { version, data };
+      cached = { version, updated: updated || null, data };
       appendLog('info', `提示词库缓存已保存：v${version}`);
     } catch (err) {
       appendLog('error', `保存提示词库缓存失败：${err.message}`);
@@ -76,81 +95,19 @@ function createPromptsUpdater(deps) {
   }
 
   /**
-   * 获取包内置的 prompts.json（兜底）
-   * @returns {object | null}
-   */
-  function getBuiltinPrompts() {
-    try {
-      return require(path.join(app.getAppPath(), 'prompts.json')) || null;
-    } catch {
-      return null;
-    }
-  }
-
-  /**
-   * 获取提示词库数据（优先级：缓存 > 包内置）
-   * @returns {object}
+   * 获取提示词库数据（仅缓存；无缓存 → 标记需要下载）
+   * @returns {{ categories: object[], needsDownload: boolean, version: number|string|null }}
    */
   function getData() {
-    // ① 缓存文件存在且解析成功 → 返回缓存
     if (cached && cached.data) {
-      return cached.data;
+      return { categories: cached.data, needsDownload: false, version: cached.version };
     }
-    // ② 否则 → 返回包内置 prompts.json
-    return getBuiltinPrompts() || { categories: [] };
+    // 无缓存：提示需从服务器下载（安装包零内置，不再回退包内置）
+    return { categories: [], needsDownload: true, version: null };
   }
 
   /**
-   * 从 URL 列表中拉取数据（三源并发）——v1.2.6：按「权威源优先」选源，防 CDN 缓存旧版/投毒掩盖新版本。
-   *
-   * 说明：三源中 GitHub API（无 CDN 缓存、永远返回仓库原文件）为权威源；
-   *      raw.githubusercontent 次之；jsDelivr 是 CDN、边缘可能残留旧版/被投毒。
-   *      此前「取第一个成功者」会让 jsDelivr（排在首位）的旧边缘顶住权威源，
-   *      造成「明明已发新版，检查更新却仍是旧版」。现改为：只要任一 GitHub
-   *      权威源可达就优先用它；仅当全部 GitHub 源都不可达时才回退 CDN。
-   *
-   * @param {Array<{name: string, url: string, headers?: object}>} urls
-   * @returns {Promise<any|null>}
-   */
-  const SOURCE_PRIORITY = { 'GitHub API': 0, 'raw.githubusercontent': 1, jsDelivr: 2 };
-
-  async function fetchFromUrls(urls) {
-    const TIMEOUT_MS = 8000;
-
-    const results = await Promise.allSettled(
-      urls.map(async (source) => {
-        try {
-          // fetchJson(url, timeoutMs, headers, maxBytes) —— 位置参数（见 updater.js）
-          const data = await fetchJson(source.url, TIMEOUT_MS, source.headers || {}, MAX_PROMPTS_SIZE);
-          return { name: source.name, data };
-        } catch {
-          return null;
-        }
-      }),
-    );
-
-    // 权威源优先（GitHub API > raw.githubusercontent > jsDelivr/CDN），
-    // CDN 仅在权威源全部不可达时才兜底，避免旧/投毒边缘掩盖权威新版。
-    const fulfilled = results
-      .filter((r) => r.status === 'fulfilled' && r.value)
-      .map((r) => r.value)
-      .sort((a, b) => (SOURCE_PRIORITY[a.name] ?? 9) - (SOURCE_PRIORITY[b.name] ?? 9));
-
-    return fulfilled.length ? fulfilled[0].data : null;
-  }
-
-  /**
-   * 获取当前有效版本：缓存版本；无缓存时取包内置 prompts.json 的 version 字段
-   * @returns {number}
-   */
-  function currentVersion() {
-    if (cached && cached.version) return cached.version;
-    const builtin = getBuiltinPrompts();
-    return builtin && builtin.version ? builtin.version : 0;
-  }
-
-  /**
-   * 版本比较（v1.1.1 改日期命名）：支持数字或日期字符串（YYYY-MM-DD 可直接字符串比较）
+   * 版本比较（支持数字或日期字符串 YYYY-MM-DD）
    * @param {number|string} remote
    * @param {number|string} current
    * @returns {boolean} remote > current
@@ -161,43 +118,87 @@ function createPromptsUpdater(deps) {
   }
 
   /**
-   * 查询提示词库更新信息（仅拉远程版本号，不下载数据）
-   * @returns {Promise<{ok:boolean, current:number|string, latest:number|string|null, updated:string|null, hasUpdate:boolean}>}
+   * 当前有效版本：缓存版本
+   * @returns {number|string|null}
+   */
+  function currentVersion() {
+    return cached && cached.version ? cached.version : null;
+  }
+
+  /**
+   * 查询提示词库更新信息（拉服务器版本号，不下载数据）
+   * @returns {Promise<{ok:boolean, current:number|string|null, latest:number|string|null, updated:string|null, hasUpdate:boolean, needsDownload:boolean}>}
    */
   async function queryInfo() {
-    const info = { ok: false, current: currentVersion(), latest: null, updated: null, hasUpdate: false };
-    const versionInfo = await fetchFromUrls(PROMPTS_VERSION_URLS);
-    if (versionInfo && versionInfo.version) {
-      info.latest = versionInfo.version;
-      info.updated = versionInfo.updated || null;
-      info.hasUpdate = isNewer(versionInfo.version, info.current);
-      info.ok = true;
+    const info = {
+      ok: false,
+      current: currentVersion(),
+      latest: null,
+      updated: null,
+      hasUpdate: false,
+      needsDownload: !cached || !cached.data,
+    };
+    const url = versionUrl();
+    if (!url) return info;
+    try {
+      const versionInfo = await fetchJson(url);
+      if (versionInfo && versionInfo.ok && versionInfo.version) {
+        info.latest = versionInfo.version;
+        info.updated = versionInfo.updated || null;
+        // 无缓存 → 视为需要下载（hasUpdate=true，无论如何拉一次数据）
+        info.hasUpdate = info.needsDownload || isNewer(versionInfo.version, info.current);
+        info.ok = true;
+      }
+    } catch (err) {
+      appendLog('warn', `提示词库版本检测失败：${err.message}`);
     }
     return info;
   }
 
   /**
-   * 立即检查并更新提示词库（拉新数据落缓存）
+   * 从服务器下载提示词库数据并落缓存
+   * @returns {Promise<{ok:boolean, reason?:string, version:number|string|null}>}
+   */
+  async function downloadData() {
+    const url = dataUrl();
+    if (!url) {
+      appendLog('warn', '缺少 promptsUpdate.apiUrl 配置，无法下载提示词库');
+      return { ok: false, reason: 'fetch-failed', version: null };
+    }
+    try {
+      appendLog('info', '开始从服务器下载提示词库数据…');
+      const payload = await fetchJson(url);
+      if (!payload || !payload.ok || !Array.isArray(payload.data) || !payload.version) {
+        appendLog('warn', '服务器返回提示词库数据无效');
+        return { ok: false, reason: 'data-fetch-failed', version: null };
+      }
+      saveCache(payload.version, payload.data, payload.updated);
+      return { ok: true, version: payload.version };
+    } catch (err) {
+      appendLog('error', `下载提示词库失败：${err.message}`);
+      return { ok: false, reason: 'fetch-failed', version: null };
+    }
+  }
+
+  /**
+   * 检查提示词库更新：有新版或尚无缓存 → 下载数据落缓存；无更新 → 保持缓存。
    * @returns {Promise<{ok:boolean, reason?:string, updated:boolean, info:object}>}
    */
   async function forceUpdate() {
     const info = await queryInfo();
     if (!info.ok) return { ok: false, reason: 'fetch-failed', updated: false, info };
     if (!info.hasUpdate) return { ok: true, updated: false, info };
-
-    appendLog('info', `发现提示词库新版本：v${info.current} → v${info.latest}，立即更新`);
-    const newData = await fetchFromUrls(PROMPTS_DATA_URLS);
-    if (!newData || !newData.categories) {
-      return { ok: false, reason: 'data-fetch-failed', updated: false, info };
-    }
-    saveCache(info.latest, newData);
+    const dl = await downloadData();
+    if (!dl.ok) return { ok: false, reason: dl.reason || 'data-fetch-failed', updated: false, info };
     return { ok: true, updated: true, info };
   }
 
   /**
-   * 检查并更新提示词库（启动时静默调用）
+   * 启动时静默检查更新（有缓存时静默更新；无缓存不打扰，由界面提示下载）
    */
   async function checkUpdatesOnStart() {
+    // 无缓存（首装）不静默拉，让「首次打开提示词库」时由界面触发下载
+    if (!cached || !cached.data) return;
     try {
       appendLog('info', '开始检查提示词库更新...');
       const r = await forceUpdate();
@@ -218,6 +219,7 @@ function createPromptsUpdater(deps) {
     getVersion: currentVersion, // 兼容旧调用（取当前有效版本）
     queryInfo,
     forceUpdate,
+    downloadData,
   };
 }
 

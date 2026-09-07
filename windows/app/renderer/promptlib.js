@@ -410,6 +410,15 @@ function switchTab(tab) {
 async function init() {
   if (!dsh || !dsh.getPrompts) return;
   data = await dsh.getPrompts();
+  // v2.0.4：无缓存（首装）→ 提示从服务器下载；安装包零内置，不再「暂无提示词」兜底
+  if (data && data.needsDownload && (!data.categories || data.categories.length === 0)) {
+    showPromptsDownload();
+    bindDownloadBtn();
+    bindCommon();
+    return;
+  }
+  // 有数据（缓存）→ 隐藏下载提示，走正常渲染
+  hidePromptsDownload();
   if (!data || !Array.isArray(data.categories) || data.categories.length === 0) {
     el('items').innerHTML = '<div class="empty">暂无提示词</div>';
     return;
@@ -422,6 +431,63 @@ async function init() {
   expandedCats = new Set([firstCat.id]);
   renderCats();
   selectSub(firstSub.id); // 默认选中第一个子分类
+  bindCommon();
+}
+
+/** v2.0.4：显示「从服务器下载」占位，隐藏搜索/layout */
+function showPromptsDownload() {
+  el('prompts-download').style.display = 'flex';
+  el('search').style.display = 'none';
+  el('cats').style.display = 'none';
+  el('items').style.display = 'none';
+}
+
+/** v2.0.4：隐藏下载占位，恢复搜索/layout */
+function hidePromptsDownload() {
+  const pd = el('prompts-download');
+  if (pd) pd.style.display = 'none';
+  if (el('search')) el('search').style.display = '';
+  if (el('cats')) el('cats').style.display = '';
+  if (el('items')) el('items').style.display = '';
+}
+
+/** v2.0.4：绑定「从服务器下载」按钮 */
+function bindDownloadBtn() {
+  const btn = el('btn-download-prompts');
+  if (!btn || btn.dataset.bound) return;
+  btn.dataset.bound = '1';
+  btn.addEventListener('click', async () => {
+    if (!dsh || !dsh.downloadPrompts) { showBanner('下载功能不可用', false); return; }
+    btn.disabled = true;
+    btn.textContent = '下载中…';
+    const r = await dsh.downloadPrompts();
+    if (r && r.ok) {
+      showBanner(`✅ 提示词库已下载（v${r.version}）`, true);
+      data = await dsh.getPrompts();
+      hidePromptsDownload();
+      if (!data || !Array.isArray(data.categories) || data.categories.length === 0) {
+        el('items').innerHTML = '<div class="empty">暂无提示词</div>';
+        bindCommon();
+        return;
+      }
+      const firstCat = data.categories[0];
+      const firstSub = (Array.isArray(firstCat.subs) && firstCat.subs.length > 0)
+        ? firstCat.subs[0]
+        : { id: firstCat.id, items: firstCat.items || [] };
+      expandedCats = new Set([firstCat.id]);
+      renderCats();
+      selectSub(firstSub.id);
+      bindCommon();
+    } else {
+      showBanner('下载失败，请检查网络后重试', false);
+    }
+    btn.disabled = false;
+    btn.textContent = '从服务器下载提示词库';
+  });
+}
+
+/** 通用事件绑定（搜索/tab/自定义/弹窗），init 与下载成功后共用 */
+function bindCommon() {
   // 搜索：输入即过滤（标题+内容）
   el('search').addEventListener('input', (e) => {
     keyword = e.target.value;
