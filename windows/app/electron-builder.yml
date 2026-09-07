@@ -30,7 +30,6 @@ files:
   - "!*.log"
   # v2.0.4：提示词库完全走DSH服务器，安装包零内置（对齐 pack.js 的排除；数据源见仓库根 prompts.json）
   - "!prompts.json"
-  - "!prompts.version.json"
   # v2.0.5：插件库/技能库市场列表走DSH服务器，安装包零内置（数据源见仓库根 plugins.json / skills-list.json）
   - "!plugin-desc-zh.json"
   - "!skills-list.json"
