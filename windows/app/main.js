@@ -574,15 +574,6 @@ const { getWorkspacePath } = workspaceApi;
 // v1.2.1 T1：项目记忆 —— 工作区级记忆 <工作区>/AGENTS.md（DSH 自动读取，壳体只做编辑界面）
 const projectMemoryApi = createProjectMemory({ fs, path, app, appendLog, getWorkspacePath, readWorkspaceRegistry: workspaceApi.readWorkspaceRegistry });
 
-// v1.2.1 T4：技能库 —— 扫描/读写/删除技能 + 技能市场（三源拉取 + raw 安装）
-const skillLibraryApi = createSkillLibrary({
-  app, fs, os, path,
-  net: electronNet, // Electron net（Chromium 网络栈/系统 CA，从市场安装拉 SKILL.md 用）
-  appendLog,
-  getWorkspacePath,
-  skillsUpdater: skillsUpdaterApi, // v2.0.5：市场列表走服务器
-});
-
 // 主窗口拖拽监听注入（防导航 + overlay + 同步取路径）
 const dragDropApi = createDragDrop({ appendLog });
 const { injectDropHandler } = dragDropApi;
@@ -671,15 +662,25 @@ noticeApi.loadCache(); // 启动即载入缓存（buildMenu 用缓存 marquee，
 // 保留 isAllowedExternalUrl（插件市场打开 README 用）
 const { isAllowedExternalUrl } = require('./modules/external-links');
 
-// v2.0.4：提示词库 —— 版本检测 + 数据下载完全走DSH服务器（config.json 的 promptsUpdate.apiUrl），安装包零内置
-const promptsUpdaterApi = createPromptsUpdater({ app, fs, path, appendLog, fetchJson, readShellConfig });
-promptsUpdaterApi.loadCache(); // 启动即载入缓存
-
 // v2.0.5：插件库/技能库市场 —— 版本检测 + 数据下载完全走DSH服务器（pluginsUpdate/skillsUpdate.apiUrl），安装包零内置
+// 此处 fetchJson/readShellConfig 已就绪（updaterApi 解构）—— 须先于 use 它们的 skillLibrary/pluginMarket 创建（const 暂时性死区）
 const pluginsUpdaterApi = createPluginsUpdater({ app, fs, path, appendLog, fetchJson, readShellConfig });
 pluginsUpdaterApi.loadCache(); // 启动即载入缓存
 const skillsUpdaterApi = createSkillsUpdater({ app, fs, path, appendLog, fetchJson, readShellConfig });
 skillsUpdaterApi.loadCache(); // 启动即载入缓存
+
+// v1.2.1 T4：技能库 —— 扫描/读写/删除技能 + 技能市场（列表走服务器 + raw 安装）
+const skillLibraryApi = createSkillLibrary({
+  app, fs, os, path,
+  net: electronNet, // Electron net（Chromium 网络栈/系统 CA，从市场安装拉 SKILL.md 用）
+  appendLog,
+  getWorkspacePath,
+  skillsUpdater: skillsUpdaterApi, // v2.0.5：市场列表走服务器
+});
+
+// v2.0.4：提示词库 —— 版本检测 + 数据下载完全走DSH服务器（config.json 的 promptsUpdate.apiUrl），安装包零内置
+const promptsUpdaterApi = createPromptsUpdater({ app, fs, path, appendLog, fetchJson, readShellConfig });
+promptsUpdaterApi.loadCache(); // 启动即载入缓存
 
 // v1.1.1：插件市场 —— 列表数据走DSH服务器（plugins-updater）
 const pluginMarketApi = createPluginMarket({
