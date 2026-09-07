@@ -65,6 +65,10 @@ function createDshRuntime(deps) {
       shellUpdate: cfg.shellUpdate && typeof cfg.shellUpdate === 'object'
         ? { apiUrl: String(cfg.shellUpdate.apiUrl || '') }
         : null,
+      // v2.0.4：透传提示词库服务器接口地址（否则 prompts-updater 读不到 promptsUpdate.apiUrl → 提示词库检测失败）
+      promptsUpdate: cfg.promptsUpdate && typeof cfg.promptsUpdate === 'object'
+        ? { apiUrl: String(cfg.promptsUpdate.apiUrl || '') }
+        : null,
     };
   }
 
