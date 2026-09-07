@@ -59,9 +59,18 @@ function createPromptsUpdater(deps) {
       if (fs.existsSync(file)) {
         const raw = fs.readFileSync(file, 'utf8');
         const parsed = JSON.parse(raw);
-        if (parsed && parsed.version && parsed.data) {
-          cached = parsed;
-          appendLog('info', `提示词库缓存已加载：v${parsed.version}`);
+        let data = parsed && parsed.data;
+        // v2.0.4 兼容旧缓存：旧格式 data 为对象（旧 prompts.json 结构，内嵌 categories 数组），
+        // 新格式 data 直接为 categories 数组。校验为数组才有效，否则视为无缓存（需重新下载）。
+        const migrated = data && !Array.isArray(data) && Array.isArray(data.categories);
+        if (migrated) data = data.categories; // 旧格式 → 取其 categories 数组
+        if (parsed && parsed.version && Array.isArray(data)) {
+          cached = { version: parsed.version, updated: parsed.updated || null, data };
+          appendLog('info', `提示词库缓存已加载：v${parsed.version}（${data.length} 分类）`);
+          if (migrated) {
+            saveCache(parsed.version, data, parsed.updated); // 迁移为新格式落盘，避免下次再走兼容分支
+            appendLog('info', '提示词库旧版缓存已迁移为新格式');
+          }
           return cached;
         }
       }
