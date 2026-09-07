@@ -61,6 +61,10 @@ function createDshRuntime(deps) {
       qqGroup: cfg.qqGroup && typeof cfg.qqGroup === 'object'
         ? { number: String(cfg.qqGroup.number || ''), qrImage: String(cfg.qqGroup.qrImage || '') }
         : null,
+      // v2.0.2：透传壳更新服务器接口地址（否则 updater 读不到 shellUpdate.apiUrl → 检查更新显示「未知」）
+      shellUpdate: cfg.shellUpdate && typeof cfg.shellUpdate === 'object'
+        ? { apiUrl: String(cfg.shellUpdate.apiUrl || '') }
+        : null,
     };
   }
 
