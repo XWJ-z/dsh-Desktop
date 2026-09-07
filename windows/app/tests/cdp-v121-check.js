@@ -250,9 +250,15 @@ async function main() {
   console.log('  lanOnData:', JSON.stringify(lanOnData));
   ok(!!lanOnData && lanOnData.enabled === true, '开启后 lan:qr-data enabled=true');
   ok(!!lanOnData && lanOnData.port > SIM_PORT, '代理端口 > DSH 端口（' + (lanOnData && lanOnData.port) + '）');
-  // 通过代理端口 HTTP 访问 DSH UI（真实验证代理转发）
-  const pageViaProxy = await httpGet(`http://127.0.0.1:${lanOnData.port}/`, 8000);
-  ok(pageViaProxy && pageViaProxy.status === 200 && /DeepSeek Harness/i.test(String(pageViaProxy.body || '')), '通过代理端口可访问 DSH 页面（HTTP 转发成功，status=' + (pageViaProxy && pageViaProxy.status) + ')');
+  // S2（代码审查 2026-09-07）：局域网代理加了一次性 PIN 鉴权 —— 裸地址（无 PIN）应 403；
+  // 手机实际经**二维码地址**（含 ?token=&pin=）访问，验证「鉴权通过后代理转发成功」。
+  const qrUrl = await cdp.eval(`(async () => { const d = await window.dshDesktop.getLanQrData(); return (d.ips && d.ips[0] && d.ips[0].url) || null; })()`);
+  ok(!!qrUrl && /pin=/.test(String(qrUrl)), '二维码地址含一次性 PIN（' + String(qrUrl).slice(0, 60) + '）');
+  const qrHost = qrUrl ? new URL(qrUrl).hostname : '127.0.0.1';
+  const bare = await httpGet(`http://${qrHost}:${lanOnData.port}/`, 8000);
+  ok(bare && bare.status === 403, '裸地址（无 PIN）访问代理被拒 403（S2 鉴权生效）');
+  const pageViaProxy = qrUrl ? await httpGet(qrUrl, 8000) : { status: -1, body: '' };
+  ok(pageViaProxy && pageViaProxy.status === 200 && /DeepSeek Harness/i.test(String(pageViaProxy.body || '')), '经二维码地址（带 PIN）可访问 DSH 页面（代理转发成功，status=' + (pageViaProxy && pageViaProxy.status) + '）');
   const lanOff = await cdp.eval(`(async () => {
     try { const r = await window.dshDesktop.setLanAccess(false); return { ok: !!r && r.ok !== false }; }
     catch (e) { return { ok:false, err:String(e) }; }

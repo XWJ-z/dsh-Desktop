@@ -2,11 +2,11 @@
   "_comment1": "公告数据源（v0.9.5 起）：v2.0.6 起公告走DSH服务器（notice_meta/notice_items 表 + /api/notices/version|data 接口），本文件用作 GitHub 三源兜底 + 服务器表导入源（init-notices.sql）。内容为 v1.x 旧版用户前往官网手动下载新版的提醒。",
   "version": 12,
   "updated": "2026-09-07",
-  "marquee": "老版本用户请到官网 dsh.xwjznh.cn 下载新版 ～ 💬 加群 916607090",
+  "marquee": "老版本用户请到官网 【帮助】-【帮助文档】 下载新版 ～ 💬 或者加群 916607090 获取",
   "items": [
     {
       "id": "20260907-sunset",
-      "title": "请前往官网手动下载新版本",
+      "title": "请前往官网手动下载新版本：【帮助】-【帮助文档】",
       "date": "2026-09-07",
       "content": "当前安装在较老版本（1.x）的 DSH-Desktop 将不再收到新版自动推送提示。\n\n请前往官网手动下载最新版本并覆盖安装：\n🔗 http://dsh.xwjznh.cn\n\n安装后即可使用「帮助 → 检查更新」获取后续版本。\n\n💬 如使用遇到问题，请加 QQ 群 916607090 反馈～"
     }
