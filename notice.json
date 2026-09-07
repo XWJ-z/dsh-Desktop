@@ -1,5 +1,5 @@
 {
-  "_comment1": "远程公告源（v0.9.5 起公告唯一数据源，走 GitHub 三源下发，客户端 notice.js 读取）：内容为 v1.x 旧版用户前往官网手动下载新版的提醒。改内容 push 即生效，无需发版。v2.0.6 起仅保留本文件作为远程下发源，其余（版本/提示词/插件/技能）数据均已并入 DSH 服务器。",
+  "_comment1": "公告数据源（v0.9.5 起）：v2.0.6 起公告走DSH服务器（notice_meta/notice_items 表 + /api/notices/version|data 接口），本文件用作 GitHub 三源兜底 + 服务器表导入源（init-notices.sql）。内容为 v1.x 旧版用户前往官网手动下载新版的提醒。",
   "version": 12,
   "updated": "2026-09-07",
   "marquee": "老版本用户请到官网 dsh.xwjznh.cn 下载新版 ～ 💬 加群 916607090",
