@@ -35,8 +35,8 @@
 > 💡 **普通用户请直接下载安装包**（下方按钮），无需安装 Node.js。
 > 源码仅供开发者研究/二开使用。
 
-<a href="https://github.com/XWJ-z/dsh-Desktop/releases/download/v2.0.6/DSH-Desktop-Setup-2.0.6.exe">
-<img src="https://img.shields.io/badge/下载安装包-DSH--Desktop--Setup--2.0.6.exe%20%E7%BA%A6115MB-2ea44f?style=for-the-badge&logo=windows&logoColor=white" alt="下载 DSH-Desktop 安装包"/>
+<a href="https://github.com/XWJ-z/dsh-Desktop/releases/download/v2.1.1/DSH-Desktop-Setup-2.1.1.exe">
+<img src="https://img.shields.io/badge/下载安装包-DSH--Desktop--Setup--2.1.1.exe%20%E7%BA%A6115MB-2ea44f?style=for-the-badge&logo=windows&logoColor=white" alt="下载 DSH-Desktop 安装包"/>
 </a>
 
 📖 详细说明（特性 / 打包 / 安装 / 升级 / 目录结构 / 运行原理）→ **[windows/README.md](windows/README.md)**
