@@ -75,6 +75,8 @@ const { createDialogWindowsModule } = require('./modules/windows/about-window');
 const { createMiscWindowsModule } = require('./modules/windows/misc-windows');
 
 const APP_NAME = 'DSH-Desktop';
+// v2.0.3：新版本下载失败时给用户手动下载出路 —— 百度网盘备用渠道（与官网 index.html 同款分享，提取码 8yh8）
+const SHELL_BAIDU_PAN_URL = 'https://pan.baidu.com/s/1Y9CSRXKZ48cQYNi60ozBmA?pwd=8yh8';
 const DEFAULT_HOST = '127.0.0.1';
 const DEFAULT_PORT = 3080;
 const PORT_PROBE_RANGE = 50; // 端口被占用时最多顺延多少个
@@ -1230,15 +1232,19 @@ function promptShellUpdate(info) {
               type: 'error',
               title: APP_NAME,
               message: '更新下载失败',
-              detail: reasonText,
-              buttons: ['打开更新窗口', '手动下载安装包', '关闭'], // O3 v1.1.6：失败时给手动下载出路
+              // v2.0.3：下载失败时补流"覆盖安装即可"，并给百度网盘备用下载渠道
+              detail:
+                reasonText +
+                '\n如 GitHub 下载仍失败，可改用百度网盘下载安装包（提取码 8yh8），下载完成后直接覆盖安装即可，无需卸载旧版本。',
+              buttons: ['打开更新窗口', '百度网盘下载', '手动下载安装包', '关闭'], // O3 v1.1.6 + v2.0.3：失败时给手动/网盘下载出路
               defaultId: 0,
-              cancelId: 2,
+              cancelId: 3,
               noLink: true,
             })
             .then(({ response: resp }) => {
               if (resp === 0) openUpdateWindow();
-              else if (resp === 1) shell.openExternal('https://github.com/XWJ-z/dsh-Desktop/releases/latest');
+              else if (resp === 1) shell.openExternal(SHELL_BAIDU_PAN_URL);
+              else if (resp === 2) shell.openExternal('https://github.com/XWJ-z/dsh-Desktop/releases/latest');
             })
             .catch(() => {
               /* ignore */

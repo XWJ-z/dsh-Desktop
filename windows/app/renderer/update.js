@@ -180,7 +180,7 @@ el('shell-download').addEventListener('click', async () => {
     const msg = {
       'fetch-failed': '无法连接更新源，请检查网络',
       'no-update': '当前已是最新版本',
-      'download-failed': '所有下载源均失败，请稍后重试或到 GitHub Releases 手动下载',
+      'download-failed': '所有下载源均失败，请稍后重试，或到 GitHub Releases / 百度网盘（提取码 8yh8）手动下载安装包，覆盖安装即可',
       'hash-mismatch': '下载的安装包校验不通过（已删除），请重新下载',
     }[r && r.reason] || '下载失败';
     el('shell-status').textContent = msg;
