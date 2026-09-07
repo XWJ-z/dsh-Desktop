@@ -165,7 +165,7 @@ function createMiscWindowsModule(deps) {
     setGlobalMemoryWin(win);
   }
 
-  /** v1.1.1：插件市场窗口 —— 连接官方 awesome-dsh-plugin 社区，支持分类查找、搜索、安装引导 */
+  /** v1.1.1：插件市场窗口 —— 列表走 DSH 服务器（v2.0.5），支持分类查找、搜索、安装引导 */
   function openPluginMarketWindow() {
     const existing = getPluginMarketWin();
     if (existing && !existing.isDestroyed()) {

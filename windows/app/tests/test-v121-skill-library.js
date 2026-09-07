@@ -5,7 +5,8 @@
  *
  * 覆盖：frontmatter 解析 / 名称校验 / saveSkill（原子 + 大小上限 + 组装）/
  *       listInstalled（目录扫描 + dedup + level）/ readSkill / deleteSkill /
- *       市场 parseMarketList / installFromMarket（mock net）/ 非法路径防护。
+ *       市场 installFromMarket（mock net）/ 非法路径防护。
+ *       （市场列表 v2.0.5 起走 skills-updater 服务器下发，本测试不覆盖列表下载。）
  *
  * 用法：node tests/test-v121-skill-library.js
  */
@@ -70,6 +71,8 @@ function makeEnv(routes) {
     app, fs, os, path, net,
     appendLog: () => {},
     getWorkspacePath: async () => null,
+    // v2.0.5：市场列表走服务器 —— 注入 stub（本测试不依赖其实现）
+    skillsUpdater: { getData: () => ({ data: [], needsDownload: false, version: null }), downloadData: async () => ({ ok: false }) },
   });
   return {
     sk, home, userData,
@@ -158,7 +161,7 @@ async function run() {
     e.restore();
   }
 
-  console.log('[T4] 技能市场 parseMarketList / installFromMarket');
+  console.log('[T4] installFromMarket（mock net 拉来源仓库 SKILL.md）');
   {
     const skillMd = '---\nname: market-skill\ndescription: from market\n---\n# Market\nbody';
     const routes = {
@@ -166,7 +169,7 @@ async function run() {
     };
     const e = makeEnv(routes);
     const { sk } = e;
-    // parseMarketList 是内部函数，用 fetchMarketList 走三源（mock net 返回 [] 因为非 JSON）—— 这里直接测 installFromMarket
+    // 市场列表已走服务器 skills-updater，此处直接测「从来源仓库安装技能」
     const r = await sk.installFromMarket({ name: 'market-skill', repo: 'owner/repo', file: 'skills/market-skill/SKILL.md' });
     ok(r.ok === true && fs.existsSync(r.path), '安装成功 + 落盘');
     const installed = fs.readFileSync(r.path, 'utf8');
@@ -174,29 +177,6 @@ async function run() {
     // 非法 repo / path
     ok((await sk.installFromMarket({ name: 'x', repo: 'bad repo', file: 'a.md' })).ok === false, '非法 repo 拒绝');
     ok((await sk.installFromMarket({ name: 'x', repo: 'owner/repo', file: '../../evil' })).ok === false, '路径穿越 file 拒绝');
-    e.restore();
-  }
-
-  console.log('[T4] 技能市场 parseMarketList 携带 install_req');
-  {
-    const listRaw = JSON.stringify({ version: 2, skills: [
-      { name: 'skill-a', description: 'desc a', category: '开发', repo: 'r/a', file: 'skills/a/SKILL.md', install_req: '需 Python + Playwright' },
-      { name: 'skill-b', description: 'desc b', category: '办公', repo: 'r/b', file: 'skills/b/SKILL.md' },
-    ] });
-    const routes = {
-      'https://cdn.jsdelivr.net/gh/XWJ-z/dsh-Desktop@main/skills-list.json': listRaw,
-      'https://api.github.com/repos/XWJ-z/dsh-Desktop/contents/skills-list.json?ref=main': listRaw,
-      'https://raw.githubusercontent.com/XWJ-z/dsh-Desktop/main/skills-list.json': listRaw,
-    };
-    const e = makeEnv(routes);
-    const { sk } = e;
-    // 通过 getMarketList 触发 fetchMarketList（缓存空 → 拉取）→ parseMarketList
-    const list = await sk.getMarketList();
-    const a = list.find((s) => s.name === 'skill-a');
-    const b = list.find((s) => s.name === 'skill-b');
-    ok(!!a && a.installReq === '需 Python + Playwright', 'install_req 透传到 installReq');
-    ok(!!b && !b.installReq, '无 install_req 时 installReq 为空');
-    ok(list.length === 2, 'market 列表解析出 2 条');
     e.restore();
   }
 

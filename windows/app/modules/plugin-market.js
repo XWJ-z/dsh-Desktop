@@ -10,7 +10,6 @@
  *  - 安装引导：复制安装命令（免责确认）/ 查看 GitHub
  *
  * 依赖注入（deps）：
- *  - app / fs / path
  *  - shell / clipboard
  *  - appendLog
  *  - isAllowedExternalUrl   external-links 模块（URL 白名单校验）
