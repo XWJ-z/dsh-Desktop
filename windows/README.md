@@ -18,7 +18,7 @@ DSH 本身是运行在浏览器中的 Web 界面（`http://127.0.0.1:3080`）。
 - ⬆️ **检查更新（v0.5.3+）**：「帮助 → 检查更新」现代窗口同屏展示 **DSH**（npm 源最新版，一键升级改 config 重启安装）与 **DSH-Desktop 壳**（v2.0.2 起版本校验走DSH服务器接口，多镜像下载 + SHA256 校验 + **断点续传（v0.7.2+，中断自动续传）**；v0.8.11 起下载互斥——多入口触发不冲突），另展示 **提示词库 / 插件库 / 技能库**（v2.0.6 起，从服务器检测版本 + 一键更新，无需更新壳）三侧更新状态，带徽章/更新日志/下载进度条
 - 📢 **公告（v0.8.11+）**：帮助菜单「公告」展示项目公告（远程拉取 + 本地已读，有新公告时菜单标「（新）」）
 - 💬 **帮助菜单（v0.5.3+，v0.6.4 起更名）**：检查更新、公告、更新日志、联系我们（QQ 群二维码大图 + 一键复制群号）、关于（现代窗口：版本/DSH/服务地址）、DeepSeek 官网、DSH 项目主页
-- 📋 **内置提示词库（v0.8.3+，v0.8.7 升级）**：61 条精选提示词（学习/写作/工作/生活/编程 + 🛠️ DSH 任务 15 条），分类浏览 + 搜索 + 复制 + **一键注入 DSH 输入框**（真实键盘输入，发送按钮可点；已有内容时弹覆盖/追加/取消询问，可记住选择）
+- 📋 **提示词库（v0.8.3+，v2.0.4 起走 DSH 服务器）**：分类浏览 + 搜索 + 复制 + **一键注入 DSH 输入框**（真实键盘输入，发送按钮可点；已有内容时弹覆盖/追加/取消询问，可记住选择）；数据从服务器下载并本地缓存（离线可用，当前 231 条·6 分类），另有「我的提示词」分类持久化（重启不丢）
 - 📂 **常用目录直达**：文件菜单可一键打开日志目录 / 数据目录
 - 🗔️ **系统托盘（v0.6.0+）**：关闭窗口最小化到托盘，DSH 服务后台继续运行；托盘菜单可打开主界面 / 检查更新 / 开机自启 / 退出（退出前弹确认，避免误退导致服务停止）；**双击快捷方式恢复窗口（v0.8.8+）**
 - ⚡ **开机自启（v0.6.0+）**：设置菜单 / 托盘菜单勾选后开机自动启动（写入注册表 Run 键，安装版生效）；v0.6.6 起自启为**静默启动**——不弹窗口，后台运行 + 托盘常驻
@@ -134,22 +134,20 @@ windows/
 │   ├── package.json         # 工程清单（productName: DSH-Desktop；dependencies 含 npm）
 │   ├── config.json          # 壳配置：DSH 包名 + 版本号 + registry + qqGroup（升级 DSH 只改这里）
 │   ├── main.js              # Electron 主进程入口（约 660 行：常量/状态 + 模块组装 + 生命周期）
-│   ├── modules/             # 主进程模块（v0.8.12 拆分，依赖注入）
-│   │   ├── logger.js        # 日志 / 阶段 / 进度
-│   │   ├── dsh-runtime.js   # DSH 运行时安装与版本检查
-│   │   ├── node-resolver.js # Node 运行时解析（内置/系统/兜底）
-│   │   ├── port-manager.js  # 端口探测 / 服务就绪轮询
-│   │   ├── serverLifecycle.js # dsh web 服务子进程
-│   │   ├── updater.js       # 更新检查 / 下载 / SHA256 / 互斥锁
-│   │   ├── pet.js           # 鲸鱼桌面宠物
-│   │   ├── menu.js          # 应用菜单
-│   │   ├── ipc.js           # IPC handler 集中注册
-│   │   └── windows/         # 各窗口模块（main/loading/update/about/misc）
+│   ├── modules/             # 主进程模块（v0.8.12 起依赖注入拆分；2.0.6 去重：三个库更新模块收敛为公共工厂）
+│   │   ├── 运行时/生命周期：logger（日志/阶段/进度）· dsh-runtime（DSH 运行时安装与版本检查）· node-resolver（Node 运行时解析）· port-manager（端口探测/就绪轮询）· serverLifecycle（dsh web 服务子进程）
+│   │   ├── 更新/远端：updater（壳+DSH 更新/下载/SHA256/互斥）· shell-hashes（下载 hash 台账）· remote-sources（远端数据源）· net-common（统一 Electron net.request）
+│   │   ├── 远程更新工厂：remote-updater（createRemoteUpdater(deps,cfg)，参数化缓存/接口/文案/返回字段）
+│   │   ├── 库更新（薄壳委托 remote-updater）：prompts-updater · plugins-updater · skills-updater
+│   │   ├── 记忆/提示词：global-memory · project-memory · memory-util（长区块渲染）· custom-prompts（我的提示词）· prompt-inject
+│   │   ├── 技能/插件/角色：skill-library · plugin-market · role-selector · role-picker
+│   │   ├── 交互/窗口：pet（桌面宠物）· menu · tray · hotkey · ipc · task-notify · lan-access（局域网扫码）· notice（公告）
+│   │   ├── 数据/安全：backup · settings · workspace · drag-drop · drop-files · diagnostics · security · semver · external-links
+│   │   └── windows/         # 窗口模块（main-window · loading-window · about-window · misc-windows）
 │   ├── preload.js           # 预加载脚本（contextBridge 最小暴露）
 │   ├── electron-builder.yml # 安装程序配置（NSIS，asar 关闭，extraResources 内置 Node）
-│   ├── renderer/            # 各窗口页面（loading/update/contact/about/changelog/notice/promptlib/progress + shared.css）
-│   ├── prompts.json         # 内置提示词库（61 条）
-│   ├── CHANGELOG.json       # 应用内更新日志（帮助 → 更新日志）
+│   ├── renderer/            # 各窗口页面（loading/update/contact/about/changelog/notice/promptlib/global-memory/memory-project/role-picker/plugin-market/skill-library/lan-qr/progress + shared.css + memory-common.js）
+│   ├── CHANGELOG.json       # 应用内更新日志（帮助 → 更新日志；提示词/插件/技能库数据 v2.0.4+ 已全部走 DSH 服务器，安装包零内置）
 │   ├── resources/node/      # 内置 Node 运行时（fetch-node.js 下载，node.exe）
 │   ├── scripts/             # 图标生成 / Node 拉取 / 打包 / 安装程序 / release.js 发布脚本
 │   ├── tests/               # mock-load-test.js（模块组装加载测试）、../tests/smoke.js（集成冒烟）
