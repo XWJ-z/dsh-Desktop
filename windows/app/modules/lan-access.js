@@ -108,7 +108,11 @@ function createLanAccess(deps) {
       port: targetPort,
       method: req.method,
       path: req.url,
-      headers: req.headers,
+      // v2.0.6 修复手机访问空白：DSH 对带 Accept-Encoding:gzip 的请求会返回压缩 HTML，
+      // 而下方 HTML 注入分支把 gzip 字节当 utf8 读出、注入后再带 content-encoding:gzip 发出，
+      // 浏览器解压失败 → net::ERR_CONTENT_DECODING_FAILED → 手机空白。
+      // 强制请求上游不压缩（identity），确保 HTML 注入拿到的是未压缩明文（局域网可接受体积）。
+      headers: { ...req.headers, 'accept-encoding': 'identity' },
     }, (upRes) => {
       const ct = String(upRes.headers['content-type'] || '');
       if (upRes.statusCode === 200 && /text\/html/i.test(ct)) {
@@ -119,6 +123,7 @@ function createLanAccess(deps) {
           const injected = body.replace(/<head([^>]*)>/i, '<head$1>' + CRYPTO_UID_POLYFILL);
           const h = { ...upRes.headers };
           delete h['content-length']; delete h['transfer-encoding']; delete h.connection; delete h['keep-alive'];
+          delete h['content-encoding']; // 上游已强制 identity 不压缩，防残留头导致浏览器解压失败
           res.writeHead(upRes.statusCode, h);
           res.end(injected);
         });
