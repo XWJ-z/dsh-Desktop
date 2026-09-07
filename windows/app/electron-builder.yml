@@ -28,6 +28,9 @@ files:
   - "!.electron-cache/**"
   - "!.builder-cache/**"
   - "!*.log"
+  # v2.0.4：提示词库完全走DSH服务器，安装包零内置（对齐 pack.js 的排除；数据源见仓库根 prompts.json）
+  - "!prompts.json"
+  - "!prompts.version.json"
 
 # 内置 Node 运行时放到 resources/node（应用包外，属运行环境而非应用代码）；
 # 打包后路径：<install>/resources/node/node.exe，main.js 经 app.getAppPath()/../node 定位。
