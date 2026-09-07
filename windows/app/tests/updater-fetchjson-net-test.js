@@ -4,9 +4,9 @@
  * updater-fetchjson-net-test.js — v1.1.3 修复验证：updater.fetchJson 改用 Electron net
  *
  * 背景：真机 Node https.get 访问 api.github.com / raw.githubusercontent TLS 验证失败
- * （"unable to verify the first certificate"），三源只剩 jsDelivr → sourcesAgree=false
- * → 防投毒拒绝自动下载（用户反馈：下载更新失败）。
- * 修复：fetchJson 改用 Electron net.request（Chromium 网络栈 + 系统 CA），与 help-doc 同款。
+ * （"unable to verify the first certificate"），导致版本/插件等远程拉取失败。
+ * 修复：fetchJson 改用 Electron net.request（Chromium 网络栈 + 系统 CA）。
+ * 2.0.1 起 fetchJson/fetchText 抽取为 net-common 公共模块（updater 复用）。
  *
  * 本测试用 mock net 验证：
  *  1. fetchJson 调 net.request（而非 https.get）
@@ -40,17 +40,15 @@ const { createUpdater } = require('../modules/updater');
 const updaterApi = createUpdater({
   app: { getPath: () => '', getVersion: () => '1.1.3' },
   shell: {},
-  https: {},
   net: mockNet,
   crypto: require('node:crypto'),
   fs: require('node:fs'),
   path: require('node:path'),
   rmQuiet: () => {},
   appendLog: () => {},
-  readShellConfig: () => ({ dshPackage: '@deepseek-ai/dsh', dshVersion: 'latest', registry: 'https://registry.npmmirror.com' }),
+  readShellConfig: () => ({ dshPackage: '@deepseek-ai/dsh', dshVersion: 'latest', registry: 'https://registry.npmmirror.com', shellUpdate: { apiUrl: 'https://api.dsh.xwjznh.cn/api/shell/version' } }),
   installedDshVersion: () => null,
   updateDshVersion: () => true,
-  shellUpdateUrls: [],
 });
 
 let pass = 0, fail = 0;
