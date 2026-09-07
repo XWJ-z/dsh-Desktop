@@ -4,7 +4,7 @@
  * DSH-Desktop — 更新检查 / 下载模块（优化方案 2026-08-16 阶段一：从 main.js 拆分）
  *
  * 职责：
- *  - 壳（DSH-Desktop）版本检查：自家服务器接口（config.json shellUpdate.apiUrl，MySQL dsh.shell_version）
+ *  - 壳（DSH-Desktop）版本检查：DSH服务器接口（config.json shellUpdate.apiUrl，MySQL dsh.shell_version）
  *  - DSH 版本检查：npm registry dist-tags.latest
  *  - 语义化比较 / 展示值修正（T-028：latest ≤ current 显示 current）
  *  - 壳安装包下载：多镜像 fallback + SHA256 校验 + 断点续传 + 互斥锁（T0.5）
@@ -17,7 +17,7 @@
  *  （v0.9.5 T3：公告已独立到 modules/notice.js（notice.json 唯一源），
  *   本模块不再承载公告解析/缓存）
  *
- * v2.0.2（需求1）：壳版本检测/校验改走自家服务器接口（唯一权威源，MySQL 存储），
+ * v2.0.2（需求1）：壳版本检测/校验改走DSH服务器接口（唯一权威源，MySQL 存储），
  * 去掉原「GitHub 三源多数一致（sourcesAgree）+ 壳内置期望 hash 台账（shell-hashes.js）」，
  * 解耦 GitHub 网络问题；hash 校验以服务器下发为准，下载安装包仍走 GitHub Releases。
  *
@@ -133,7 +133,7 @@ function createUpdater(deps) {
   }
 
   /**
-   * 查询壳最新版本（v2.0.2：单一权威源 = 自家服务器接口）。
+   * 查询壳最新版本（v2.0.2：单一权威源 = DSH服务器接口）。
    * 返回 { version, downloadUrls, releaseNotes, force, hash, minVersion } 或 null（失败/超时/无源）。
    *  - 源地址读取 config.json 的 shellUpdate.apiUrl（数据存服务器 MySQL dsh.shell_version）——
    *    改服务器地址只需改 config.json，壳无需重打包。
@@ -361,7 +361,7 @@ function createUpdater(deps) {
     if (!info) return { ok: false, reason: 'fetch-failed' };
     const current = app.getVersion();
     if (compareSemver(current, info.version) >= 0) return { ok: false, reason: 'no-update' };
-    // v2.0.2：版本信息由自家服务器接口提供（唯一权威源），不再做「三源多数一致」信任门与
+    // v2.0.2：版本信息由DSH服务器接口提供（唯一权威源），不再做「三源多数一致」信任门与
     // 壳内置 hash 台账核对；下载仍走 GitHub（download_urls），下载后按服务器下发 hash 做 SHA256 校验。
     const dest = shellDownloadDest(info);
     // P3-5：下载 URL 强制 https（防 version.json 被投毒塞 http:// 明文下载）

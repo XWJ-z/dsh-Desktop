@@ -627,7 +627,7 @@ const roleSelectorApi = createRoleSelector({
 // v0.5.9：三源并发（jsDelivr @main 快但会卡缓存 / api.github.com 国内最稳、
 // 永远最新 / raw.githubusercontent 兜底），取可达源中版本号最高者，
 // 规避 jsDelivr @main 解析缓存卡死导致漏报更新。
-// v2.0.2：壳版本检测/校验改走自家服务器接口（config.json shellUpdate.apiUrl，
+// v2.0.2：壳版本检测/校验改走DSH服务器接口（config.json shellUpdate.apiUrl，
 // 数据存 MySQL dsh.shell_version），不再从 GitHub 三源拉 version.json，解耦 GitHub 网络问题。
 
 // v0.8.11（T0.6）：远程公告 —— v0.9.5（T3）起公告唯一源 = notice.json，

@@ -1,9 +1,9 @@
 {
-  "_comment": "自动更新版本清单：v2.0.2 起壳版本检测/校验改走自家服务器接口（config.json 的 shellUpdate.apiUrl，数据存 MySQL dsh.shell_version），本清单仅作发布归档/镜像校验；hash 为安装包实测 SHA256，发布时回填真实值（未发布阶段为占位）",
+  "_comment": "自动更新版本清单：v2.0.2 起壳版本检测/校验改走DSH服务器接口（config.json 的 shellUpdate.apiUrl，数据存 MySQL dsh.shell_version），本清单仅作发布归档/镜像校验；hash 为安装包实测 SHA256，发布时回填真实值（未发布阶段为占位）",
   "version": "2.0.2",
   "minVersion": "0.7.4",
   "author": "zx(xwj)",
-  "release_notes": "本周更新：2.0.2 —— 壳更新校验改走自家服务器，解耦 GitHub 网络问题\n🔹 新增：\n· 壳更新检测与校验改走自家服务器接口（MySQL 存储版本信息）—— 不再依赖 GitHub 三源（jsDelivr/API/raw），显著降低 GitHub 网络问题导致的更新失败/卡顿，升级体验更稳定\n· 版本信息单一权威源 —— 版本号 + 安装包 SHA256 + 下载地址均由自家服务器下发，校验一致才自动更新\n🔹 优化：\n· 去 GitHub 网络依赖 —— 仅安装包下载仍走 GitHub Releases（download_urls），检测/校验已完全解耦 GitHub",
+  "release_notes": "本周更新：2.0.2 —— 壳更新校验改走DSH服务器，解耦 GitHub 网络问题\n🔹 新增：\n· 壳更新检测与校验改走DSH服务器接口（MySQL 存储版本信息）—— 不再依赖 GitHub 三源（jsDelivr/API/raw），显著降低 GitHub 网络问题导致的更新失败/卡顿，升级体验更稳定\n· 版本信息单一权威源 —— 版本号 + 安装包 SHA256 + 下载地址均由DSH服务器下发，校验一致才自动更新\n🔹 优化：\n· 去 GitHub 网络依赖 —— 仅安装包下载仍走 GitHub Releases（download_urls），检测/校验已完全解耦 GitHub",
   "force": false,
   "hash": "REPLACE_WITH_REAL_HASH_AT_RELEASE",
   "download_urls": [
