@@ -69,6 +69,13 @@ function createDshRuntime(deps) {
       promptsUpdate: cfg.promptsUpdate && typeof cfg.promptsUpdate === 'object'
         ? { apiUrl: String(cfg.promptsUpdate.apiUrl || '') }
         : null,
+      // v2.0.5：透传插件库/技能库服务器接口地址（否则 plugins-updater/skills-updater 读不到 apiUrl）
+      pluginsUpdate: cfg.pluginsUpdate && typeof cfg.pluginsUpdate === 'object'
+        ? { apiUrl: String(cfg.pluginsUpdate.apiUrl || '') }
+        : null,
+      skillsUpdate: cfg.skillsUpdate && typeof cfg.skillsUpdate === 'object'
+        ? { apiUrl: String(cfg.skillsUpdate.apiUrl || '') }
+        : null,
     };
   }
 

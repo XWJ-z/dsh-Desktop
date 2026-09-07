@@ -30,6 +30,8 @@ const ignore = [
   /^\/skills(\/|$)/, // v1.2.1 T6：技能本体在 GitHub 仓库（市场按需 raw 拉取），不随壳分发
   /^\/prompts\.json$/, // v2.0.4：提示词库完全走DSH服务器，安装包不内置数据（瘦身）
   /^\/prompts\.version\.json$/, // v2.0.4：提示词库版本标记同理不内置
+  /^\/plugin-desc-zh\.json$/, // v2.0.5：插件库列表走DSH服务器，安装包不内置中文描述
+  /^\/skills-list\.json$/, // v2.0.5：技能库市场列表走DSH服务器，安装包不内置
 ];
 
 async function main() {

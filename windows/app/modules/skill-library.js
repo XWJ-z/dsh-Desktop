@@ -8,8 +8,8 @@
  *    → [{ name, desc, whenToUse, level: 'user'|'project', path }]
  *  - saveSkill({ name, description, whenToUse, body })：写 ~/.dsh/skills/<name>/SKILL.md（原子 + 大小上限）
  *  - deleteSkill(name)：删目录（kebab-case 校验）
- *  - 技能市场：三源拉取 skills-list.json（复用 remote-sources.buildSources + Electron net，
- *    7 天缓存 userData/skills-market-cache.json）→ 安装 = GitHub raw 拉 SKILL.md 写本地。
+ *  - 技能市场：列表走DSH服务器（skills-updater.js 版本检测 + 数据下载 + 本地缓存，安装包零内置）
+ *    → 安装 = 按条目从来源仓库 GitHub raw 拉 SKILL.md 写本地。
  *    技能条目含 install_req（安装要求）：纯文本直接可用 / 需配套资源仅拉正文（前端展示，
  *    复制安装指令）。市场列表为多来源精选（Anthropic 官方 anthropics/skills 等）。
  *
@@ -22,21 +22,21 @@
  *
  * 依赖注入（deps）：
  *  - app / fs / os / path
- *  - net              Electron net（Chromium 网络栈/系统 CA，三源/raw 拉取）
+ *  - net              Electron net（Chromium 网络栈/系统 CA，从市场安装拉 SKILL.md 用）
  *  - appendLog
  *  - getWorkspacePath  工作区定位（workspace.js，注入复用；可为 async）
+ *  - skillsUpdater     技能市场服务器更新模块（getData / downloadData）
  */
 
-const { SKILLS_LIST_URLS } = require('./remote-sources');
 const { createNetCommon } = require('./net-common'); // 2.0.1 去重：统一 Electron net 拉取
 
 const NAME_RE = /^[a-z0-9-]+$/; // 名称 kebab-case
 const MAX_SKILL_SIZE = 500 * 1024; // 技能正文上限（500KB，方案待定取此值）
-const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 市场列表 7 天缓存
 
 function createSkillLibrary(deps) {
-  const { app, fs, os, path, net, appendLog, getWorkspacePath } = deps;
-  // 2.0.1 去重：fetchText 改用公共 net-common 实现（原先此模块内联了一份同款逻辑）
+  const { fs, os, path, net, appendLog, getWorkspacePath, skillsUpdater } = deps;
+  // 2.0.1 去重：fetchText 改用公共 net-common 实现（原先此模块内联了一份同款逻辑；
+  // 现仅「从市场安装技能」拉 SKILL.md 用 —— 市场列表走 skills-updater）
   const { fetchText } = createNetCommon({ net });
 
   /** DSH home 根目录（$DSH_HOME 非空优先，否则 ~/.dsh） */
@@ -246,119 +246,32 @@ function createSkillLibrary(deps) {
     }
   }
 
-  // ── 技能市场 ──
-  let marketCache = null;
-  let marketTs = 0;
-
-  function marketCacheFile() {
-    return path.join(app.getPath('userData'), 'skills-market-cache.json');
-  }
-
-  /** 加载市场缓存（未过期才认） */
-  function loadMarketCache() {
-    try {
-      const f = marketCacheFile();
-      if (fs.existsSync(f)) {
-        const data = JSON.parse(fs.readFileSync(f, 'utf8'));
-        if (data && Array.isArray(data.skills) && data.timestamp && Date.now() - data.timestamp < CACHE_TTL_MS) {
-          marketCache = data.skills;
-          marketTs = data.timestamp;
-          return marketCache;
-        }
-      }
-    } catch { /* ignore */ }
-    return null;
-  }
-
-  /** 写市场缓存（原子） */
-  function writeMarketCache(skills) {
-    try {
-      const f = marketCacheFile();
-      fs.mkdirSync(path.dirname(f), { recursive: true });
-      fs.writeFileSync(`${f}.tmp`, JSON.stringify({ timestamp: Date.now(), skills }, null, 2), 'utf8');
-      fs.renameSync(`${f}.tmp`, f);
-    } catch (err) { appendLog('warn', `技能市场缓存写失败：${err.message}`); }
-  }
-
-  /** 解析 skills-list.json（容错脏数据）；无效返回 [] */
-  function parseMarketList(raw) {
-    try {
-      const data = JSON.parse(raw);
-      if (!data || !Array.isArray(data.skills)) return [];
-      return data.skills
-        .map((s) => ({
-          name: String((s && s.name) || '').trim(),
-          description: String((s && s.description) || '').trim(),
-          category: String((s && s.category) || '').trim(),
-          repo: String((s && s.repo) || '').trim(),
-          file: String((s && s.file) || '').trim(),
-          installReq: String((s && (s.install_req || s.installReq)) || '').trim(),
-        }))
-        .filter((s) => s.name && s.repo && s.file);
-    } catch {
-      return [];
-    }
-  }
-
+  // ── 技能市场（v2.0.5：市场列表完全走 DSH 服务器，安装包零内置）──
   /**
-   * 本地回退：三源全失败时读随包分发的 skills-list.json。
-   * 路径 path.join(app.getAppPath(), 'skills-list.json') —— 打包后为 resources/app/skills-list.json，
-   * 由 electron-builder files 的包含规则默认拷入（未排除该文件）。读到有效列表则写缓存；
-   * 文件缺失/解析失败返回 []。
+   * 确保已下载市场列表：无缓存（首装）时自动从服务器下载一次；失败返回 `[]`。
+   * @returns {Promise<Array>} 技能数组
    */
-  function loadLocalMarketList() {
-    try {
-      const localFile = path.join(app.getAppPath(), 'skills-list.json');
-      if (!fs.existsSync(localFile)) {
-        appendLog('warn', `技能市场拉取全部失败，且无随包本地清单：${localFile}`);
-        return [];
-      }
-      const list = parseMarketList(fs.readFileSync(localFile, 'utf8'));
-      if (list.length > 0) {
-        marketCache = list;
-        marketTs = Date.now();
-        writeMarketCache(list);
-        appendLog('info', `技能市场使用随包本地清单：${list.length} 个技能`);
-      }
-      return list;
-    } catch (err) {
-      appendLog('warn', `技能市场本地清单读取失败：${err.message}`);
+  async function ensureMarketData() {
+    const g = skillsUpdater.getData();
+    if (!g.needsDownload) return g.data;
+    appendLog('info', '技能库无缓存，自动从服务器下载…');
+    const r = await skillsUpdater.downloadData();
+    if (!r.ok) {
+      appendLog('warn', '技能库自动下载失败，请检查网络后点刷新重试');
       return [];
     }
+    return skillsUpdater.getData().data;
   }
 
-  /** 三源并发拉取市场列表，取版本最高者；成功写缓存并返回数组 */
-  async function fetchMarketList() {
-    const TIMEOUT = 8000;
-    const results = await Promise.all(
-      SKILLS_LIST_URLS.map((s) => fetchText(s.url, TIMEOUT, s.headers || {}).then((t) => (t ? parseMarketList(t) : null))),
-    );
-    const valid = results.filter((r) => r && r.length > 0);
-    if (valid.length === 0) {
-      appendLog('warn', `技能市场拉取全部失败，回退随包本地清单`);
-      return loadLocalMarketList();
-    }
-    // 各源取技能数最多者（最完整的列表）
-    const best = valid.reduce((a, b) => (b.length > a.length ? b : a));
-    marketCache = best;
-    marketTs = Date.now();
-    writeMarketCache(best);
-    appendLog('info', `技能市场拉取成功：${best.length} 个技能`);
-    return best;
-  }
-
-  /** 获取技能市场列表（缓存新鲜则用缓存，否则拉取） */
+  /** 获取技能市场列表（缓存新鲜则用缓存，否则自动下载） */
   async function getMarketList() {
-    if (!marketCache) loadMarketCache();
-    if (!marketCache || Date.now() - marketTs >= CACHE_TTL_MS) {
-      await fetchMarketList();
-    }
-    return marketCache || [];
+    return await ensureMarketData();
   }
 
-  /** 刷新市场列表（绕过缓存，实时拉取） */
+  /** 刷新市场列表（强制从服务器重新下载 + 落缓存） */
   async function refreshMarketList() {
-    return await fetchMarketList();
+    const r = await skillsUpdater.downloadData();
+    return !!(r && r.ok);
   }
 
   /**

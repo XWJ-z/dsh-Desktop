@@ -43,8 +43,8 @@
 > 💡 **普通用户请直接下载安装包**（下方按钮），无需安装 Node.js。
 > 源码仅供开发者研究/二开使用。
 
-<a href="https://github.com/XWJ-z/dsh-Desktop/releases/download/v2.0.4/DSH-Desktop-Setup-2.0.4.exe">
-<img src="https://img.shields.io/badge/下载安装包-DSH--Desktop--Setup--2.0.4.exe%20%E7%BA%A6115MB-2ea44f?style=for-the-badge&logo=windows&logoColor=white" alt="下载 DSH-Desktop 安装包"/>
+<a href="https://github.com/XWJ-z/dsh-Desktop/releases/download/v2.0.5/DSH-Desktop-Setup-2.0.5.exe">
+<img src="https://img.shields.io/badge/下载安装包-DSH--Desktop--Setup--2.0.5.exe%20%E7%BA%A6115MB-2ea44f?style=for-the-badge&logo=windows&logoColor=white" alt="下载 DSH-Desktop 安装包"/>
 </a>
 
 📖 详细说明（特性 / 打包 / 安装 / 升级 / 目录结构 / 运行原理）→ **[windows/README.md](windows/README.md)**
@@ -83,6 +83,7 @@
 | v1.2.2 | 记忆管理（全局记忆 + 项目记忆）/ 技能库（扫描/自建/市场）/ 局域网扫码访问 / 任务完成通知 / 备份纳入项目记忆 / 技能目录扫描顺序对齐官方 / 记忆与技能安全加固 |
 | v1.2.14 | 适配 DSH 0.1.2-rc.1 浏览器鉴权（DSH 更新后打不开界面、一直停在 authentication required）+ 手机扫码访问同步鉴权 + 鉴权失败自动回退（自动带 token 重载 / 失败弹窗给授权地址） |
 | v1.2.8 | 角色选择优化（多次双击不再连开窗口、角色名超长截断）+ 帮助文档改官网直达（http://dsh.xwjznh.cn）+ 启动拦截（系统浏览器不再自动弹本机 DSH 页） |
+| v2.0.5 | 插件库/技能库改走DSH服务器（版本检测+数据下载），安装包不再内置插件中文描述与技能市场列表；首次打开自动从服务器下载，安装包更精简 |
 | v2.0.4 | 提示词库改走DSH服务器（版本检测+数据下载），安装包不再内置提示词；首次打开提示词库提示从服务器下载，安装包更精简 |
 | v2.0.3 | 更新下载失败时新增百度网盘备用下载渠道（弹窗「百度网盘下载」+ 覆盖安装提示，提取码 8yh8）|
 | v2.0.2 | 壳更新校验改走DSH服务器（MySQL 存储版本信息），解耦 GitHub 网络问题；仅安装包下载仍走 GitHub Releases |

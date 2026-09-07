@@ -11,5 +11,11 @@
   },
   "promptsUpdate": {
     "apiUrl": "https://api.dsh.xwjznh.cn/api/prompts"
+  },
+  "pluginsUpdate": {
+    "apiUrl": "https://api.dsh.xwjznh.cn/api/plugins"
+  },
+  "skillsUpdate": {
+    "apiUrl": "https://api.dsh.xwjznh.cn/api/skills"
   }
 }

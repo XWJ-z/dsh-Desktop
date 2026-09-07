@@ -11,8 +11,9 @@
  * 顺序即并发拉取顺序；GitHub API 源带 Accept raw+json 直接返回文件原文（无 CDN 缓存，永远最新）。
  *
  * ⚠️ 兼容性红线：路径一旦发布即协议 —— 已发布老版本客户端硬编码根目录路径，
- * 请勿移动仓库根目录下的 version.json / notice.json / plugin-desc-zh.json / skills-list.json。
- * （prompts.json / prompts.version.json 已不在此模块——v2.0.4 起提示词库完全走DSH服务器，见 prompts-updater.js。）
+ * 请勿移动仓库根目录下的 version.json / notice.json。
+ * （v2.0.4/v2.0.5：prompts.json / plugin-desc-zh.json / skills-list.json 等已改走DSH服务器，
+ * 见 prompts-updater.js / plugins-updater.js / skills-updater.js；仅公告仍走 GitHub 三源。）
  */
 
 const REPO = 'XWJ-z/dsh-Desktop';
@@ -40,11 +41,8 @@ module.exports = {
   buildSources,
   // v2.0.2：壳版本检测/校验已改走DSH服务器接口（config.json 的 shellUpdate.apiUrl，
   // 数据存 MySQL dsh.shell_version），不再从 GitHub 三源拉 version.json。
-  // 公告/插件描述/技能列表仍走 GitHub 三源（不属本需求范围，保持不动）。
+  // v2.0.5：插件库/技能库市场列表也已改走DSH服务器（pluginsUpdate/skillsUpdate.apiUrl，
+  // 数据存 MySQL plugin_*/skill_* 表），不再从 GitHub 三源拉。仅公告仍走 GitHub 三源。
   /** 远程公告源（公告条 marquee + 公告窗口 items） */
   NOTICE_URLS: buildSources('notice.json'),
-  /** 插件中文描述（内置随包 + 远程可更新，push 即生效） */
-  PLUGIN_DESC_URLS: buildSources('plugin-desc-zh.json'),
-  /** 技能市场列表（v1.2.1 T4：我们仓库维护 skills-list.json，老大精选） */
-  SKILLS_LIST_URLS: buildSources('skills-list.json'),
 };

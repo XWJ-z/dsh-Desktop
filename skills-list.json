@@ -1,6 +1,7 @@
 {
-  "_comment": "技能市场列表（v1.2.1 T6 扩充版）—— 多来源精选：以 Anthropic 官方 anthroppics/skills（Apache 2.0 开源、自包含 SKILL.md、raw 可拉取 HTTP 200）为主。技能 = 纯文本指令（YAML frontmatter name/description + Markdown），本地写入无代码执行风险；但内容会注入模型上下文，安装前请确认来源可信。install 时从 repo@main/file 拉取 SKILL.md；install_req 标注该技能的安装要求（纯文本直接可用 / 需配套资源仅拉 SKILL.md 文本）。",
-  "version": 2,
+  "_comment": "技能库市场列表数据源（v2.0.5 起完全走DSH服务器，安装包零内置）—— 多来源精选：以 Anthropic 官方 anthropics/skills（Apache 2.0 开源、自包含 SKILL.md、可拉取 HTTP 200）为主。作为服务器 skill_items 数据源；更新时用 generate-skills-sql.js 出 init-skills.sql 导入覆盖。install 时从 repo@main/file 拉取 SKILL.md；install_req 标注该技能的安装要求。",
+  "version": "2026-09-07",
+  "updated": "2026-09-07",
   "skills": [
     {
       "name": "skill-creator",

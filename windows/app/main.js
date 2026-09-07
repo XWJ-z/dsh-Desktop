@@ -65,6 +65,8 @@ const { createRoleSelector } = require('./modules/role-selector'); // v0.9.13：
 const { createRolePicker } = require('./modules/role-picker'); // v1.0.3（用户反馈 3）：角色选择竖排窗口
 const { createNoticeModule } = require('./modules/notice'); // v0.9.5（T3）：公告条/公告源
 const { createPromptsUpdater } = require('./modules/prompts-updater'); // v1.1.1：提示词库远程更新
+const { createPluginsUpdater } = require('./modules/plugins-updater'); // v2.0.5：插件库远程更新
+const { createSkillsUpdater } = require('./modules/skills-updater'); // v2.0.5：技能库市场远程更新
 const { createPluginMarket } = require('./modules/plugin-market'); // v1.1.1：插件市场
 const { createMenu } = require('./modules/menu');
 const { registerIpc } = require('./modules/ipc');
@@ -575,9 +577,10 @@ const projectMemoryApi = createProjectMemory({ fs, path, app, appendLog, getWork
 // v1.2.1 T4：技能库 —— 扫描/读写/删除技能 + 技能市场（三源拉取 + raw 安装）
 const skillLibraryApi = createSkillLibrary({
   app, fs, os, path,
-  net: electronNet, // Electron net（Chromium 网络栈/系统 CA，三源/raw 拉取）
+  net: electronNet, // Electron net（Chromium 网络栈/系统 CA，从市场安装拉 SKILL.md 用）
   appendLog,
   getWorkspacePath,
+  skillsUpdater: skillsUpdaterApi, // v2.0.5：市场列表走服务器
 });
 
 // 主窗口拖拽监听注入（防导航 + overlay + 同步取路径）
@@ -672,18 +675,23 @@ const { isAllowedExternalUrl } = require('./modules/external-links');
 const promptsUpdaterApi = createPromptsUpdater({ app, fs, path, appendLog, fetchJson, readShellConfig });
 promptsUpdaterApi.loadCache(); // 启动即载入缓存
 
-// v1.1.1：插件市场 —— 连接官方 awesome-dsh-plugin 社区
+// v2.0.5：插件库/技能库市场 —— 版本检测 + 数据下载完全走DSH服务器（pluginsUpdate/skillsUpdate.apiUrl），安装包零内置
+const pluginsUpdaterApi = createPluginsUpdater({ app, fs, path, appendLog, fetchJson, readShellConfig });
+pluginsUpdaterApi.loadCache(); // 启动即载入缓存
+const skillsUpdaterApi = createSkillsUpdater({ app, fs, path, appendLog, fetchJson, readShellConfig });
+skillsUpdaterApi.loadCache(); // 启动即载入缓存
+
+// v1.1.1：插件市场 —— 列表数据走DSH服务器（plugins-updater）
 const pluginMarketApi = createPluginMarket({
   app,
   fs,
   path,
   shell,
   clipboard,
-  net: electronNet, // Electron net（Chromium 网络栈/系统 CA，拉取 README/中文描述）
   appendLog,
   isAllowedExternalUrl,
+  pluginsUpdater: pluginsUpdaterApi,
 });
-pluginMarketApi.loadCache(); // 启动即载入缓存
 
 // ---------------------------------------------------------------------------
 // 窗口模块组装（v0.8.12：逻辑已移入 modules/windows/）
@@ -1544,6 +1552,9 @@ if (!gotLock) {
       startNoticeAutoRefresh();
       // v1.1.1：提示词库启动时静默检查更新
       promptsUpdaterApi.checkUpdatesOnStart();
+      // v2.0.5：插件库/技能库市场启动时静默检查更新
+      pluginsUpdaterApi.checkUpdatesOnStart();
+      skillsUpdaterApi.checkUpdatesOnStart();
     } catch (err) {
       appendLog('error', `启动失败：${err.message}`);
       if (loadingWindow && !loadingWindow.isDestroyed()) {
