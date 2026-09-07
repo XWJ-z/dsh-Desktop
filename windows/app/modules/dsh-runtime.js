@@ -76,6 +76,10 @@ function createDshRuntime(deps) {
       skillsUpdate: cfg.skillsUpdate && typeof cfg.skillsUpdate === 'object'
         ? { apiUrl: String(cfg.skillsUpdate.apiUrl || '') }
         : null,
+      // v2.0.6：透传公告服务器接口地址（否则 notice 读不到 noticeUpdate.apiUrl → 公告回退 GitHub 三源）
+      noticeUpdate: cfg.noticeUpdate && typeof cfg.noticeUpdate === 'object'
+        ? { apiUrl: String(cfg.noticeUpdate.apiUrl || '') }
+        : null,
     };
   }
 

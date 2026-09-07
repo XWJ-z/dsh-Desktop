@@ -654,8 +654,8 @@ const {
   fetchJson,
 } = updaterApi;
 
-// v0.9.5（T3）：公告模块 —— notice.json 三源并发 + userData 缓存；菜单栏公告条 + 公告窗口
-const noticeApi = createNoticeModule({ app, fs, path, appendLog, fetchJson });
+// v0.9.5（T3）：公告模块 —— v2.0.6 起服务器优先（noticeUpdate.apiUrl），失败回退 GitHub 三源；userData 缓存
+const noticeApi = createNoticeModule({ app, fs, path, appendLog, fetchJson, readShellConfig });
 noticeApi.loadCache(); // 启动即载入缓存（buildMenu 用缓存 marquee，拉取失败不闪没）
 
 // v1.2.8（用户指令）：移除应用内帮助文档，改为直开官网 —— 不再 createHelpDoc

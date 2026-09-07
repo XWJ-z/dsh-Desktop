@@ -17,5 +17,8 @@
   },
   "skillsUpdate": {
     "apiUrl": "https://api.dsh.xwjznh.cn/api/skills"
+  },
+  "noticeUpdate": {
+    "apiUrl": "https://api.dsh.xwjznh.cn/api/notices"
   }
 }
