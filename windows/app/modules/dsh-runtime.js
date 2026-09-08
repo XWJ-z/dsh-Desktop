@@ -242,6 +242,59 @@ function createDshRuntime(deps) {
     return skipped;
   }
 
+  /**
+   * 清理旧 npm 缓存残留（2.1.2，用户指令：每次更新别越堆越多）。
+   *
+   * 仅应在本模块**真正发生 DSH 安装/升级成功后**调用——此时旧版本依赖树已替换，
+   * npm-cache 里不再被引用的 tarball/元数据残留可安全回收。用「cache verify」
+   * 而非「cache clean --force」：verify 是 npm 官方标准命令，只清损坏/不一致的
+   * 条目并做完整性核对，**不破坏还在用的正常缓存命中**（离线/重试能力不降）。
+   *
+   * 幂等、失败仅记日志不阻断启动。返回清理是否成功。
+   */
+  async function cleanupNpmCache() {
+    const cacheDir = path.join(dshRuntimeDir(), 'npm-cache');
+    const before = await dirSizeMBAsync(cacheDir).catch(() => -1);
+    appendLog('info', `清理 DSH 旧 npm 缓存前体积：${before >= 0 ? before.toFixed(1) + ' MB' : '未知'}`);
+
+    return new Promise((resolve) => {
+      const runner = resolveRunner(20);
+      const cli = npmCliJs();
+      const args = [cli, 'cache', 'verify', '--cache', cacheDir];
+      appendLog('info', `npm 缓存清理命令：${runner.execPath} ${args.join(' ')}`);
+      let child;
+      try {
+        child = trackChild(
+          spawn(runner.execPath, args, { env: { ...process.env, ...runner.env }, stdio: ['ignore', 'ignore', 'pipe'], windowsHide: true }),
+          'npm-cache-verify',
+        );
+      } catch (err) {
+        appendLog('warn', `清理旧 npm 缓存失败（无法创建子进程）：${err.message}`);
+        resolve(false);
+        return;
+      }
+      child.on('error', (err) => {
+        appendLog('warn', `清理旧 npm 缓存失败：${err.message}`);
+        resolve(false);
+      });
+      child.on('exit', async (code) => {
+        if (code !== 0) {
+          appendLog('warn', `清理旧 npm 缓存失败（退出码 ${code}），已跳过（不影响运行）`);
+          resolve(false);
+          return;
+        }
+        const after = await dirSizeMBAsync(cacheDir).catch(() => -1);
+        const freed = before >= 0 && after >= 0 ? before - after : -1;
+        appendLog(
+          'info',
+          `清理旧 npm 缓存完成，清理后体积：${after >= 0 ? after.toFixed(1) + ' MB' : '未知'}` +
+            (freed >= 0 ? `（回收约 ${freed.toFixed(1)} MB）` : ''),
+        );
+        resolve(true);
+      });
+    });
+  }
+
   /** P1-2：核对已装版本与安装记录一致（检测 dshenv 目录被替换/篡改）。
    *  M7（代码审查 2026-09-07）：在版本号基础上**实际校验 integrity** —— 目录被整包替换时
    *  package.json 可保留原版本号（version 仍匹配），需对比 .package-lock 记录与该包 integrity。 */
@@ -488,6 +541,9 @@ function createDshRuntime(deps) {
           if (skipped.length > 0) {
             appendLog('warn', `DSH 依赖中 ${skipped.length} 个带 install 脚本的原生包未在 allow-scripts 白名单内：${skipped.map((s) => `${s.name}@${s.version}`).join(', ')}（若运行时报 Cannot find module .node，请联系维护者加白名单）`);
           }
+          // 2.1.2（用户指令）：真正安装/升级成功后，回收旧版本 npm 缓存残留（不阻塞启动）
+          cleanupNpmCache().catch(() => { /* 内部已记日志，忽略 */
+          });
           resolve(bin);
         });
       });
@@ -564,6 +620,7 @@ function createDshRuntime(deps) {
     verifyInstallRecord,
     packageLockIntegrity,           // M7：dsh 主包 .package-lock integrity（供启动校验）
     probeSkippedNativePackages,     // S1/S4：探测未放行白名单的原生依赖包（供诊断）
+    cleanupNpmCache,                // 2.1.2：升级后回收旧 npm 缓存残留（供诊断/触发）
     userDshVersionFile, readUserDshVersion, saveUserDshVersion, // v1.0.3：用户 DSH 版本选择持久化
   };
 }
