@@ -1,5 +1,7 @@
 'use strict';
 
+const { compareSemver } = require('./semver'); // 2.1.2：最低内核版本门槛判断（跨版本覆盖安装兼容修复）
+
 /**
  * DSH-Desktop — DSH 运行时管理模块（优化方案 2026-08-16 阶段一：从 main.js 拆分）
  *
@@ -48,6 +50,14 @@ function createDshRuntime(deps) {
     '@google/genai',
     'protobufjs',
   ];
+
+  // 2.1.2（跨版本覆盖安装兼容修复）：DSH 内核最低可运行版本。
+  // 背景：1.x 用户覆盖安装到 2.x 后，config dshVersion='latest' 原本"不主动升级"，
+  // DSH 内核停在旧版（如 0.1.0-rc.7），而新版壳启动命令注入了旧内核不认识的
+  // 参数（--no-open 等）→ `unknown option '--no-open'` → DSH 进程 exit 1 → 打不开。
+  // 修复：latest 语义下，已装内核低于 MIN_DSH_VERSION 视为"未满足"，强制升级到最新。
+  // 0.1.2-rc.1 具备鉴权 + --no-open + --trusted-host 等新壳依赖的能力（见 CHANGELOG）。
+  const MIN_DSH_VERSION = '0.1.2-rc.1';
 
   /** 读取壳配置（app/config.json）：DSH 包名 + 版本号，用户改版本号即升级 DSH。
    *  v1.0.3（用户反馈 6）：config.json 位于**安装目录**，升级壳覆盖安装会被重置为
@@ -169,7 +179,16 @@ function createDshRuntime(deps) {
     if (!fs.existsSync(installedDshBin())) return false;
     const installed = installedDshVersion();
     if (installed == null) return false;
-    if (cfg.dshVersion === 'latest') return true; // latest：不主动降级/升级，用现有安装
+    if (cfg.dshVersion === 'latest') {
+      // 2.1.2（跨版本覆盖安装兼容修复）：latest 不代表"任何已装版本都行"——
+      // 已装内核低于最低可运行版本（不支持 --no-open/鉴权/--trusted-host 等新壳参数）
+      // 视为"未满足"，强制升级到最新（否则 1.x 覆盖安装 2.x 会因 `unknown option` 崩溃）。
+      if (compareSemver(String(installed), MIN_DSH_VERSION) < 0) {
+        appendLog('info', `已装 DSH 内核 v${installed} 低于最低可运行版本 v${MIN_DSH_VERSION}，将自动升级到最新`);
+        return false;
+      }
+      return true; // latest 且不低于门槛：不主动降级/升级，用现有安装
+    }
     return installed === cfg.dshVersion;
   }
 
@@ -614,6 +633,7 @@ function createDshRuntime(deps) {
     installedDshBin,
     installedDshVersion,
     dshUpToDate,
+    MIN_DSH_VERSION,               // 2.1.2：最低可运行内核门槛版本（跨版本覆盖安装兼容修复）
     ensureDshRuntime,
     updateDshVersion,
     readDshInstallRecord,   // P1-2：安装记录读取/核对（诊断/启动告警用）
